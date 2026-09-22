@@ -1,0 +1,6 @@
+{
+  "name": "SortMyScene - Concert & Music Event Ticketing",
+  "description": "Nền tảng khám phá và đặt vé concert âm nhạc trực tuyến với hệ thống xác thực OTP và tích hợp sự kiện trực tiếp",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
