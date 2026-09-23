@@ -28,6 +28,7 @@ interface AuthContextType {
     attendeePhone: string;
     attendeeEmail: string;
     paymentMethod: string;
+    selectedSeats?: string[];
   }) => Booking;
   cancelBooking: (bookingId: string) => void;
 }
@@ -150,6 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     attendeePhone: string;
     attendeeEmail: string;
     paymentMethod: string;
+    selectedSeats?: string[];
   }): Booking => {
     const bookingCode = `SMS-${Math.floor(100000 + Math.random() * 900000)}`;
     const qrData = encodeURIComponent(`https://sortmyscene.live/ticket/${bookingCode}`);
@@ -167,6 +169,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedBookings = [newBooking, ...bookings];
     setBookings(updatedBookings);
     localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updatedBookings));
+
+    // Update seat map status to permanently 'sold' for confirmed seats
+    if (bookingData.selectedSeats && bookingData.selectedSeats.length > 0) {
+      try {
+        const storageKey = `sms_event_seats_${bookingData.eventId}`;
+        const existing = localStorage.getItem(storageKey);
+        if (existing) {
+          const parsedSeats = JSON.parse(existing);
+          const updatedSeats = parsedSeats.map((s: { id: string; status: string }) =>
+            bookingData.selectedSeats?.includes(s.id) ? { ...s, status: 'sold' } : s
+          );
+          localStorage.setItem(storageKey, JSON.stringify(updatedSeats));
+        }
+      } catch (err) {
+        console.error('Failed to update seat status upon booking:', err);
+      }
+    }
 
     return newBooking;
   };

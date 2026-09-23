@@ -17,8 +17,11 @@ import {
   CheckCircle2,
   Users,
   Info,
-  ExternalLink
+  ExternalLink,
+  Armchair
 } from 'lucide-react';
+import { SeatMap } from '../components/SeatMap';
+import { SeatItem } from '../types';
 
 export const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +29,8 @@ export const EventDetailPage: React.FC = () => {
   const { getEventById } = useEvents();
   const { isAuthenticated } = useAuth();
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'info' | 'seatmap'>('seatmap');
   const [copiedLink, setCopiedLink] = useState(false);
 
   const event = id ? getEventById(id) : undefined;
@@ -52,13 +57,25 @@ export const EventDetailPage: React.FC = () => {
     );
   }
 
+  // Handle proceed with chosen seats from the interactive seat map
+  const handleProceedWithSeats = (chosenSeats: SeatItem[]) => {
+    const seatIds = chosenSeats.map(s => s.id).join(',');
+    const tierId = chosenSeats[0]?.tierId || selectedTierId || event.ticketTiers[0]?.id;
+    const checkoutUrl = `/checkout/${event.id}?tier=${tierId}&seats=${encodeURIComponent(seatIds)}`;
+
+    if (!isAuthenticated) {
+      navigate(`/login?redirect=${encodeURIComponent(checkoutUrl)}`);
+    } else {
+      navigate(checkoutUrl);
+    }
+  };
+
   // Handle "Mua vé ngay" click with strict authentication interception
   const handleProceedToCheckout = (tierId?: string) => {
     const chosenTier = tierId || selectedTierId || event.ticketTiers[0]?.id;
     const checkoutUrl = `/checkout/${event.id}${chosenTier ? `?tier=${chosenTier}` : ''}`;
 
     if (!isAuthenticated) {
-      // Prompt requirement: intercept and redirect to login
       navigate(`/login?redirect=${encodeURIComponent(checkoutUrl)}`);
     } else {
       navigate(checkoutUrl);
@@ -168,20 +185,77 @@ export const EventDetailPage: React.FC = () => {
               <div className="text-2xl sm:text-3xl font-black text-white mb-3">
                 {formatPrice(event.priceStart, event.currency)}
               </div>
-              <button
-                onClick={() => handleProceedToCheckout()}
-                className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg shadow-purple-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-              >
-                <Ticket className="w-4 h-4" />
-                <span>Mua vé ngay</span>
-              </button>
-              <div className="mt-2 text-center text-[11px] text-purple-400/80 flex items-center justify-center gap-1">
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setActiveTab('seatmap');
+                    const el = document.getElementById('seat-map-section');
+                    el?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg shadow-purple-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <Armchair className="w-4 h-4" />
+                  <span>Chọn ghế trực quan (Seat Map)</span>
+                </button>
+                <button
+                  onClick={() => handleProceedToCheckout()}
+                  className="w-full py-2.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-200 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Ticket className="w-3.5 h-3.5" />
+                  <span>Mua vé nhanh theo hạng</span>
+                </button>
+              </div>
+              <div className="mt-3 text-center text-[11px] text-purple-400/80 flex items-center justify-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-green-400" />
-                <span>Vé chính hãng • Check-in QR bảo mật</span>
+                <span>Giữ chỗ 5 phút • Zero Double-Booking</span>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Navigation Tabs between Seat Map and Event Info */}
+        <div id="seat-map-section" className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => setActiveTab('seatmap')}
+            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'seatmap'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-950 ring-2 ring-purple-400/50'
+                : 'bg-[#1b0d2d] text-purple-300 hover:text-white border border-purple-800/60'
+            }`}
+          >
+            <Armchair className="w-4 h-4" />
+            <span>Sơ đồ ghế trực quan (Prototype FR-01)</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] border border-emerald-500/40 font-mono font-semibold">
+              REAL-TIME
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('info')}
+            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'info'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-950 ring-2 ring-purple-400/50'
+                : 'bg-[#1b0d2d] text-purple-300 hover:text-white border border-purple-800/60'
+            }`}
+          >
+            <Info className="w-4 h-4" />
+            <span>Chi tiết &amp; Nghệ sĩ biểu diễn</span>
+          </button>
+        </div>
+
+        {activeTab === 'seatmap' && (
+          <div className="mb-10">
+            <SeatMap
+              eventId={event.id}
+              currency={event.currency}
+              ticketTiers={event.ticketTiers}
+              selectedSeatIds={selectedSeats.map(s => s.id)}
+              onSeatsChange={setSelectedSeats}
+              onProceedToCheckout={handleProceedWithSeats}
+              maxSeats={4}
+            />
+          </div>
+        )}
 
         {/* Content Layout: Left info & Right Ticket Tiers */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

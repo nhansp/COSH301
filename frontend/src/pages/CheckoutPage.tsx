@@ -18,8 +18,13 @@ import {
   MapPin,
   Download,
   Share2,
-  ExternalLink
+  ExternalLink,
+  Armchair,
+  AlertCircle,
+  X
 } from 'lucide-react';
+import { SeatMap } from '../components/SeatMap';
+import { SeatItem } from '../types';
 
 export const CheckoutPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -31,8 +36,14 @@ export const CheckoutPage: React.FC = () => {
 
   const event = eventId ? getEventById(eventId) : undefined;
 
+  const seatsParam = searchParams.get('seats');
+  const initialSeatIds = seatsParam ? decodeURIComponent(seatsParam).split(',').filter(Boolean) : [];
+  const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>(initialSeatIds);
+  const [showSeatMapModal, setShowSeatMapModal] = useState<boolean>(false);
+  const [holdTimeLeft, setHoldTimeLeft] = useState<number | null>(initialSeatIds.length > 0 ? 300 : null);
+
   const [selectedTier, setSelectedTier] = useState<TicketTier | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(initialSeatIds.length > 0 ? initialSeatIds.length : 1);
   const [attendeeName, setAttendeeName] = useState(user?.name || '');
   const [attendeePhone, setAttendeePhone] = useState(user?.phone || '');
   const [attendeeEmail, setAttendeeEmail] = useState(user?.email || '');
@@ -46,6 +57,28 @@ export const CheckoutPage: React.FC = () => {
       setSelectedTier(match || event.ticketTiers[0]);
     }
   }, [event, initialTierId]);
+
+  // Keep quantity in sync with selected seats
+  useEffect(() => {
+    if (selectedSeatIds.length > 0) {
+      setQuantity(selectedSeatIds.length);
+      if (holdTimeLeft === null) setHoldTimeLeft(300);
+    }
+  }, [selectedSeatIds.length]);
+
+  // 5-minute hold timer countdown effect (US-03)
+  useEffect(() => {
+    if (holdTimeLeft === null) return;
+    if (holdTimeLeft <= 0) {
+      alert('Đã hết hạn giữ chỗ 5 phút! Vui lòng chọn lại ghế để tiếp tục.');
+      navigate(`/event/${event?.id}`);
+      return;
+    }
+    const timer = setInterval(() => {
+      setHoldTimeLeft(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [holdTimeLeft, event?.id, navigate]);
 
   if (!event) {
     return (
@@ -93,7 +126,8 @@ export const CheckoutPage: React.FC = () => {
       attendeeName: attendeeName || user?.name || 'Guest Attendee',
       attendeePhone: attendeePhone || user?.phone || 'N/A',
       attendeeEmail: attendeeEmail || user?.email || 'N/A',
-      paymentMethod
+      paymentMethod,
+      selectedSeats: selectedSeatIds.length > 0 ? selectedSeatIds : undefined
     });
 
     setIsProcessing(false);
@@ -115,6 +149,42 @@ export const CheckoutPage: React.FC = () => {
             <span>Quay lại trang sự kiện</span>
           </button>
         </div>
+
+        {/* 5-minute hold timer banner (US-03) */}
+        {selectedSeatIds.length > 0 && holdTimeLeft !== null && (
+          <div
+            className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-4 ${
+              holdTimeLeft < 60
+                ? 'bg-rose-950/80 border-rose-500 text-rose-200 animate-pulse'
+                : 'bg-[#1b0d2d] border-purple-600/60 text-purple-200'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
+              <div>
+                <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                  <span>
+                    Khóa giữ chỗ: {Math.floor(holdTimeLeft / 60)}:{String(holdTimeLeft % 60).padStart(2, '0')}
+                  </span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    Độc quyền (US-03)
+                  </span>
+                </div>
+                <div className="text-xs text-purple-300/80">
+                  Ghế của bạn ({selectedSeatIds.join(', ')}) đang được bảo vệ chống bán trùng (Zero Double-Booking).
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowSeatMapModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-purple-900/60 hover:bg-purple-800 border border-purple-700 text-xs font-semibold text-white transition-colors cursor-pointer flex-shrink-0"
+            >
+              Đổi vị trí ghế
+            </button>
+          </div>
+        )}
 
         {/* E-Ticket Confirmation Screen if order is finalized */}
         {confirmedBooking ? (
@@ -178,6 +248,12 @@ export const CheckoutPage: React.FC = () => {
                     <div className="mt-2 inline-block px-2.5 py-0.5 rounded-lg bg-purple-900/60 text-purple-200 text-xs font-semibold">
                       {confirmedBooking.tierName} • Số lượng: {confirmedBooking.quantity} vé
                     </div>
+                    {confirmedBooking.selectedSeats && confirmedBooking.selectedSeats.length > 0 && (
+                      <div className="mt-1.5 text-xs text-emerald-300 font-semibold flex items-center gap-1.5">
+                        <Armchair className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Vị trí ghế: {confirmedBooking.selectedSeats.join(', ')}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -296,33 +372,72 @@ export const CheckoutPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Quantity selector */}
-                <div className="pt-2 flex items-center justify-between">
-                  <span className="text-xs sm:text-sm font-medium text-purple-200">
-                    Số lượng vé muốn mua:
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      disabled={quantity <= 1}
-                      className="w-8 h-8 rounded-lg bg-purple-900/70 hover:bg-purple-800 disabled:opacity-40 text-white font-bold text-base flex items-center justify-center transition-colors"
-                    >
-                      -
-                    </button>
-                    <span className="w-8 text-center text-base font-bold text-white font-mono">
-                      {quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(Math.min(10, quantity + 1))}
-                      disabled={quantity >= 10}
-                      className="w-8 h-8 rounded-lg bg-purple-900/70 hover:bg-purple-800 disabled:opacity-40 text-white font-bold text-base flex items-center justify-center transition-colors"
-                    >
-                      +
-                    </button>
+                {/* Selected Seats Display or Quantity selector */}
+                {selectedSeatIds.length > 0 ? (
+                  <div className="pt-3 border-t border-purple-900/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs sm:text-sm font-semibold text-purple-200 flex items-center gap-1.5">
+                        <Armchair className="w-4 h-4 text-emerald-400" />
+                        <span>Vị trí ghế đã chọn ({selectedSeatIds.length} vé):</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowSeatMapModal(true)}
+                        className="text-xs text-purple-400 hover:text-white underline cursor-pointer"
+                      >
+                        Đổi vị trí ghế
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedSeatIds.map(seatId => (
+                        <span
+                          key={seatId}
+                          className="px-2.5 py-1 rounded-lg bg-purple-900/80 border border-purple-500/80 text-white font-mono font-bold text-xs shadow-sm"
+                        >
+                          {seatId}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="pt-2 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs sm:text-sm font-medium text-purple-200 block">
+                        Số lượng vé muốn mua:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowSeatMapModal(true)}
+                        className="text-[11px] text-purple-400 hover:text-white underline inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                      >
+                        <Armchair className="w-3 h-3 text-purple-400" />
+                        <span>Chọn vị trí ghế trực quan (FR-01)</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        disabled={quantity <= 1}
+                        className="w-8 h-8 rounded-lg bg-purple-900/70 hover:bg-purple-800 disabled:opacity-40 text-white font-bold text-base flex items-center justify-center transition-colors"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center text-base font-bold text-white font-mono">
+                        {quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(Math.min(4, quantity + 1))}
+                        disabled={quantity >= 4}
+                        className="w-8 h-8 rounded-lg bg-purple-900/70 hover:bg-purple-800 disabled:opacity-40 text-white font-bold text-base flex items-center justify-center transition-colors"
+                        title="Tối đa 4 vé theo quy định chống đầu cơ (FR-08)"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Step 2: Attendee Information */}
@@ -480,6 +595,34 @@ export const CheckoutPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Modal for Selecting / Changing Seats */}
+      {showSeatMapModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-4xl my-auto">
+            <button
+              onClick={() => setShowSeatMapModal(false)}
+              className="absolute top-4 right-4 z-50 p-2 rounded-full bg-purple-950/80 hover:bg-purple-900 text-purple-300 hover:text-white border border-purple-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <SeatMap
+              eventId={event.id}
+              currency={event.currency}
+              ticketTiers={event.ticketTiers}
+              selectedSeatIds={selectedSeatIds}
+              onSeatsChange={(seats: SeatItem[]) => {
+                setSelectedSeatIds(seats.map(s => s.id));
+              }}
+              onProceedToCheckout={(seats: SeatItem[]) => {
+                setSelectedSeatIds(seats.map(s => s.id));
+                setShowSeatMapModal(false);
+              }}
+              maxSeats={4}
+            />
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

@@ -72,6 +72,30 @@ export interface Booking {
   purchasedAt: string;
   paymentMethod: string;
   status: 'confirmed' | 'cancelled';
+  selectedSeats?: string[];
+}
+
+export type SeatStatus = 'available' | 'sold' | 'held' | 'selected';
+
+export interface SeatItem {
+  id: string;
+  zoneId: string;
+  zoneName: string;
+  row: string;
+  number: number;
+  price: number;
+  status: 'available' | 'sold' | 'held';
+  tierId: string;
+}
+
+export interface SeatZoneConfig {
+  id: string;
+  name: string;
+  colorName: string;
+  rows: string[];
+  seatsPerRow: number;
+  tierId: string;
+  price: number;
 }
 
 export interface FilterState {

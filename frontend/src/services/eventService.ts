@@ -1,4 +1,4 @@
-import { EventItem } from '../types';
+import { EventItem, SeatItem, SeatZoneConfig, TicketTier } from '../types';
 
 export const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80';
 export const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1600&q=80';
@@ -541,3 +541,86 @@ export function formatPrice(amount: number, currency: string = '₹'): string {
   }
   return `₹${amount.toLocaleString('en-IN')}`;
 }
+
+export function getInitialSeatsForEvent(eventId: string, tiers: TicketTier[]): SeatItem[] {
+  const storageKey = `sms_event_seats_${eventId}`;
+  const saved = localStorage.getItem(storageKey);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch {
+      // fallback to generation
+    }
+  }
+
+  const vipTier = tiers[1] || tiers[0] || { id: 'vip', price: 1500000, name: 'VIP' };
+  const stdTier = tiers[0] || { id: 'std', price: 800000, name: 'Standard' };
+  const ecoTier = tiers[2] || tiers[0] || { id: 'eco', price: 500000, name: 'Economy' };
+
+  const zones: SeatZoneConfig[] = [
+    {
+      id: 'vip',
+      name: 'Khu VIP (Cận sân khấu)',
+      colorName: 'purple',
+      rows: ['A', 'B', 'C'],
+      seatsPerRow: 10,
+      tierId: vipTier.id,
+      price: vipTier.price
+    },
+    {
+      id: 'standard',
+      name: 'Khu Khán đài A (Trung tâm)',
+      colorName: 'blue',
+      rows: ['D', 'E', 'F'],
+      seatsPerRow: 12,
+      tierId: stdTier.id,
+      price: stdTier.price
+    },
+    {
+      id: 'economy',
+      name: 'Khu Khán đài B (Tầng lầu)',
+      colorName: 'emerald',
+      rows: ['G', 'H'],
+      seatsPerRow: 14,
+      tierId: ecoTier.id,
+      price: ecoTier.price
+    }
+  ];
+
+  const seats: SeatItem[] = [];
+
+  zones.forEach(zone => {
+    zone.rows.forEach(row => {
+      for (let num = 1; num <= zone.seatsPerRow; num++) {
+        const id = `${row}${num < 10 ? '0' + num : num}`;
+        const hash = (id.charCodeAt(0) * 17 + num * 23 + eventId.length * 7) % 100;
+        let status: 'available' | 'sold' | 'held' = 'available';
+        if (hash < 25) {
+          status = 'sold';
+        } else if (hash < 35) {
+          status = 'held';
+        }
+
+        seats.push({
+          id,
+          zoneId: zone.id,
+          zoneName: zone.name,
+          row,
+          number: num,
+          price: zone.price,
+          status,
+          tierId: zone.tierId
+        });
+      }
+    });
+  });
+
+  localStorage.setItem(storageKey, JSON.stringify(seats));
+  return seats;
+}
+
+export function saveSeatsForEvent(eventId: string, seats: SeatItem[]): void {
+  const storageKey = `sms_event_seats_${eventId}`;
+  localStorage.setItem(storageKey, JSON.stringify(seats));
+}
+

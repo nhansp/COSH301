@@ -14,7 +14,8 @@ import {
   ArrowLeft,
   X,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Armchair
 } from 'lucide-react';
 
 export const MyTicketsPage: React.FC = () => {
@@ -112,6 +113,12 @@ export const MyTicketsPage: React.FC = () => {
                     <div className="text-xs font-semibold text-purple-200 mt-1.5">
                       Hạng vé: <span className="text-pink-400">{booking.tierName}</span> ({booking.quantity} vé) • Tổng: {formatPrice(booking.totalAmount, booking.currency)}
                     </div>
+                    {booking.selectedSeats && booking.selectedSeats.length > 0 && (
+                      <div className="text-xs text-emerald-400 font-semibold mt-1 flex items-center gap-1.5">
+                        <Armchair className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Vị trí ghế: <strong className="font-mono text-emerald-300">{booking.selectedSeats.join(', ')}</strong></span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -200,6 +207,11 @@ export const MyTicketsPage: React.FC = () => {
               <div>Mã vé: <strong className="font-mono text-pink-400 text-sm">{selectedTicket.bookingCode}</strong></div>
               <div>Người sở hữu: <strong className="text-white">{selectedTicket.attendeeName}</strong></div>
               <div>Hạng vé: <strong>{selectedTicket.tierName}</strong> ({selectedTicket.quantity} vé)</div>
+              {selectedTicket.selectedSeats && selectedTicket.selectedSeats.length > 0 && (
+                <div>
+                  Vị trí ghế: <strong className="text-emerald-400 font-mono">{selectedTicket.selectedSeats.join(', ')}</strong>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex items-center gap-2">
