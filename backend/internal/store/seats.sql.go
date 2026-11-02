@@ -74,28 +74,37 @@ func (q *Queries) CreateSeatHold(ctx context.Context, arg CreateSeatHoldParams) 
 	return i, err
 }
 
-const expireSeatHolds = `-- name: ExpireSeatHolds :many
-UPDATE seat_holds
-SET status = 'EXPIRED'
-WHERE status = 'ACTIVE' AND expires_at <= now()
-RETURNING event_id, seat_id
+const expireStaleSeatHolds = `-- name: ExpireStaleSeatHolds :many
+WITH expired AS (
+    UPDATE seat_holds
+    SET status = 'EXPIRED'
+    WHERE status = 'ACTIVE' AND expires_at <= now()
+    RETURNING event_id AS exp_event_id, seat_id AS exp_seat_id
+)
+UPDATE event_seats
+SET status = 'AVAILABLE', version = version + 1, updated_at = now()
+FROM expired
+WHERE event_seats.event_id = expired.exp_event_id 
+  AND event_seats.seat_id = expired.exp_seat_id 
+  AND event_seats.status = 'HELD'
+RETURNING expired.exp_event_id, expired.exp_seat_id
 `
 
-type ExpireSeatHoldsRow struct {
-	EventID pgtype.UUID `json:"event_id"`
-	SeatID  pgtype.UUID `json:"seat_id"`
+type ExpireStaleSeatHoldsRow struct {
+	ExpEventID pgtype.UUID `json:"exp_event_id"`
+	ExpSeatID  pgtype.UUID `json:"exp_seat_id"`
 }
 
-func (q *Queries) ExpireSeatHolds(ctx context.Context) ([]ExpireSeatHoldsRow, error) {
-	rows, err := q.db.Query(ctx, expireSeatHolds)
+func (q *Queries) ExpireStaleSeatHolds(ctx context.Context) ([]ExpireStaleSeatHoldsRow, error) {
+	rows, err := q.db.Query(ctx, expireStaleSeatHolds)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ExpireSeatHoldsRow
+	var items []ExpireStaleSeatHoldsRow
 	for rows.Next() {
-		var i ExpireSeatHoldsRow
-		if err := rows.Scan(&i.EventID, &i.SeatID); err != nil {
+		var i ExpireStaleSeatHoldsRow
+		if err := rows.Scan(&i.ExpEventID, &i.ExpSeatID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -178,10 +187,96 @@ func (q *Queries) GetEventSeatMap(ctx context.Context, eventID pgtype.UUID) ([]G
 	return items, nil
 }
 
-const releaseSeatHold = `-- name: ReleaseSeatHold :exec
+const listActiveHoldsForUser = `-- name: ListActiveHoldsForUser :many
+SELECT sh.id, sh.event_id, sh.seat_id, sh.user_id, sh.hold_token, sh.status, sh.created_at, sh.expires_at, s.seat_label, vz.name as zone_name
+FROM seat_holds sh
+JOIN seats s ON sh.seat_id = s.id
+JOIN venue_zones vz ON s.zone_id = vz.id
+WHERE sh.event_id = $1 AND sh.user_id = $2 AND sh.status = 'ACTIVE' AND sh.expires_at > now()
+`
+
+type ListActiveHoldsForUserParams struct {
+	EventID pgtype.UUID `json:"event_id"`
+	UserID  pgtype.UUID `json:"user_id"`
+}
+
+type ListActiveHoldsForUserRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	EventID   pgtype.UUID        `json:"event_id"`
+	SeatID    pgtype.UUID        `json:"seat_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	HoldToken string             `json:"hold_token"`
+	Status    HoldStatus         `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	SeatLabel string             `json:"seat_label"`
+	ZoneName  string             `json:"zone_name"`
+}
+
+func (q *Queries) ListActiveHoldsForUser(ctx context.Context, arg ListActiveHoldsForUserParams) ([]ListActiveHoldsForUserRow, error) {
+	rows, err := q.db.Query(ctx, listActiveHoldsForUser, arg.EventID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveHoldsForUserRow
+	for rows.Next() {
+		var i ListActiveHoldsForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EventID,
+			&i.SeatID,
+			&i.UserID,
+			&i.HoldToken,
+			&i.Status,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.SeatLabel,
+			&i.ZoneName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockUserEventAdvisory = `-- name: LockUserEventAdvisory :exec
+SELECT pg_advisory_xact_lock(hashtext($1::text || ':' || $2::text))
+`
+
+type LockUserEventAdvisoryParams struct {
+	Column1 string `json:"column_1"`
+	Column2 string `json:"column_2"`
+}
+
+func (q *Queries) LockUserEventAdvisory(ctx context.Context, arg LockUserEventAdvisoryParams) error {
+	_, err := q.db.Exec(ctx, lockUserEventAdvisory, arg.Column1, arg.Column2)
+	return err
+}
+
+const notifyChannel = `-- name: NotifyChannel :exec
+SELECT pg_notify($1, $2)
+`
+
+type NotifyChannelParams struct {
+	PgNotify   string `json:"pg_notify"`
+	PgNotify_2 string `json:"pg_notify_2"`
+}
+
+func (q *Queries) NotifyChannel(ctx context.Context, arg NotifyChannelParams) error {
+	_, err := q.db.Exec(ctx, notifyChannel, arg.PgNotify, arg.PgNotify_2)
+	return err
+}
+
+const releaseSeatHold = `-- name: ReleaseSeatHold :one
 UPDATE seat_holds
 SET status = 'RELEASED'
 WHERE event_id = $1 AND seat_id = $2 AND user_id = $3 AND status = 'ACTIVE'
+RETURNING id, event_id, seat_id, user_id, hold_token, status, created_at, expires_at
 `
 
 type ReleaseSeatHoldParams struct {
@@ -190,24 +285,94 @@ type ReleaseSeatHoldParams struct {
 	UserID  pgtype.UUID `json:"user_id"`
 }
 
-func (q *Queries) ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) error {
-	_, err := q.db.Exec(ctx, releaseSeatHold, arg.EventID, arg.SeatID, arg.UserID)
-	return err
+func (q *Queries) ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) (SeatHold, error) {
+	row := q.db.QueryRow(ctx, releaseSeatHold, arg.EventID, arg.SeatID, arg.UserID)
+	var i SeatHold
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.SeatID,
+		&i.UserID,
+		&i.HoldToken,
+		&i.Status,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
-const updateEventSeatStatus = `-- name: UpdateEventSeatStatus :exec
+const resetSeatToAvailable = `-- name: ResetSeatToAvailable :exec
 UPDATE event_seats
-SET status = $3, version = version + 1, updated_at = now()
-WHERE event_id = $1 AND seat_id = $2
+SET status = 'AVAILABLE', version = version + 1, updated_at = now()
+WHERE event_id = $1 AND seat_id = $2 AND status = 'HELD'
 `
 
-type UpdateEventSeatStatusParams struct {
+type ResetSeatToAvailableParams struct {
 	EventID pgtype.UUID `json:"event_id"`
 	SeatID  pgtype.UUID `json:"seat_id"`
-	Status  SeatStatus  `json:"status"`
 }
 
-func (q *Queries) UpdateEventSeatStatus(ctx context.Context, arg UpdateEventSeatStatusParams) error {
-	_, err := q.db.Exec(ctx, updateEventSeatStatus, arg.EventID, arg.SeatID, arg.Status)
+func (q *Queries) ResetSeatToAvailable(ctx context.Context, arg ResetSeatToAvailableParams) error {
+	_, err := q.db.Exec(ctx, resetSeatToAvailable, arg.EventID, arg.SeatID)
 	return err
+}
+
+const tryLockSeat = `-- name: TryLockSeat :one
+UPDATE event_seats
+SET status = 'HELD', version = version + 1, updated_at = now()
+WHERE event_id = $1 AND seat_id = $2 AND status = 'AVAILABLE'
+RETURNING id, event_id, seat_id, status, current_price, version, updated_at
+`
+
+type TryLockSeatParams struct {
+	EventID pgtype.UUID `json:"event_id"`
+	SeatID  pgtype.UUID `json:"seat_id"`
+}
+
+func (q *Queries) TryLockSeat(ctx context.Context, arg TryLockSeatParams) (EventSeat, error) {
+	row := q.db.QueryRow(ctx, tryLockSeat, arg.EventID, arg.SeatID)
+	var i EventSeat
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.SeatID,
+		&i.Status,
+		&i.CurrentPrice,
+		&i.Version,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const tryStealExpiredSeatHold = `-- name: TryStealExpiredSeatHold :one
+WITH expired_hold AS (
+    UPDATE seat_holds
+    SET status = 'EXPIRED'
+    WHERE event_id = $1 AND seat_id = $2 AND status = 'ACTIVE' AND expires_at <= now()
+    RETURNING id
+)
+UPDATE event_seats
+SET status = 'HELD', version = event_seats.version + 1, updated_at = now()
+WHERE event_seats.event_id = $1 AND event_seats.seat_id = $2 AND event_seats.status = 'HELD' AND EXISTS (SELECT 1 FROM expired_hold)
+RETURNING id, event_id, seat_id, status, current_price, version, updated_at
+`
+
+type TryStealExpiredSeatHoldParams struct {
+	EventID pgtype.UUID `json:"event_id"`
+	SeatID  pgtype.UUID `json:"seat_id"`
+}
+
+func (q *Queries) TryStealExpiredSeatHold(ctx context.Context, arg TryStealExpiredSeatHoldParams) (EventSeat, error) {
+	row := q.db.QueryRow(ctx, tryStealExpiredSeatHold, arg.EventID, arg.SeatID)
+	var i EventSeat
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.SeatID,
+		&i.Status,
+		&i.CurrentPrice,
+		&i.Version,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

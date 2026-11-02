@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"eventticketing/internal/config"
 	"eventticketing/internal/httpapi"
+	"eventticketing/internal/service"
 	"eventticketing/internal/store"
 )
 
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	// Connect to PGX pool
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
@@ -49,10 +50,25 @@ func main() {
 
 	queries := store.New(dbPool)
 
+	// Initialize BCE Control services
+	authService := service.NewAuthService(queries, cfg)
+	eventService := service.NewEventService(queries)
+	seatService := service.NewSeatService(dbPool, queries)
+	realtimeHub := service.NewRealtimeHub(dbPool)
+	holdReaper := service.NewHoldReaper(seatService, 5*time.Second)
+
+	// Start background workers
+	realtimeHub.StartListener(ctx)
+	holdReaper.Start(ctx)
+
 	router := httpapi.NewRouter(httpapi.RouterDependencies{
-		Config: cfg,
-		DBPool: dbPool,
-		Store:  queries,
+		Config:       cfg,
+		DBPool:       dbPool,
+		Store:        queries,
+		AuthService:  authService,
+		EventService: eventService,
+		SeatService:  seatService,
+		RealtimeHub:  realtimeHub,
 	})
 
 	server := &http.Server{

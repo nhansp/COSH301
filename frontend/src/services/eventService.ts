@@ -624,3 +624,66 @@ export function saveSeatsForEvent(eventId: string, seats: SeatItem[]): void {
   localStorage.setItem(storageKey, JSON.stringify(seats));
 }
 
+// -------------------------------------------------------------
+// Real Backend API Integrations
+// -------------------------------------------------------------
+
+export async function apiFetchEvents(): Promise<EventItem[] | null> {
+  try {
+    const res = await fetch('/api/events');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function apiFetchSeats(eventId: string): Promise<SeatItem[] | null> {
+  try {
+    const res = await fetch(`/api/events/${eventId}/seats`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.map((item: any) => ({
+      id: item.seatId || item.label,
+      zoneId: item.zoneId,
+      zoneName: item.zoneName,
+      row: item.row,
+      number: parseInt(item.number) || 1,
+      price: item.currentPrice,
+      status: item.status,
+      tierId: item.zoneId,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+export async function apiHoldSeat(eventId: string, seatId: string): Promise<{ success: boolean; expiresAt?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/holds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId, seatId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { success: false, error: data.error || 'hold_failed' };
+    }
+    return { success: true, expiresAt: data.expiresAt };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function apiReleaseSeat(eventId: string, seatId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/holds/${seatId}?eventId=${eventId}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+

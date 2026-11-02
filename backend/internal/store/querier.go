@@ -18,7 +18,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteSession(ctx context.Context, tokenHash string) error
 	DeleteUserSessions(ctx context.Context, userID pgtype.UUID) error
-	ExpireSeatHolds(ctx context.Context) ([]ExpireSeatHoldsRow, error)
+	ExpireStaleSeatHolds(ctx context.Context) ([]ExpireStaleSeatHoldsRow, error)
 	GetEventByID(ctx context.Context, id pgtype.UUID) (GetEventByIDRow, error)
 	GetEventBySlug(ctx context.Context, slug string) (GetEventBySlugRow, error)
 	GetEventSeatMap(ctx context.Context, eventID pgtype.UUID) ([]GetEventSeatMapRow, error)
@@ -28,13 +28,18 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByPhone(ctx context.Context, phone pgtype.Text) (User, error)
 	IncrementOTPAttempts(ctx context.Context, id pgtype.UUID) error
+	ListActiveHoldsForUser(ctx context.Context, arg ListActiveHoldsForUserParams) ([]ListActiveHoldsForUserRow, error)
 	ListEventZonesWithPrices(ctx context.Context, eventID pgtype.UUID) ([]ListEventZonesWithPricesRow, error)
 	ListPublishedEvents(ctx context.Context) ([]ListPublishedEventsRow, error)
+	LockUserEventAdvisory(ctx context.Context, arg LockUserEventAdvisoryParams) error
 	MarkOTPVerified(ctx context.Context, id pgtype.UUID) error
-	ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) error
+	NotifyChannel(ctx context.Context, arg NotifyChannelParams) error
+	ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) (SeatHold, error)
+	ResetSeatToAvailable(ctx context.Context, arg ResetSeatToAvailableParams) error
 	SetEmailVerified(ctx context.Context, id pgtype.UUID) error
 	SetPhoneVerified(ctx context.Context, id pgtype.UUID) error
-	UpdateEventSeatStatus(ctx context.Context, arg UpdateEventSeatStatusParams) error
+	TryLockSeat(ctx context.Context, arg TryLockSeatParams) (EventSeat, error)
+	TryStealExpiredSeatHold(ctx context.Context, arg TryStealExpiredSeatHoldParams) (EventSeat, error)
 	UpdateUserLastLogin(ctx context.Context, id pgtype.UUID) error
 }
 
