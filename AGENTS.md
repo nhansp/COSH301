@@ -28,3 +28,7 @@ self-explainable.
 Do not share users' chat contexts into the code. All comments, code, and commit messages must only relate
 to the codebase only.
 
+
+## Documentation
+
+Rules for `docs/` are in `docs/AGENTS.md`. Task ownership is in `docs/TASKS.md`.
