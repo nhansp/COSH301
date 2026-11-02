@@ -8,4 +8,5 @@ coverage/
 !.env.example
 artifacts/
 .venv/
+backend/bin/
 
