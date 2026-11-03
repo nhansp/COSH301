@@ -74,8 +74,52 @@ export interface Booking {
   bookingCode: string;
   purchasedAt: string;
   paymentMethod: string;
-  status: 'confirmed' | 'cancelled';
+  status: 'confirmed' | 'cancelled' | 'pending';
   selectedSeats?: string[];
+}
+
+export interface CancelledTicket {
+  id: number | string;
+  bookingId: string;
+  bookingCode: string;
+  eventId: string;
+  eventTitle: string;
+  concert?: {
+    id?: string;
+    name?: string;
+    title?: string;
+    slug?: string;
+    genre?: string;
+    venue?: string;
+    venueAddress?: string;
+    city?: string;
+    date?: string;
+    time?: string;
+    imageUrl?: string;
+    startsAt?: string;
+    endsAt?: string;
+  };
+  ticketDetails?: {
+    eventTitle?: string;
+    eventDate?: string;
+    eventTime?: string;
+    venue?: string;
+    city?: string;
+    tierName?: string;
+    tierId?: string;
+    quantity?: number;
+    totalAmount?: number;
+    currency?: string;
+    attendeeName?: string;
+    attendeeEmail?: string;
+    attendeePhone?: string;
+    paymentMethod?: string;
+    purchasedAt?: string;
+  };
+  seats?: string[];
+  reason: string;
+  cancelledAt: string;
+  userEmail?: string;
 }
 
 export type SeatStatus = 'available' | 'sold' | 'held' | 'selected';

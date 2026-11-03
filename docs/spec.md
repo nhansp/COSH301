@@ -36,7 +36,7 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-19 | Dashboard doanh thu cho CEO | `ceo_dashboard` | 5 | Chưa làm | |
 | FR-20 | Nhật ký giá | `price_log` | 5 | Đang làm | Mỗi lần BTC đổi giá cơ bản đều ghi `price_changes`. Trigger chặn sửa và xóa. Chưa có trang xem |
 | FR-21 | Xuất báo cáo CSV/XLSX | `reports_export` | 5 | Chưa làm | |
-| FR-22 | Đề xuất giá, BTC duyệt | `dynamic_pricing` | 5 | Chưa làm | Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md) |
+| FR-22 | Gợi ý sự kiện & chỗ ngồi thông minh | `recommendation_engine` | 5 | Đang làm | Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md) (Dũng phụ trách) |
 | FR-23 | Gợi ý khuyến mãi | `promo_suggestions` | 5 | Chưa làm | |
 
 ## 2. Yêu cầu phi chức năng

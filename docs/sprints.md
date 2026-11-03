@@ -11,7 +11,7 @@ flowchart LR
     S1["Sprint 1\nKhảo sát & Phân tích SA\n(Đã hoàn thành)"] --> S2["Sprint 2 (Giữa kỳ)\nProfile: sprint2\nOTP, Giữ ghế, Realtime"]
     S2 --> S3["Sprint 3\nProfile: sprint3\nPhòng chờ, Chống Bot, QR 30s"]
     S3 --> S4["Sprint 4\nProfile: sprint4\nThanh toán MoMo/VNPAY, Vé Email"]
-    S4 --> S5["Sprint 5 (Cuối kỳ)\nProfile: final\nSoát vé Offline, CEO Dashboard, Định giá động"]
+    S4 --> S5["Sprint 5 (Cuối kỳ)\nProfile: final\nSoát vé Offline, CEO Dashboard, Gợi ý Thông minh"]
 ```
 
 ---
@@ -54,10 +54,10 @@ flowchart LR
 | T02 | Thiết kế sơ đồ lớp BCE (Boundary, Control, Entity) chuẩn bài B05 và ánh xạ 23 thực thể | Huy (`vdhwy`) | 10 | `docs/class-diagram.md` |
 | T03 | Lập kế hoạch Sprint 1–5, WBS, bảng ước lượng giờ và phân bổ nhân lực | Huy (`vdhwy`) | 6 | `docs/sprints.md` |
 | T04 | Thiết kế Sequence Diagram cho luồng giữ ghế 5 phút độc quyền | Dũng (`Lan-0924`) | 8 | `docs/sequences/hold.md` (FR-06) |
-| T05 | Lập kịch bản và thực hiện kiểm thử thủ công giữ ghế theo tiêu chí chấp nhận của US-03 | Dũng (`Lan-0924`) | 10 | `docs/checks/fr-06.md` |
+| T05 | Lập kịch bản và thực hiện kiểm thử thủ công giữ ghế theo tiêu chí chấp nhận của US-03 | Thành (`Th4nhDT716`) | 10 | `docs/checks/fr-06.md` |
 | T06 | Thiết kế Sequence Diagram cho quy trình chống bán trùng ghế đa luồng | Phúc (`phukzz`) | 8 | `docs/sequences/double-booking.md` (FR-07) |
 | T07 | Xây dựng sơ đồ luồng dữ liệu (DFD) mức ngữ cảnh, mức 0 và mức 1 | Phúc (`phukzz`) | 12 | `docs/dfd.md` |
-| T08 | Mô hình hóa bài toán, xây dựng công thức và thiết kế giải thuật định giá động giữa kỳ | Thành (`Th4nhDT716`) | 16 | `docs/dynamic-pricing.md` (FR-22) |
+| T08 | Phản biện Dynamic Pricing & Thiết kế giải thuật Hệ thống Gợi ý Thông minh (Recommendation Engine) | Dũng (`Lan-0924`) | 16 | `docs/dynamic-pricing.md` (FR-22) |
 | T09 | Lập ma trận truy vết yêu cầu (Traceability Matrix) cho 23 FR và 13 NFR | Thành (`Th4nhDT716`) | 8 | `docs/spec.md` |
 | T10 | Xây dựng sơ đồ Use Case tổng thể và viết đặc tả chi tiết các ca sử dụng | Đức Anh | 12 | `docs/use-cases.md` |
 | T11 | Thiết kế kịch bản kiểm thử trải nghiệm và mẫu khảo sát người dùng thực tế | Đức Anh | 10 | `docs/testing.md` |
@@ -133,9 +133,9 @@ flowchart LR
 |---|---|---|:---:|---|
 | WBS-5.1 | Xây dựng giao diện Web/PWA soát vé camera, xác thực chữ ký QR tại cổng | Phúc (`phukzz`) | 16 | `gate_checkin` (FR-16) |
 | WBS-5.2 | Cơ chế tải trước manifest vé, lưu SQLite/IndexedDB trên máy quét và giải quyết xung đột `OFFLINE_CONFLICT` | Huy (`vdhwy`) | 18 | `offline_checkin` (FR-18, NFR-06) |
-| WBS-5.3 | Engine định giá động chạy nền chu kỳ 5 phút, tạo đề xuất `price_suggestions` và API phê duyệt của BTC | Thành (`Th4nhDT716`) | 20 | `dynamic_pricing` (FR-22, W-01) |
+| WBS-5.3 | Hệ thống Gợi ý Thông minh (Recommendation Engine) chạy nền, tính Priority Score đa tiêu chí và API gợi ý sự kiện/ghế | Dũng (`Lan-0924`) | 20 | `recommendation_engine` (FR-22) |
 | WBS-5.4 | Xây dựng màn hình CEO Dashboard cập nhật trực tiếp qua SSE và xuất báo cáo CSV/XLSX | Nhân (`nhansp`) | 16 | `ceo_dashboard`, `reports_export` (FR-19, FR-21) |
-| WBS-5.5 | Giao diện quản trị nhật ký giá `price_log` và đề xuất chương trình khuyến mãi | Dũng (`Lan-0924`) | 12 | `price_log`, `promo_suggestions` (FR-20, FR-23) |
+| WBS-5.5 | Giao diện quản trị nhật ký giá `price_log` và đề xuất chương trình khuyến mãi | Thành (`Th4nhDT716`) | 12 | `price_log`, `promo_suggestions` (FR-20, FR-23) |
 | WBS-5.6 | Tổng kiểm thử nghiệm thu toàn diện (UAT) với 10 người dùng thật và hoàn tất báo cáo cuối kỳ | Đức Anh | 16 | T11, Báo cáo tổng kết |
 | **Tổng** | | | **98** | |
 
@@ -149,8 +149,8 @@ Phụ trách chính lấy theo `docs/TASKS.md`. Riêng T12 được chia nhỏ: 
 |---|---|:---:|:---:|:---:|:---:|:---:|
 | Huy (`vdhwy`) | ERD, sơ đồ lớp, kế hoạch Sprint, giữ ghế và realtime (T12.3, T12.4) | 56 | 18 | 14 | 18 | **106** |
 | Nhân (`nhansp`) | Hạ tầng, OTP, frontend, API Ban Tổ chức (T12.1, T12.2, T12.5, T12.6), sequence OTP, kiến trúc và API | 66 | 10 | 20 | 16 | **112** |
-| Dũng (`Lan-0924`) | Sequence giữ ghế, kiểm thử FR-06 | 18 | 14 | 10 | 12 | **54** |
+| Dũng (`Lan-0924`) | Recommendation Engine cá nhân hóa, khung tiêu chí Priority Scoring, Sequence giữ ghế | 24 | 14 | 16 | 20 | **74** |
 | Phúc (`phukzz`) | Sequence chống bán trùng, DFD | 20 | 8 | 8 | 16 | **52** |
-| Thành (`Th4nhDT716`) | Định giá động, đặc tả và truy vết | 24 | 14 | 16 | 20 | **74** |
+| Thành (`Th4nhDT716`) | Bảng đặc tả 23 FR/13 NFR, ma trận truy vết yêu cầu, kiểm thử thủ công FR-06, nhật ký giá | 18 | 14 | 10 | 12 | **54** |
 | Đức Anh | Use Case, kiểm thử người dùng | 22 | 10 | 12 | 16 | **60** |
 | **Toàn nhóm** | | **206** | **74** | **80** | **98** | **458** |

@@ -12,10 +12,10 @@ Thiết kế gốc: [`docs/design/README.md`](design/README.md). Đọc file nà
 | T02 | Sơ đồ lớp theo BCE | Huy (`vdhwy`) | `docs/class-diagram.md` | T12 |
 | T03 | Kế hoạch Sprint, WBS, ước lượng | Huy (`vdhwy`) | `docs/sprints.md` | — |
 | T04 | Sequence: giữ ghế 5 phút (FR-06) | Dũng (`Lan-0924`) | `docs/sequences/hold.md` | — |
-| T05 | Kiểm thử thủ công FR-06 theo US-03 | Dũng (`Lan-0924`) | `docs/checks/fr-06.md` | T12 |
+| T05 | Kiểm thử thủ công FR-06 theo US-03 | Thành (`Th4nhDT716`) | `docs/checks/fr-06.md` | T12 |
 | T06 | Sequence: chống bán trùng (FR-07) | Phúc (`phukzz`) | `docs/sequences/double-booking.md` | — |
 | T07 | DFD mức ngữ cảnh, mức 0, mức 1 | Phúc (`phukzz`) | `docs/dfd.md` | — |
-| T08 | Bài toán và thiết kế Định giá động | Thành (`Th4nhDT716`) | `docs/dynamic-pricing.md` | — |
+| T08 | Phản biện Dynamic Pricing & Thiết kế Hệ thống Gợi ý Thông minh | Dũng (`Lan-0924`) | `docs/dynamic-pricing.md` | — |
 | T09 | Bảng FR/NFR, trạng thái, truy vết | Thành (`Th4nhDT716`) | `docs/spec.md` | — |
 | T10 | Sơ đồ và đặc tả Use Case | Đức Anh | `docs/use-cases.md` | — |
 | T11 | Kiểm thử với người dùng | Đức Anh | `docs/testing.md` | T12 |
@@ -45,6 +45,7 @@ Bám đúng quy tắc ở mục 6 của thiết kế.
 Tên đối tượng trùng tên lớp trong sơ đồ lớp (T02).
 
 **T05 — Kiểm thử FR-06.**
+Người làm: Thành (`Th4nhDT716`).
 Đi từng tiêu chí chấp nhận của US-03.
 Mỗi tiêu chí ghi: các bước, kết quả mong đợi, kết quả thực tế, đạt/không đạt.
 
@@ -52,10 +53,10 @@ Mỗi tiêu chí ghi: các bước, kết quả mong đợi, kết quả thực 
 Dựa trên DFD Level 1 của Sprint 1, cập nhật theo tác nhân và luồng ở mục 2 và 4 của thiết kế.
 Mỗi kho dữ liệu phải ứng với bảng có thật trong ERD.
 
-**T08 — Định giá động.**
-Đây là phần chấm điểm giữa kỳ.
-Cần có: mô tả bài toán, mô hình giả định, dữ liệu đầu vào, quy tắc đổi giá, ví dụ tính tay.
-Bám mục 6 của thiết kế; muốn đổi quy tắc thì ghi lý do trong PR.
+**T08 — Phản biện Định giá động & Hệ thống Gợi ý Thông minh (Recommendation Engine).**
+Người làm: Dũng (`Lan-0924`).
+Phản biện bãi bỏ Dynamic Pricing dựa trên các bằng chứng thực tiễn quốc tế (CMA Anh vụ Oasis Live '25, Bruce Springsteen, Harry Styles, rủi ro pháp lý, bất bình đẳng tiếp cận văn hóa) và thực nghiệm của nhóm (tỉ lệ bỏ giỏ hàng tăng 42%).
+Thiết kế giải pháp thay thế: Hệ thống Gợi ý Thông minh (Recommendation Engine - FR-22) với khung 5 tiêu chí Priority Scoring (Affinity 35%, Budget 25%, Geo-Temporal 15%, Seat View 15%, Fill Rate 10%) và phân tầng 3 Tier (Top Picks, Trending, Discovery).
 
 **T09 — Đặc tả.**
 Liệt kê FR-01 … FR-23, NFR-01 … NFR-13 theo đúng mã trong tài liệu SA.

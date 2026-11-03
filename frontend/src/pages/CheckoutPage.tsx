@@ -134,7 +134,6 @@ export const CheckoutPage: React.FC = () => {
     if (!selectedTier) return;
 
     setIsProcessing(true);
-    await new Promise(r => setTimeout(r, 1200));
 
     const booking = createBooking({
       eventId: event.id,
@@ -154,10 +153,11 @@ export const CheckoutPage: React.FC = () => {
       attendeeEmail: attendeeEmail || user?.email || 'N/A',
       paymentMethod,
       selectedSeats: selectedSeatIds.length > 0 ? selectedSeatIds : undefined
-    });
+    }, 'pending');
 
     setIsProcessing(false);
-    setConfirmedBooking(booking);
+    // Route user to the payment page where the payment QR is located
+    navigate(`/payment/${booking.id}`);
   };
 
   const panel = 'rounded-xl bg-kumo-base ring ring-kumo-line shadow-xs';
@@ -181,7 +181,7 @@ export const CheckoutPage: React.FC = () => {
   ) : (
     <>
       <QrCode className="size-4" />
-      <span>Xác nhận &amp; Nhận vé điện tử</span>
+      <span>Tiến hành thanh toán QR</span>
     </>
   );
   const confirmButtonClass =

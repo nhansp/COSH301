@@ -14,28 +14,55 @@ import {
   Download,
   ArrowLeft,
   X,
-  ShieldCheck,
   CheckCircle2,
-  Armchair
+  Armchair,
+  Trash2
 } from 'lucide-react';
 
 export const MyTicketsPage: React.FC = () => {
-  const { bookings, cancelBooking, user } = useAuth();
+  const { bookings, cancelBooking, clearDemoTickets } = useAuth();
   const [selectedTicket, setSelectedTicket] = useState<Booking | null>(null);
-  const [ticketToCancel, setTicketToCancel] = useState<Booking | null>(null);
+  const [cancelToast, setCancelToast] = useState<string | null>(null);
+  const [isClearing, setIsClearing] = useState<boolean>(false);
 
+  // Strictly filter out any cancelled tickets so they completely disappear
+  const activeBookings = bookings.filter(b => b.status === 'confirmed');
+
+  const handleCancelTicket = async (booking: Booking) => {
+    const code = booking.bookingCode;
+    // 1-click instant cancellation: optimistic state update removes ticket immediately
+    await cancelBooking(booking.id, 'Khách hàng chủ động hủy vé trên giao diện');
+    setCancelToast(`Đã hủy vé ${code} thành công! Vé đã biến mất khỏi danh sách.`);
+    setTimeout(() => setCancelToast(null), 4000);
+  };
+
+  const handleClearDemoData = async () => {
+    setIsClearing(true);
+    await clearDemoTickets();
+    setIsClearing(false);
+    setCancelToast('Đã xóa sạch toàn bộ data vé của người dùng demo!');
+    setTimeout(() => setCancelToast(null), 4000);
+  };
 
   const secondaryButtonClass =
-    'flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-lg bg-kumo-base px-3 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint disabled:cursor-not-allowed disabled:opacity-50';
+    'flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-lg bg-kumo-base px-3 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
   const primaryButtonClass =
-    'flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-lg bg-kumo-brand px-3.5 font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover';
+    'flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-lg bg-kumo-brand px-3.5 font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
       <main className="flex-1 w-full min-w-0 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex items-end justify-between gap-4 mb-6 sm:mb-8">
+        {/* Toast Notification */}
+        {cancelToast && (
+          <div className="mb-6 p-4 rounded-xl bg-kumo-success-tint ring ring-kumo-line text-kumo-success flex items-center gap-3 animate-in fade-in slide-in-from-top-2 text-sm font-medium">
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            <span>{cancelToast}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8">
           <div>
             <Link
               to="/"
@@ -47,23 +74,36 @@ export const MyTicketsPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-kumo-strong">
               Vé sự kiện của tôi
             </h1>
-            <p className="text-kumo-subtle mt-1">
+            <p className="text-kumo-subtle mt-1 text-sm sm:text-base">
               Quản lý vé đã mua, xuất trình mã QR tại cửa và xem lịch trình concert
             </p>
           </div>
 
-          <span className="hidden sm:inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-kumo-tint ring ring-kumo-line text-kumo-default tabular-nums">
-            Tổng số vé: {bookings.length}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-kumo-tint ring ring-kumo-line text-kumo-default tabular-nums">
+              Vé hiệu lực: {activeBookings.length}
+            </span>
+            <button
+              type="button"
+              onClick={handleClearDemoData}
+              disabled={isClearing}
+              title="Xóa toàn bộ vé thử nghiệm và đặt lại trạng thái ghế"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-kumo-base px-2.5 py-1 text-xs font-medium text-kumo-subtle hover:text-kumo-danger hover:bg-kumo-tint ring ring-kumo-line transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-kumo-danger" />
+              <span>{isClearing ? 'Đang xóa...' : 'Xóa data vé demo'}</span>
+            </button>
+          </div>
         </div>
 
-        {bookings.length === 0 ? (
+        {/* Active Tickets List */}
+        {activeBookings.length === 0 ? (
           <div className="py-12 sm:py-16 px-4 sm:px-6 text-center rounded-xl bg-kumo-base ring ring-kumo-line">
             <div className="size-12 rounded-lg bg-kumo-recessed ring ring-kumo-line text-kumo-subtle grid place-items-center mx-auto mb-4">
               <Ticket className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-semibold text-kumo-strong mb-1">Bạn chưa có vé sự kiện nào</h3>
-            <p className="text-kumo-subtle max-w-sm mx-auto mb-6">
+            <p className="text-kumo-subtle max-w-sm mx-auto mb-6 text-sm">
               Khám phá danh sách concert, EDM festival và các đêm nhạc acoustic đang mở bán vé ngay hôm nay!
             </p>
             <Link to="/" className={`${primaryButtonClass} inline-flex`}>
@@ -72,141 +112,96 @@ export const MyTicketsPage: React.FC = () => {
           </div>
         ) : (
           <ul className="rounded-xl bg-kumo-base ring ring-kumo-line divide-y divide-kumo-hairline">
-            {bookings.map(booking => {
-              const confirmed = booking.status === 'confirmed';
-              return (
-                <li
-                  key={booking.id}
-                  className="p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4"
-                >
-                  <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-                    <img
-                      src={booking.imageUrl}
-                      alt={booking.eventTitle}
-                      className={`size-16 sm:size-20 rounded-lg object-cover ring ring-kumo-line flex-shrink-0 ${
-                        confirmed ? '' : 'grayscale opacity-60'
-                      }`}
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <span className="max-w-full truncate rounded-md px-1.5 py-0.5 bg-kumo-recessed text-xs font-medium text-kumo-default tabular-nums">
-                          {booking.bookingCode}
-                        </span>
-                        <span
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                            confirmed
-                              ? 'bg-kumo-success-tint text-kumo-success'
-                              : 'bg-kumo-danger-tint text-kumo-danger'
-                          }`}
-                        >
-                          {confirmed ? 'Đã xác nhận' : 'Đã hủy'}
-                        </span>
-                      </div>
-
-                      <h3 className="text-base sm:text-lg font-semibold tracking-tight text-kumo-strong mt-1.5 line-clamp-2 sm:truncate">
-                        {booking.eventTitle}
-                      </h3>
-
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-kumo-subtle mt-0.5">
-                        <span className="flex flex-wrap items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>{booking.eventDate}</span>
-                          <span>{booking.eventTime}</span>
-                        </span>
-                        <span className="flex items-center gap-1 min-w-0">
-                          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span className="truncate sm:max-w-[200px]">{booking.venue}</span>
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-kumo-default mt-1.5">
-                        <span>
-                          Hạng vé: <span className="font-medium">{booking.tierName}</span>{' '}
-                          <span className="text-kumo-subtle tabular-nums">({booking.quantity} vé)</span>
-                        </span>
-                        <span>
-                          Tổng:{' '}
-                          <span className="font-semibold tabular-nums">
-                            {formatPrice(booking.totalAmount, booking.currency)}
-                          </span>
-                        </span>
-                      </div>
-                      {booking.selectedSeats && booking.selectedSeats.length > 0 && (
-                        <div className="text-sm text-kumo-subtle mt-1 flex items-start gap-1.5 min-w-0">
-                          <Armchair className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                          <span className="min-w-0 break-words">
-                            Vị trí ghế:{' '}
-                            <strong className="font-medium text-kumo-default tabular-nums">
-                              {booking.selectedSeats.join(', ')}
-                            </strong>
-                          </span>
-                        </div>
-                      )}
+            {activeBookings.map(booking => (
+              <li
+                key={booking.id}
+                className="p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 transition-all"
+              >
+                <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+                  <img
+                    src={booking.imageUrl}
+                    alt={booking.eventTitle}
+                    className="size-16 sm:size-20 rounded-lg object-cover ring ring-kumo-line flex-shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <span className="max-w-full truncate rounded-md px-1.5 py-0.5 bg-kumo-recessed text-xs font-medium text-kumo-default tabular-nums">
+                        {booking.bookingCode}
+                      </span>
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-kumo-success-tint text-kumo-success">
+                        <span className="size-1.5 rounded-full bg-kumo-success" />
+                        Đã xác nhận
+                      </span>
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:justify-end">
-                    <button
-                      onClick={() => setSelectedTicket(booking)}
-                      className={primaryButtonClass}
-                    >
-                      Xem mã QR vé
-                    </button>
+                    <h2 className="text-base sm:text-lg font-semibold tracking-tight text-kumo-strong mt-1 truncate">
+                      {booking.eventTitle}
+                    </h2>
 
-                    <button
-                      onClick={() => setTicketToCancel(booking)}
-                      disabled={booking.status === 'cancelled'}
-                      className={`${secondaryButtonClass} hover:text-kumo-danger`}
-                    >
-                      Hủy vé
-                    </button>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-kumo-subtle">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="tabular-nums">{booking.eventDate}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="tabular-nums">{booking.eventTime}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate max-w-[200px]">{booking.venue}</span>
+                      </span>
+                    </div>
+
+                    <div className="mt-1.5 text-xs text-kumo-default">
+                      <span>Hạng: </span>
+                      <strong className="font-medium text-kumo-strong">{booking.tierName}</strong>{' '}
+                      <span className="text-kumo-subtle tabular-nums">({booking.quantity} vé)</span>
+                      <span className="text-kumo-subtle"> • </span>
+                      <span>Tổng: </span>
+                      <strong className="font-semibold text-kumo-strong tabular-nums">
+                        {formatPrice(booking.totalAmount, booking.currency)}
+                      </strong>
+                    </div>
+
+                    {booking.selectedSeats && booking.selectedSeats.length > 0 && (
+                      <div className="mt-1 flex items-center gap-1 text-xs text-kumo-default">
+                        <Armchair className="w-3.5 h-3.5 text-kumo-subtle" />
+                        <span>Ghế: </span>
+                        <strong className="font-semibold text-kumo-strong tabular-nums">
+                          {booking.selectedSeats.join(', ')}
+                        </strong>
+                      </div>
+                    )}
                   </div>
-                </li>
-              );
-            })}
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => setSelectedTicket(booking)}
+                    className={primaryButtonClass}
+                  >
+                    <Ticket className="w-4 h-4" />
+                    <span>Xem mã QR</span>
+                  </button>
+                  <button
+                    onClick={() => handleCancelTicket(booking)}
+                    title="Bấm 1 lần để hủy vé ngay lập tức"
+                    className="flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-lg bg-kumo-base px-3 font-medium text-kumo-danger ring ring-kumo-line transition-colors hover:bg-kumo-danger/10 hover:border-kumo-danger cursor-pointer"
+                  >
+                    Hủy vé
+                  </button>
+                </div>
+              </li>
+            ))}
           </ul>
         )}
       </main>
 
-      {/* Cancel Confirmation Modal */}
-      {ticketToCancel && (
-        <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 bg-black/60 backdrop-blur-sm">
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="cancel-ticket-title"
-            className="fixed inset-x-0 bottom-0 max-h-[90dvh] overflow-y-auto rounded-t-2xl bg-kumo-raised p-5 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg ring ring-kumo-line sm:relative sm:inset-auto sm:w-full sm:rounded-xl sm:p-6 sm:max-w-sm"
-          >
-            <h3 id="cancel-ticket-title" className="text-lg font-semibold tracking-tight text-kumo-strong mb-2">
-              Xác nhận hủy đặt vé?
-            </h3>
-            <p className="text-kumo-subtle mb-6">
-              Bạn có chắc chắn muốn hủy vé <strong className="font-medium text-kumo-default">{ticketToCancel.eventTitle}</strong>{' '}
-              (Mã: <span className="tabular-nums">{ticketToCancel.bookingCode}</span>)? Thao tác này không thể hoàn tác.
-            </p>
-            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
-              <button onClick={() => setTicketToCancel(null)} className={secondaryButtonClass}>
-                Không, giữ lại
-              </button>
-              <button
-                onClick={() => {
-                  cancelBooking(ticketToCancel.id);
-                  setTicketToCancel(null);
-                }}
-                className="flex h-11 sm:h-9 items-center justify-center rounded-lg bg-kumo-danger px-3.5 font-medium text-white transition-opacity hover:opacity-90"
-              >
-                Xác nhận hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Ticket Details & QR Modal */}
       {selectedTicket && (
-        <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
           <div
             role="dialog"
             aria-modal="true"
@@ -216,7 +211,7 @@ export const MyTicketsPage: React.FC = () => {
             <button
               onClick={() => setSelectedTicket(null)}
               aria-label="Đóng"
-              className="absolute top-3 right-3 grid size-11 sm:size-8 place-items-center rounded-md text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint transition-colors"
+              className="absolute top-3 right-3 grid size-11 sm:size-8 place-items-center rounded-md text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -235,12 +230,12 @@ export const MyTicketsPage: React.FC = () => {
               <span>{selectedTicket.eventTime}</span>
             </p>
 
-            {/* QR Code: white well in both themes so scanners read it reliably */}
+            {/* QR Code */}
             <div className="my-5 p-3 rounded-lg bg-white ring ring-kumo-line size-56 sm:size-48 mx-auto flex items-center justify-center">
               <TicketQr code={selectedTicket.bookingCode} className="w-full h-full object-contain" />
             </div>
 
-            <dl className="rounded-lg bg-kumo-recessed p-3 text-sm text-left grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 sm:gap-y-1.5">
+            <dl className="rounded-lg bg-kumo-recessed p-3 text-sm text-left grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 sm:gap-y-1.5 ring ring-kumo-line">
               <dt className="text-kumo-subtle">Mã vé</dt>
               <dd className="mb-2 sm:mb-0 min-w-0 break-words font-semibold text-kumo-strong tabular-nums">{selectedTicket.bookingCode}</dd>
               <dt className="text-kumo-subtle">Người sở hữu</dt>

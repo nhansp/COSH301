@@ -40,39 +40,38 @@
 }
 
 @theme {
-  /* Surfaces */
-  --color-kumo-canvas: light-dark(oklch(98.75% 0 0), oklch(10% 0 0));
-  --color-kumo-elevated: light-dark(oklch(98% 0 0), oklch(12% 0 0));
-  --color-kumo-recessed: light-dark(oklch(96% 0 0), oklch(15% 0 0));
-  --color-kumo-base: light-dark(#fff, oklch(17% 0 0));
-  --color-kumo-tint: light-dark(oklch(97% 0 0), oklch(26.9% 0 0));
-  --color-kumo-contrast: light-dark(oklch(8.5% 0 0), oklch(98.5% 0 0));
-  --color-kumo-overlay: light-dark(oklch(97.5% 0 0), oklch(26.9% 0 0));
-  --color-kumo-control: light-dark(#fff, oklch(21% 0.006 285.885));
-  --color-kumo-interact: light-dark(oklch(87% 0 0), oklch(37.1% 0 0));
-  --color-kumo-fill: light-dark(oklch(92.2% 0 0), oklch(26.9% 0 0));
-  --color-kumo-fill-hover: light-dark(oklch(96.5% 0 0), oklch(37.1% 0 0));
+  /* Surfaces - Calming eye-friendly sage/forest green tinted palette */
+  --color-kumo-canvas: light-dark(oklch(98.8% 0.012 155), oklch(14.5% 0.02 155));
+  --color-kumo-elevated: light-dark(#ffffff, oklch(18.5% 0.024 155));
+  --color-kumo-recessed: light-dark(oklch(96.2% 0.016 155), oklch(16.5% 0.022 155));
+  --color-kumo-base: light-dark(#ffffff, oklch(20% 0.025 155));
+  --color-kumo-tint: light-dark(oklch(95.5% 0.022 155), oklch(26% 0.032 155));
+  --color-kumo-contrast: light-dark(oklch(18% 0.04 155), oklch(98.5% 0.01 155));
+  --color-kumo-overlay: light-dark(oklch(97.2% 0.018 155), oklch(25% 0.032 155));
+  --color-kumo-control: light-dark(#ffffff, oklch(21% 0.02 155));
+  --color-kumo-interact: light-dark(oklch(89% 0.03 155), oklch(37% 0.04 155));
+  --color-kumo-fill: light-dark(oklch(93.5% 0.02 155), oklch(27% 0.035 155));
+  --color-kumo-fill-hover: light-dark(oklch(96.8% 0.015 155), oklch(36% 0.04 155));
 
   /*
-   * Brand is ink: event posters supply the colour, so chrome stays
-   * monochrome (Apple HIG: prefer monochrome controls over rich content).
+   * Brand is a soothing, premium emerald green:
    * Pair every brand fill with `text-kumo-on-brand`.
    */
-  --color-kumo-brand: light-dark(oklch(21% 0 0), oklch(93% 0 0));
-  --color-kumo-brand-hover: light-dark(oklch(34% 0 0), oklch(100% 0 0));
+  --color-kumo-brand: light-dark(oklch(46% 0.145 152), oklch(76% 0.14 152));
+  --color-kumo-brand-hover: light-dark(oklch(40% 0.155 152), oklch(83% 0.15 152));
 
   /* Menus, sheets and dialogs: brighter than the page in dark mode (HIG base vs elevated). */
-  --color-kumo-raised: light-dark(#fff, oklch(23% 0 0));
+  --color-kumo-raised: light-dark(#ffffff, oklch(22.5% 0.025 155));
 
   /* Structure */
-  --color-kumo-line: light-dark(oklch(14.5% 0 0 / 0.1), oklch(32% 0 0));
-  --color-kumo-hairline: light-dark(oklch(93.5% 0 0), oklch(26.9% 0 0));
-  --color-kumo-focus: light-dark(oklch(15% 0 0), oklch(93.5% 0 0));
+  --color-kumo-line: light-dark(oklch(20% 0.025 155 / 0.12), oklch(33% 0.03 155));
+  --color-kumo-hairline: light-dark(oklch(92% 0.018 155), oklch(27% 0.03 155));
+  --color-kumo-focus: light-dark(oklch(46% 0.145 152), oklch(76% 0.14 152));
 
   /* Status */
   --color-kumo-info: oklch(68.5% 0.169 237.323);
   --color-kumo-info-tint: light-dark(oklch(93.2% 0.032 255.6 / 0.45), oklch(38% 0.145 265.5 / 0.22));
-  --color-kumo-success: light-dark(oklch(59.6% 0.145 163.225), oklch(76.5% 0.177 163.223));
+  --color-kumo-success: light-dark(oklch(52% 0.15 152), oklch(76% 0.14 152));
   --color-kumo-success-tint: light-dark(oklch(96.2% 0.043 156.7 / 0.57), oklch(39.3% 0.096 152.3 / 0.2));
   --color-kumo-warning: light-dark(oklch(73.9% 0.177 58.2), oklch(64.5% 0.168 50));
   --color-kumo-warning-tint: light-dark(oklch(93.1% 0.107 94.6 / 0.2), oklch(35.3% 0.079 65 / 0.37));
@@ -81,25 +80,30 @@
 
   /* Categorical fills (seat tiers, genres) */
   --color-kumo-badge-red: light-dark(oklch(57.7% 0.245 27.325), oklch(50.5% 0.213 27.518));
-  --color-kumo-badge-green: light-dark(oklch(59.6% 0.145 163.225), oklch(50.8% 0.118 165.612));
+  --color-kumo-badge-green: light-dark(oklch(50% 0.145 152), oklch(74% 0.14 152));
   --color-kumo-badge-orange: oklch(81.5% 0.197 76);
   --color-kumo-badge-purple: light-dark(oklch(55.8% 0.288 302.321), oklch(49.6% 0.265 301.924));
-  --color-kumo-badge-teal: light-dark(oklch(54.9% 0.096 184.565), oklch(51.1% 0.096 186.391));
+  --color-kumo-badge-teal: light-dark(oklch(50% 0.11 170), oklch(72% 0.12 170));
   --color-kumo-badge-blue: light-dark(oklch(54.6% 0.245 262.881), oklch(48.8% 0.243 264.376));
   --color-kumo-badge-neutral: oklch(55.6% 0 0);
+
+  /* Emerald specific accents */
+  --color-emerald-primary: light-dark(oklch(46% 0.145 152), oklch(76% 0.14 152));
+  --color-emerald-soft: light-dark(oklch(96% 0.03 152), oklch(22% 0.04 152));
+  --color-emerald-border: light-dark(oklch(86% 0.05 152), oklch(30% 0.05 152));
 }
 
 @theme {
   /* Text-only tokens: `text-kumo-*` */
-  --text-color-kumo-default: light-dark(oklch(21% 0.006 285.885), oklch(97% 0 0));
-  --text-color-kumo-strong: light-dark(oklch(14.5% 0 0), oklch(98.5% 0 0));
-  --text-color-kumo-subtle: light-dark(oklch(50% 0 0), oklch(72% 0 0));
-  --text-color-kumo-on-brand: light-dark(#fff, oklch(17% 0 0));
+  --text-color-kumo-default: light-dark(oklch(24% 0.02 155), oklch(95% 0.015 155));
+  --text-color-kumo-strong: light-dark(oklch(15% 0.025 155), oklch(98.5% 0.01 155));
+  --text-color-kumo-subtle: light-dark(oklch(46% 0.025 155), oklch(74% 0.02 155));
+  --text-color-kumo-on-brand: light-dark(#ffffff, oklch(14% 0.03 155));
   --text-color-kumo-inactive: light-dark(oklch(87% 0 0), oklch(43.9% 0 0));
-  --text-color-kumo-placeholder: light-dark(oklch(70.8% 0 0), oklch(55.6% 0 0));
+  --text-color-kumo-placeholder: light-dark(oklch(62% 0.02 155), oklch(58% 0.02 155));
   --text-color-kumo-inverse: light-dark(oklch(97% 0 0), oklch(20.5% 0 0));
-  /* Links are ink and always underlined: colour alone never signals interactivity. */
-  --text-color-kumo-link: light-dark(oklch(14.5% 0 0), oklch(98.5% 0 0));
+  /* Links are emerald and underline */
+  --text-color-kumo-link: light-dark(oklch(42% 0.13 152), oklch(78% 0.13 152));
   --text-color-kumo-info: light-dark(oklch(42.4% 0.199 265.638), oklch(70.7% 0.165 254.624));
   --text-color-kumo-success: light-dark(oklch(43.2% 0.095 166.913), oklch(90.5% 0.093 164.15));
   --text-color-kumo-danger: light-dark(oklch(50.5% 0.213 27.518), oklch(70.4% 0.191 22.216));
@@ -172,6 +176,21 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Eye-friendly calming green subtle glow */
+  .emerald-radial-glow {
+    background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+  }
+  .emerald-subtle-gradient {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.03) 100%);
+  }
+  .emerald-card-hover {
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .emerald-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -6px rgba(16, 185, 129, 0.12);
   }
 }
 

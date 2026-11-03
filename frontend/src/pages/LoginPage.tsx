@@ -10,7 +10,7 @@ export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
   const navigate = useNavigate();
-  const { isAuthenticated, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
+  const { isAuthenticated, loginDemo, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
   const { getEventById } = useEvents();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
 
@@ -164,17 +164,30 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Fast demo test filler
-  const handleQuickDemoLogin = async () => {
-    const demoPhone = '0987654321';
-    setPhoneNumber(demoPhone);
-    setAuthMethod('phone');
-    setIsSending(true);
-    await new Promise(r => setTimeout(r, 300));
-    setOtpSent(true);
-    setOtpValues(['1', '2', '3', '4', '5', '6']);
-    setIsSending(false);
-    await handleVerifyOtp('123456');
+  // Fast demo test 1-click login - bypass OTP with a real authenticated session
+  const handleQuickDemoLogin = async (role: 'CUSTOMER' | 'ORGANIZER' = 'CUSTOMER') => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setIsVerifying(true);
+    try {
+      const ok = await loginDemo(role);
+      if (ok) {
+        setSuccessMsg(
+          role === 'ORGANIZER'
+            ? 'Đăng nhập Ban Tổ Chức thành công! Đang chuyển hướng...'
+            : 'Đăng nhập Khán giả Demo thành công! Đang chuyển hướng đến trang mua vé...'
+        );
+        setTimeout(() => {
+          navigate(redirectUrl, { replace: true });
+        }, 300);
+      } else {
+        setErrorMsg('Không thể đăng nhập thử nhanh. Vui lòng thử lại.');
+      }
+    } catch {
+      setErrorMsg('Đã có lỗi xảy ra khi đăng nhập thử nhanh.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const inputClass =
@@ -447,17 +460,25 @@ export const LoginPage: React.FC = () => {
           )}
 
           {/* Quick Demo Test Helper Banner */}
-          <div className="mt-6 pt-5 border-t border-kumo-hairline">
+          <div className="mt-6 pt-5 border-t border-kumo-hairline text-center space-y-2">
             <button
-              onClick={handleQuickDemoLogin}
-              className="flex h-11 sm:h-9 w-full items-center justify-center gap-2 rounded-lg bg-kumo-base px-3 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint"
+              onClick={() => handleQuickDemoLogin('CUSTOMER')}
+              disabled={isVerifying}
+              className="flex h-11 sm:h-9 w-full items-center justify-center gap-2 rounded-lg bg-kumo-base px-3 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint disabled:opacity-50 cursor-pointer"
             >
               <Sparkles className="w-4 h-4 text-kumo-warning" />
-              <span>Đăng nhập thử nhanh (Demo 1-Click)</span>
+              <span>⚡ Đăng nhập thử nhanh (Demo Khán giả)</span>
             </button>
-            <p className="text-xs text-kumo-subtle mt-2 text-center">
-              Mã OTP thử nghiệm định sẵn:{' '}
-              <strong className="font-medium text-kumo-default tabular-nums">123456</strong>
+            <button
+              onClick={() => handleQuickDemoLogin('ORGANIZER')}
+              disabled={isVerifying}
+              className="flex h-11 sm:h-9 w-full items-center justify-center gap-2 rounded-lg bg-kumo-base px-3 text-sm font-medium text-kumo-subtle ring ring-kumo-line transition-colors hover:bg-kumo-tint hover:text-kumo-default disabled:opacity-50 cursor-pointer"
+            >
+              <ShieldCheck className="w-4 h-4 text-kumo-subtle" />
+              <span>Đăng nhập thử Ban Tổ Chức (Organizer Demo)</span>
+            </button>
+            <p className="text-xs text-kumo-subtle mt-2">
+              Chế độ Demo: Tự động khởi tạo phiên xác thực thực tế trên máy chủ mà không cần gửi OTP.
             </p>
           </div>
         </div>
