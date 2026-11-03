@@ -36,13 +36,13 @@ const COLUMNS: ReadonlyArray<{ title: string; links: FooterLink[] }> = [
   },
 ];
 
-const linkClass = 'text-kumo-subtle hover:text-kumo-default transition-colors';
+const linkClass = 'text-kumo-subtle hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors';
 const socialClass =
-  'grid size-8 place-items-center rounded-lg text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint transition-colors';
+  'grid size-8 place-items-center rounded-lg text-kumo-subtle hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="w-full mt-auto bg-kumo-elevated border-t border-kumo-hairline">
+    <footer className="w-full mt-auto bg-kumo-elevated border-t border-emerald-500/15">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-x-8 gap-y-10 pb-10">
           <div className="col-span-2 space-y-3">
@@ -50,8 +50,8 @@ export const Footer: React.FC = () => {
             <p className="text-base text-kumo-subtle max-w-sm leading-relaxed">
               Nền tảng khám phá và mua vé concert âm nhạc, festival và live show hàng đầu. 100% vé điện tử chính hãng, check-in mã QR bảo mật và xác thực tức thì.
             </p>
-            <p className="flex items-start gap-2 text-sm text-kumo-success">
-              <ShieldCheck className="size-4 flex-shrink-0 mt-px" />
+            <p className="flex items-start gap-2 text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+              <ShieldCheck className="size-4 flex-shrink-0 mt-px text-emerald-600 dark:text-emerald-400" />
               <span>Bảo vệ quyền lợi khán giả. Hoàn tiền nếu hủy show.</span>
             </p>
           </div>

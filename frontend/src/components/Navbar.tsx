@@ -7,10 +7,10 @@ import { useFeatures } from '../context/FeatureContext';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 
-const CITIES = ['All Cities', 'Mumbai', 'Hồ Chí Minh', 'Hà Nội', 'Bangkok', 'Delhi', 'Bengaluru'];
+const CITIES = ['All Cities', 'Hà Nội', 'TP. Hồ Chí Minh', 'Hưng Yên', 'Đà Nẵng'];
 
 const menuPanel =
-  'absolute right-0 mt-2 rounded-xl bg-kumo-raised ring ring-kumo-line shadow-lg shadow-black/5 py-1.5 z-50';
+  'absolute right-0 mt-2 rounded-xl bg-kumo-raised ring-1 ring-emerald-500/25 shadow-xl shadow-emerald-950/10 py-1.5 z-50';
 const menuItem =
   'w-[calc(100%-0.75rem)] text-left px-3 py-1.5 mx-1.5 rounded-md text-base transition-colors flex items-center gap-2';
 
@@ -42,22 +42,22 @@ export const Navbar: React.FC = () => {
     setShowMobileMenu(false);
   };
 
-  const cityLabel = filterState.city === 'All Cities' ? 'Mumbai' : filterState.city;
+  const cityLabel = filterState.city === 'All Cities' ? 'Toàn quốc' : filterState.city;
 
   const navLink = (active: boolean) =>
-    `h-8 px-2.5 rounded-md flex items-center gap-1.5 transition-colors ${
+    `h-8 px-2.5 rounded-lg flex items-center gap-1.5 transition-colors ${
       active
-        ? 'text-kumo-strong bg-kumo-tint'
-        : 'text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint'
+        ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 font-semibold'
+        : 'text-kumo-subtle hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'
     }`;
 
   const mobileLink = (active: boolean) =>
     `h-11 px-3 -mx-3 rounded-lg flex items-center gap-2 text-lg transition-colors ${
-      active ? 'text-kumo-strong bg-kumo-tint font-medium' : 'text-kumo-default hover:bg-kumo-tint'
+      active ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 font-semibold' : 'text-kumo-default hover:bg-emerald-500/10'
     }`;
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-kumo-hairline bg-kumo-canvas/85 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-emerald-500/15 bg-kumo-canvas/90 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
         <div className="flex items-center gap-6 min-w-0">
           <Logo />
@@ -71,7 +71,7 @@ export const Navbar: React.FC = () => {
                 <Ticket className="size-4" />
                 <span>My Tickets</span>
                 {bookings.length > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 grid place-items-center rounded-full bg-kumo-brand text-kumo-on-brand text-xs font-medium tabular-nums">
+                  <span className="min-w-5 h-5 px-1.5 grid place-items-center rounded-full bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 text-xs font-bold tabular-nums">
                     {bookings.length}
                   </span>
                 )}
@@ -90,9 +90,9 @@ export const Navbar: React.FC = () => {
             <button
               onClick={() => setShowCityDropdown(!showCityDropdown)}
               aria-expanded={showCityDropdown}
-              className="h-8 flex items-center gap-1.5 px-2.5 rounded-lg bg-kumo-base ring ring-kumo-line hover:bg-kumo-tint text-sm font-medium text-kumo-default transition-colors"
+              className="h-8 flex items-center gap-1.5 px-2.5 rounded-lg bg-kumo-base ring-1 ring-emerald-500/25 hover:bg-emerald-500/10 text-sm font-medium text-kumo-default transition-colors"
             >
-              <MapPin className="size-3.5 text-kumo-subtle" />
+              <MapPin className="size-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>{cityLabel}</span>
               <ChevronDown className="size-3.5 text-kumo-subtle" />
             </button>
@@ -174,10 +174,10 @@ export const Navbar: React.FC = () => {
           ) : isEnabled('otp_login') && (
             <button
               onClick={handleLoginClick}
-              className="h-11 md:h-8 px-3 rounded-lg bg-kumo-contrast text-kumo-inverse text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
+              className="h-11 md:h-8 px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950 text-sm font-semibold transition-all shadow-xs whitespace-nowrap"
             >
               <span className="md:hidden">Đăng nhập</span>
-              <span className="hidden md:inline">Log in / Sign up</span>
+              <span className="hidden md:inline">Đăng nhập / Đăng ký</span>
             </button>
           )}
 

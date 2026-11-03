@@ -20,24 +20,24 @@ export const FilterBar: React.FC = () => {
     (filterState.city !== 'All Cities' ? 1 : 0);
 
   const pill = (active: boolean) =>
-    `h-11 md:h-8 px-3 rounded-full text-sm font-medium flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors ${
+    `h-11 md:h-8 px-3 rounded-full text-sm font-medium flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap transition-all ${
       active
-        ? 'bg-kumo-contrast text-kumo-inverse'
-        : 'bg-kumo-base ring ring-kumo-line text-kumo-default hover:bg-kumo-tint'
+        ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 font-semibold shadow-xs'
+        : 'bg-kumo-base ring-1 ring-emerald-500/20 text-kumo-default hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-300'
     }`;
 
   return (
-    <div className="w-full pt-4 sm:pt-6 pb-4">
+    <div className="w-full pt-2 pb-4">
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="relative flex-1 md:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-kumo-subtle pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400 pointer-events-none" />
           <input
             type="search"
             value={filterState.searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Tìm nghệ sĩ, sự kiện, địa điểm"
+            placeholder="Tìm nghệ sĩ, sự kiện, địa điểm biểu diễn..."
             aria-label="Tìm kiếm sự kiện"
-            className="w-full h-11 sm:h-9 pl-9 pr-10 rounded-lg bg-kumo-control ring ring-kumo-line text-base text-kumo-default placeholder:text-kumo-placeholder focus:outline-none focus:ring-2 focus:ring-kumo-brand transition-shadow [&::-webkit-search-cancel-button]:hidden"
+            className="w-full h-11 sm:h-9 pl-9 pr-10 rounded-xl bg-kumo-control ring-1 ring-emerald-500/25 text-base text-kumo-default placeholder:text-kumo-placeholder focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all [&::-webkit-search-cancel-button]:hidden shadow-2xs"
           />
           {filterState.searchQuery && (
             <button
@@ -57,9 +57,9 @@ export const FilterBar: React.FC = () => {
             className={pill(isFilterOpen)}
           >
             <SlidersHorizontal className="size-3.5" />
-            <span>Filter</span>
+            <span>Bộ lọc nâng cao</span>
             {activeFiltersCount > 0 && (
-              <span className="min-w-4.5 h-4.5 px-1 grid place-items-center rounded-full bg-kumo-brand text-kumo-on-brand text-xs tabular-nums">
+              <span className="min-w-4.5 h-4.5 px-1.5 grid place-items-center rounded-full bg-emerald-200 text-emerald-950 dark:bg-emerald-900 dark:text-emerald-100 text-xs font-bold tabular-nums">
                 {activeFiltersCount}
               </span>
             )}
@@ -71,7 +71,7 @@ export const FilterBar: React.FC = () => {
             className={pill(activeViewTab === 'popular')}
           >
             <Star className="size-3.5" />
-            <span>Popular Events</span>
+            <span>Sự kiện hot</span>
           </button>
 
           <button
@@ -86,9 +86,9 @@ export const FilterBar: React.FC = () => {
           {(activeFiltersCount > 0 || activeViewTab !== 'all') && (
             <button
               onClick={resetFilters}
-              className="h-11 md:h-8 px-2 flex-shrink-0 rounded-md text-sm text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint transition-colors"
+              className="h-11 md:h-8 px-2.5 flex-shrink-0 rounded-lg text-sm text-kumo-subtle hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors font-medium"
             >
-              Reset
+              Đặt lại
             </button>
           )}
         </div>
