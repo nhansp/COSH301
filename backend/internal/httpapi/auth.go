@@ -109,6 +109,47 @@ func (h *AuthHandler) HandleVerifyOTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type DemoLoginPayload struct {
+	Role string `json:"role"`
+}
+
+func (h *AuthHandler) HandleDemoLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+
+	var payload DemoLoginPayload
+	_ = json.NewDecoder(r.Body).Decode(&payload)
+
+	token, user, err := h.authService.DemoLogin(r.Context(), payload.Role, clientIP(r), r.UserAgent())
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookie,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   h.cookieSecure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   7 * 24 * 3600,
+	})
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"token": token,
+		"user": map[string]string{
+			"id":       store.UUIDToString(user.ID),
+			"phone":    user.Phone.String,
+			"email":    user.Email.String,
+			"fullName": user.FullName.String,
+			"role":     string(user.Role),
+		},
+	})
+}
+
 func (h *AuthHandler) HandleMe(w http.ResponseWriter, r *http.Request) {
 	sess, ok := h.session(w, r)
 	if !ok {

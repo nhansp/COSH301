@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SeatItem } from '../types';
 import { useFeatures } from '../context/FeatureContext';
+import { useAuth } from '../context/AuthContext';
 import { formatPrice, apiFetchSeats, apiHoldSeat, apiReleaseSeat } from '../services/eventService';
 import {
   Armchair,
@@ -32,6 +33,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   maxSeats = 4
 }) => {
   const { isEnabled } = useFeatures();
+  const { loginDemo } = useAuth();
   const holdEnabled = isEnabled('seat_hold');
   const limitEnabled = isEnabled('ticket_limit');
   const [seats, setSeats] = useState<SeatItem[]>([]);
@@ -187,6 +189,22 @@ export const SeatMap: React.FC<SeatMapProps> = ({
         } else if (holdRes.error === 'ticket_limit_reached') {
           showToast('Đã đạt giới hạn số vé cho sự kiện này.', 'error');
         } else if (holdRes.error === 'unauthorized') {
+          // Auto-heal with demo login if session is missing
+          const ok = await loginDemo('CUSTOMER');
+          if (ok) {
+            const retryHold = await apiHoldSeat(eventId, seat.id);
+            if (retryHold.success) {
+              const retryExpiresAt = retryHold.expiresAt ? Date.parse(retryHold.expiresAt) : NaN;
+              if (!Number.isNaN(retryExpiresAt)) {
+                setHoldExpiries(prev => ({ ...prev, [seat.id]: retryExpiresAt }));
+              }
+              setSeats(prev => prev.map(s => (s.id === seat.id ? { ...s, status: 'selected' } : s)));
+              const currentlySelected = seats.filter(s => selectedSeatIds.includes(s.id));
+              onSeatsChange([...currentlySelected, { ...seat, status: 'selected' }]);
+              showToast(`Đã tự động xác thực phiên Demo & giữ ghế ${seat.id} trong 5 phút`, 'success');
+              return;
+            }
+          }
           showToast('Vui lòng đăng nhập để giữ chỗ.', 'error');
         } else if (holdRes.error === 'event_not_on_sale') {
           showToast('Sự kiện hiện không mở bán.', 'error');

@@ -615,7 +615,9 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
 
 export async function apiFetchSeats(eventId: string): Promise<SeatItem[] | null> {
   try {
-    const res = await fetch(`/api/events/${eventId}/seats`);
+    const res = await fetch(`/api/events/${eventId}/seats`, {
+      credentials: 'include',
+    });
     if (!res.ok) return null;
     const data = await res.json();
     return data.map((item: any) => ({
@@ -638,6 +640,7 @@ export async function apiHoldSeat(eventId: string, seatId: string): Promise<{ su
     const res = await fetch('/api/holds', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ eventId, seatId }),
     });
     const data = await res.json().catch(() => ({}));
@@ -654,6 +657,7 @@ export async function apiReleaseSeat(eventId: string, seatId: string): Promise<b
   try {
     const res = await fetch(`/api/holds/${encodeURIComponent(seatId)}?eventId=${encodeURIComponent(eventId)}`, {
       method: 'DELETE',
+      credentials: 'include',
     });
     return res.ok;
   } catch {

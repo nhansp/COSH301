@@ -48,3 +48,16 @@ func TestAuthHandler_Me_Unauthorized(t *testing.T) {
 		t.Errorf("expected status 401 for unauthenticated request, got %d", rec.Code)
 	}
 }
+
+func TestAuthHandler_DemoLogin_MethodNotAllowed(t *testing.T) {
+	as := service.NewAuthService(nil, config.Load())
+	handler := NewAuthHandler(as, false)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/demo-login", nil)
+	rec := httptest.NewRecorder()
+
+	handler.HandleDemoLogin(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405 for GET demo login, got %d", rec.Code)
+	}
+}

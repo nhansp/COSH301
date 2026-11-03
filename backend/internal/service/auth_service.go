@@ -237,6 +237,58 @@ func (s *AuthService) VerifyOTP(ctx context.Context, destination, code, ipAddres
 	return rawToken, &user, nil
 }
 
+// DemoLogin allows 1-click test login without OTP verification.
+// It creates a real authenticated session in PostgreSQL.
+func (s *AuthService) DemoLogin(ctx context.Context, role, ipAddress, userAgent string) (string, *store.User, error) {
+	var dest string
+	userRole := store.UserRoleCUSTOMER
+	fullName := "Khán giả Demo"
+
+	if strings.EqualFold(role, "ORGANIZER") {
+		dest = "btc@cosh301.nhansp.id.vn"
+		userRole = store.UserRoleORGANIZER
+		fullName = "Ban Tổ chức"
+	} else {
+		dest = "khangia.demo@sortmyscene.live"
+	}
+
+	user, err := s.findUser(ctx, dest, "EMAIL")
+	if errors.Is(err, pgx.ErrNoRows) {
+		params := store.CreateUserParams{
+			Role:            userRole,
+			Status:          store.UserStatusACTIVE,
+			Email:           pgtype.Text{String: dest, Valid: true},
+			FullName:        pgtype.Text{String: fullName, Valid: true},
+			EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		}
+		if user, err = s.queries.CreateUser(ctx, params); err != nil {
+			return "", nil, fmt.Errorf("create demo user: %w", err)
+		}
+	} else if err != nil {
+		return "", nil, fmt.Errorf("lookup demo user: %w", err)
+	}
+
+	if err := s.queries.UpdateUserLastLogin(ctx, user.ID); err != nil {
+		return "", nil, fmt.Errorf("update last login: %w", err)
+	}
+
+	rawToken, err := GenerateToken()
+	if err != nil {
+		return "", nil, fmt.Errorf("generate session token: %w", err)
+	}
+	if _, err := s.queries.CreateSession(ctx, store.CreateSessionParams{
+		UserID:    user.ID,
+		TokenHash: HashString(rawToken),
+		IpAddress: pgtype.Text{String: ipAddress, Valid: ipAddress != ""},
+		UserAgent: pgtype.Text{String: userAgent, Valid: userAgent != ""},
+		TtlHours:  sessionTTLHours,
+	}); err != nil {
+		return "", nil, fmt.Errorf("create session: %w", err)
+	}
+
+	return rawToken, &user, nil
+}
+
 // GetUserByToken returns the session and user for a bearer or cookie token.
 func (s *AuthService) GetUserByToken(ctx context.Context, rawToken string) (*store.GetSessionByTokenHashRow, error) {
 	row, err := s.queries.GetSessionByTokenHash(ctx, HashString(strings.TrimSpace(rawToken)))

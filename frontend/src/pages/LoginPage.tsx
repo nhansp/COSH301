@@ -9,7 +9,7 @@ export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
   const navigate = useNavigate();
-  const { isAuthenticated, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
+  const { isAuthenticated, loginDemo, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
   const { getEventById } = useEvents();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
 
@@ -163,17 +163,30 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Fast demo test filler
-  const handleQuickDemoLogin = async () => {
-    const demoPhone = '0987654321';
-    setPhoneNumber(demoPhone);
-    setAuthMethod('phone');
-    setIsSending(true);
-    await new Promise(r => setTimeout(r, 300));
-    setOtpSent(true);
-    setOtpValues(['1', '2', '3', '4', '5', '6']);
-    setIsSending(false);
-    await handleVerifyOtp('123456');
+  // Fast demo test 1-click login - bypass OTP with a real authenticated session
+  const handleQuickDemoLogin = async (role: 'CUSTOMER' | 'ORGANIZER' = 'CUSTOMER') => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setIsVerifying(true);
+    try {
+      const ok = await loginDemo(role);
+      if (ok) {
+        setSuccessMsg(
+          role === 'ORGANIZER'
+            ? 'Đăng nhập Ban Tổ Chức thành công! Đang chuyển hướng...'
+            : 'Đăng nhập Khán giả Demo thành công! Đang chuyển hướng đến trang mua vé...'
+        );
+        setTimeout(() => {
+          navigate(redirectUrl, { replace: true });
+        }, 300);
+      } else {
+        setErrorMsg('Không thể đăng nhập thử nhanh. Vui lòng thử lại.');
+      }
+    } catch {
+      setErrorMsg('Đã có lỗi xảy ra khi đăng nhập thử nhanh.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   if (featuresLoading || !isEnabled('otp_login')) {
@@ -437,16 +450,25 @@ export const LoginPage: React.FC = () => {
           )}
 
           {/* Quick Demo Test Helper Banner */}
-          <div className="mt-6 pt-5 border-t border-purple-900/60 text-center">
+          <div className="mt-6 pt-5 border-t border-purple-900/60 text-center space-y-2.5">
             <button
-              onClick={handleQuickDemoLogin}
-              className="w-full py-2.5 px-4 rounded-xl bg-purple-950/60 hover:bg-purple-900/60 border border-purple-600/40 text-xs font-semibold text-purple-200 hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer group"
+              onClick={() => handleQuickDemoLogin('CUSTOMER')}
+              disabled={isVerifying}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 hover:from-purple-600 hover:to-pink-500 border border-purple-400/40 text-sm font-bold text-white shadow-lg shadow-purple-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer group active:scale-98"
             >
-              <Sparkles className="w-4 h-4 text-amber-400 group-hover:rotate-12 transition-transform" />
-              <span>⚡ Đăng nhập thử nhanh (Demo 1-Click)</span>
+              <Sparkles className="w-4 h-4 text-amber-300 group-hover:rotate-12 transition-transform" />
+              <span>⚡ Đăng nhập thử nhanh (Demo 1-Click Khán giả)</span>
             </button>
-            <p className="text-[11px] text-purple-400/60 mt-1.5">
-              Mã OTP thử nghiệm định sẵn: <strong className="text-purple-300 font-mono">123456</strong>
+            <button
+              onClick={() => handleQuickDemoLogin('ORGANIZER')}
+              disabled={isVerifying}
+              className="w-full py-2 px-3 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 border border-purple-700/40 text-xs font-semibold text-purple-300 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+              <span>Đăng nhập thử Ban Tổ Chức (Organizer Demo)</span>
+            </button>
+            <p className="text-[11px] text-purple-400/70">
+              Chế độ Demo: Tự động khởi tạo phiên xác thực thực tế trên máy chủ mà không cần gửi SMS/Gmail PIN.
             </p>
           </div>
         </div>
