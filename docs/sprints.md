@@ -8,7 +8,7 @@ Tài liệu này chi tiết hóa tiến độ thực hiện dự án theo mô h�
 
 ```mermaid
 flowchart LR
-    S1["Sprint 1\nKhảo sát & Phân tích SA\n(Đã hoàn thành)"] --> S2["Sprint 2 (Giữa kỳ)\nProfile: sprint2\nOTP, Giữ ghế ACID, Realtime"]
+    S1["Sprint 1\nKhảo sát & Phân tích SA\n(Đã hoàn thành)"] --> S2["Sprint 2 (Giữa kỳ)\nProfile: sprint2\nOTP, Giữ ghế, Realtime"]
     S2 --> S3["Sprint 3\nProfile: sprint3\nPhòng chờ, Chống Bot, QR 30s"]
     S3 --> S4["Sprint 4\nProfile: sprint4\nThanh toán MoMo/VNPAY, Vé Email"]
     S4 --> S5["Sprint 5 (Cuối kỳ)\nProfile: final\nSoát vé Offline, CEO Dashboard, Định giá động"]
@@ -34,9 +34,10 @@ flowchart LR
 - **Cờ được kích hoạt:** `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console` (FR-02 luôn bật).
 - **Mục tiêu cốt lõi:**
   - Chuyển đổi toàn bộ cơ sở dữ liệu sang PostgreSQL 18 với giao dịch ACID và partial unique index.
-  - Hoàn thiện luồng đăng nhập không mật khẩu bằng OTP qua SMS/Email (FR-01, FR-04).
+  - Hoàn thiện luồng đăng nhập không mật khẩu bằng OTP (FR-01, FR-04). Mã OTP hiện trên màn hình (`OTP_DEMO`) hoặc ghi vào log, chưa gửi qua SMTP hay SMS Gateway.
   - Triển khai cơ chế giữ ghế độc quyền 5 phút chống bán trùng (FR-06, FR-07, NFR-03).
   - Đồng bộ sơ đồ ghế tức thì qua Server-Sent Events (SSE) và `LISTEN/NOTIFY` (FR-03, FR-05, NFR-10).
+  - Danh sách sự kiện (FR-02, luôn bật) và Ban Tổ chức đặt giá sàn, giá trần theo khu vực (FR-08).
   - Hoàn thiện bộ tài liệu thiết kế và kiểm thử giữa kỳ (T01 – T14).
 
 ### Bảng phân rã công việc (WBS) Sprint 2
@@ -45,9 +46,10 @@ flowchart LR
 |---|---|---|:---:|---|
 | T12.1 | Thiết lập dự án Backend Go, migration PostgreSQL 18, `sqlc` và Docker Compose | Nhân (`nhansp`) | 16 | Hạ tầng, `compose.yaml` |
 | T12.2 | Triển khai Service & Endpoint xác thực OTP (`/api/auth/otp/*`), quản lý phiên `sessions` | Nhân (`nhansp`) | 12 | `otp_login` (FR-01, FR-04) |
-| T12.3 | Triển khai Service giữ ghế nguyên tử (`/api/holds`), khóa `pg_advisory_xact_lock`, kiểm tra giới hạn vé | Huy (`vdhwy`) | 18 | `seat_hold` (FR-06, FR-07) |
-| T12.4 | Xây dựng SSE Hub kết nối `LISTEN/NOTIFY` và background worker nhả ghế hết hạn (`HoldReaper`) | Huy (`vdhwy`) | 14 | `seat_map_realtime` (NFR-10) |
-| T12.5 | Tích hợp Reverse Proxy Nginx, kết nối Frontend React với SSE và API giữ ghế | Nhân (`nhansp`) | 12 | Giao diện, `SeatMap.tsx` |
+| T12.3 | Triển khai Service giữ ghế (`/api/holds`): `UPDATE` có điều kiện và unique index trên `seat_holds` chống bán trùng | Huy (`vdhwy`) | 18 | `seat_hold` (FR-06, FR-07) |
+| T12.4 | Xây dựng SSE Hub kết nối `LISTEN/NOTIFY` và background worker nhả ghế hết hạn (`HoldReaper`) | Huy (`vdhwy`) | 14 | `seat_map_realtime` (FR-03, FR-05, NFR-10) |
+| T12.5 | Tích hợp nginx proxy `/api` trong container `frontend`, kết nối Frontend React với SSE và API giữ ghế | Nhân (`nhansp`) | 12 | Giao diện, `SeatMap.tsx` |
+| T12.6 | Danh sách sự kiện và API Ban Tổ chức: xem sự kiện của mình, đặt giá khu vực, ghi `price_changes` | Nhân (`nhansp`) | 8 | `zone_pricing`, `organizer_console` (FR-02, FR-08) |
 | T01 | Trích xuất schema PostgreSQL, dựng sơ đồ ERD Mermaid và phân tích sai khác so với Sprint 1 | Huy (`vdhwy`) | 8 | `docs/erd.md` |
 | T02 | Thiết kế sơ đồ lớp BCE (Boundary, Control, Entity) chuẩn bài B05 và ánh xạ 23 thực thể | Huy (`vdhwy`) | 10 | `docs/class-diagram.md` |
 | T03 | Lập kế hoạch Sprint 1–5, WBS, bảng ước lượng giờ và phân bổ nhân lực | Huy (`vdhwy`) | 6 | `docs/sprints.md` |
@@ -61,7 +63,7 @@ flowchart LR
 | T11 | Thiết kế kịch bản kiểm thử trải nghiệm và mẫu khảo sát người dùng thực tế | Đức Anh | 10 | `docs/testing.md` |
 | T13 | Thiết kế Sequence Diagram cho quy trình đăng nhập OTP qua SMS và Email | Nhân (`nhansp`) | 6 | `docs/sequences/otp-login.md` (FR-04) |
 | T14 | Soạn thảo tài liệu kiến trúc hệ thống và đặc tả OpenAPI 3.0 cho các endpoint | Nhân (`nhansp`) | 12 | `docs/architecture.md`, `openapi.yaml` |
-| **Tổng** | | | **190** | |
+| **Tổng** | | | **206** | |
 
 ---
 
@@ -72,7 +74,7 @@ flowchart LR
 - **Mục tiêu cốt lõi:**
   - Triển khai phòng chờ ảo (Virtual Waiting Room) điều tiết lượng truy cập cao điểm bằng hàng đợi FIFO trong bảng `queue_entries` (FR-09, NFR-09).
   - Tích hợp Cloudflare Turnstile chặn bot tự động tại các bước trọng yếu (FR-10, NFR-07).
-  - Ràng buộc chặt chẽ trần 4 vé/tài khoản trên toàn hệ thống (FR-11).
+  - Giới hạn số vé mỗi tài khoản theo từng sự kiện (`events.max_tickets_per_user`), kiểm tra trong giao dịch giữ ghế dưới `pg_advisory_xact_lock` (FR-11).
   - Triển khai thuật toán sinh mã QR động (Rotating QR) dùng HMAC-SHA256 đổi sau mỗi 30 giây chống chụp màn hình (FR-12, NFR-08).
 
 ### Bảng phân rã công việc (WBS) Sprint 3
@@ -113,7 +115,7 @@ flowchart LR
 
 ---
 
-## 6. Sprint 5: Soát vé ngoại tuyến, CEO Dashboard & Đề xuất giá động AI (Cuối kỳ)
+## 6. Sprint 5: Soát vé ngoại tuyến, CEO Dashboard & Đề xuất giá động (Cuối kỳ)
 
 - **Profile cờ tính năng:** `FEATURE_PROFILE=final`
 - **Cờ kích hoạt mới:** `gate_checkin`, `offline_checkin`, `ceo_dashboard`, `price_log`, `reports_export`, `dynamic_pricing`, `promo_suggestions`.
@@ -122,6 +124,7 @@ flowchart LR
   - Hoạt động ngoại tuyến khi mất mạng: xác thực chữ ký HMAC cục bộ và đồng bộ khi có mạng (FR-18, NFR-06).
   - CEO Dashboard thời gian thực hiển thị doanh thu, fill rate, số vé đã bán, phân bổ theo phút (FR-19).
   - Xuất báo cáo kế toán CSV/XLSX (FR-21).
+  - Trang xem nhật ký giá và gợi ý khuyến mãi (FR-20, FR-23).
   - Engine định giá động (Dynamic Pricing Engine) chạy chu kỳ 5 phút: tính toán tốc độ bán, hàng chờ, sinh đề xuất trong khoảng [giá sàn, giá trần] trình Ban Tổ chức duyệt (FR-22, W-01).
 
 ### Bảng phân rã công việc (WBS) Sprint 5
@@ -140,12 +143,14 @@ flowchart LR
 
 ## 7. Tổng hợp phân bổ nguồn lực toàn dự án
 
-| Thành viên | Vai trò chính | Giờ Sprint 2 | Giờ Sprint 3 | Giờ Sprint 4 | Giờ Sprint 5 | Tổng cộng (giờ) |
+Phụ trách chính lấy theo `docs/TASKS.md`. Riêng T12 được chia nhỏ: giữ ghế (T12.3) và realtime (T12.4) do Huy viết, phần còn lại do Nhân.
+
+| Thành viên | Phụ trách chính | Giờ Sprint 2 | Giờ Sprint 3 | Giờ Sprint 4 | Giờ Sprint 5 | Tổng cộng (giờ) |
 |---|---|:---:|:---:|:---:|:---:|:---:|
-| Huy (`vdhwy`) | Backend Lead, Database Architect, Sprint Master | 56 | 18 | 14 | 18 | **106** |
-| Nhân (`nhansp`) | Fullstack Go/React, Docker & CI/CD, API Designer | 58 | 10 | 20 | 16 | **104** |
-| Dũng (`Lan-0924`) | QA Lead, Kiểm thử hiệu năng k6, Sequence Engineer | 28 | 14 | 10 | 12 | **64** |
-| Phúc (`phukzz`) | System Analyst, DFD Modeler, Gate Staff App | 28 | 8 | 8 | 16 | **60** |
-| Thành (`Th4nhDT716`) | Quant/Algorithm Engineer, Dynamic Pricing, Traceability | 32 | 14 | 16 | 20 | **82** |
-| Đức Anh | Product Owner, User Testing, Use Case Specialist | 32 | 10 | 12 | 16 | **70** |
-| **Toàn nhóm** | | **234** | **74** | **80** | **98** | **486** |
+| Huy (`vdhwy`) | ERD, sơ đồ lớp, kế hoạch Sprint, giữ ghế và realtime (T12.3, T12.4) | 56 | 18 | 14 | 18 | **106** |
+| Nhân (`nhansp`) | Hạ tầng, OTP, frontend, API Ban Tổ chức (T12.1, T12.2, T12.5, T12.6), sequence OTP, kiến trúc và API | 66 | 10 | 20 | 16 | **112** |
+| Dũng (`Lan-0924`) | Sequence giữ ghế, kiểm thử FR-06 | 18 | 14 | 10 | 12 | **54** |
+| Phúc (`phukzz`) | Sequence chống bán trùng, DFD | 20 | 8 | 8 | 16 | **52** |
+| Thành (`Th4nhDT716`) | Định giá động, đặc tả và truy vết | 24 | 14 | 16 | 20 | **74** |
+| Đức Anh | Use Case, kiểm thử người dùng | 22 | 10 | 12 | 16 | **60** |
+| **Toàn nhóm** | | **206** | **74** | **80** | **98** | **458** |
