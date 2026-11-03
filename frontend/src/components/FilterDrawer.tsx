@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SlidersHorizontal, X, Calendar, Search, Check } from 'lucide-react';
 import { useEvents } from '../context/EventContext';
 
@@ -32,140 +32,154 @@ export const FilterDrawer: React.FC = () => {
     g.toLowerCase().includes(genreSearch.toLowerCase())
   );
 
+  // Below lg the drawer is a modal sheet: lock page scroll and close on Escape.
+  useEffect(() => {
+    if (!isFilterOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFilterOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    const isSheet = window.matchMedia('(max-width: 1023px)').matches;
+    const previousOverflow = document.body.style.overflow;
+    if (isSheet) document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFilterOpen, setIsFilterOpen]);
+
   if (!isFilterOpen) return null;
 
+  const fieldLabel = 'block text-sm font-medium text-kumo-default mb-1.5';
+  const field =
+    'w-full h-11 lg:h-9 pl-9 pr-3 rounded-lg bg-kumo-control ring ring-kumo-line text-base text-kumo-default placeholder:text-kumo-placeholder focus:outline-none focus:ring-2 focus:ring-kumo-brand';
+
   return (
-    <div className="w-full lg:w-80 flex-shrink-0">
-      <div className="rounded-2xl bg-[#1d0e32]/95 border border-purple-800/60 p-5 shadow-2xl backdrop-blur-md sticky top-28">
-        {/* Header matching Picture.webp */}
-        <div className="flex items-center justify-between pb-4 border-b border-purple-900/60">
-          <div className="flex items-center gap-2 text-white font-semibold text-base">
-            <SlidersHorizontal className="w-4 h-4 text-purple-400" />
-            <span>Filter</span>
-          </div>
+    <aside
+      aria-label="Bộ lọc"
+      onClick={() => setIsFilterOpen(false)}
+      className="fixed inset-0 z-50 flex items-end bg-black/40 lg:static lg:z-auto lg:block lg:bg-transparent lg:w-72 lg:flex-shrink-0 lg:self-stretch"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={e => e.stopPropagation()}
+        className="w-full max-h-[85dvh] flex flex-col rounded-t-2xl bg-kumo-raised ring ring-kumo-line shadow-xl lg:bg-kumo-base lg:max-h-none lg:rounded-xl lg:shadow-xs lg:sticky lg:top-20"
+      >
+        <div className="flex-shrink-0 flex items-center justify-between px-4 h-14 lg:h-12 border-b border-kumo-hairline">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-kumo-strong">
+            <SlidersHorizontal className="size-4 text-kumo-subtle" />
+            Filter
+          </h2>
           <button
             onClick={() => setIsFilterOpen(false)}
-            className="p-1 rounded-lg text-purple-300 hover:text-white hover:bg-purple-900/40 transition-colors"
+            aria-label="Đóng bộ lọc"
+            className="grid size-11 lg:size-7 place-items-center rounded-md text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="size-4" />
           </button>
         </div>
 
-        <div className="space-y-5 pt-4">
-          {/* Start Date */}
-          <div>
-            <label className="block text-xs font-medium text-purple-300/80 mb-1.5">
-              Start Date
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
-                <Calendar className="w-4 h-4" />
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-5">
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 lg:grid-cols-1">
+            <div>
+              <label htmlFor="filter-start" className={fieldLabel}>Start Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-kumo-subtle pointer-events-none" />
+                <input
+                  id="filter-start"
+                  type="date"
+                  value={filterState.startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className={field}
+                />
               </div>
-              <input
-                type="date"
-                value={filterState.startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#140a24] border border-purple-900/70 text-xs sm:text-sm text-purple-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-              />
+            </div>
+
+            <div>
+              <label htmlFor="filter-end" className={fieldLabel}>End Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-kumo-subtle pointer-events-none" />
+                <input
+                  id="filter-end"
+                  type="date"
+                  value={filterState.endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className={field}
+                />
+              </div>
             </div>
           </div>
 
-          {/* End Date */}
           <div>
-            <label className="block text-xs font-medium text-purple-300/80 mb-1.5">
-              End Date
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
-                <Calendar className="w-4 h-4" />
-              </div>
-              <input
-                type="date"
-                value={filterState.endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#140a24] border border-purple-900/70 text-xs sm:text-sm text-purple-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-              />
-            </div>
-          </div>
-
-          {/* Genre Section matching Picture.webp */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-purple-300/80">Genre</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="filter-genre" className="text-sm font-medium text-kumo-default">Genre</label>
               {filterState.selectedGenres.length > 0 && (
                 <button
                   onClick={clearGenres}
-                  className="text-[11px] text-pink-400 hover:underline"
+                  className="text-sm text-kumo-link underline decoration-kumo-interact hover:decoration-current underline-offset-2"
                 >
                   Clear all
                 </button>
               )}
             </div>
 
-            {/* Search Genre Input */}
             <div className="relative mb-3">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400/60">
-                <Search className="w-3.5 h-3.5" />
-              </div>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-kumo-subtle pointer-events-none" />
               <input
+                id="filter-genre"
                 type="text"
                 placeholder="Search Genre"
                 value={genreSearch}
                 onChange={e => setGenreSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#140a24] border border-purple-900/70 text-xs text-purple-100 placeholder-purple-400/40 focus:outline-none focus:border-purple-500"
+                className={field}
               />
             </div>
 
-            {/* Selected genre tags matching Bollywood x, Hip Hop x */}
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="flex flex-wrap gap-1.5">
               {filterState.selectedGenres.map(g => (
                 <button
                   key={g}
                   onClick={() => toggleGenre(g)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-[#12091c] text-xs font-semibold shadow-sm hover:bg-purple-100 transition-colors"
+                  aria-label={`Bỏ lọc ${g}`}
+                  className="h-11 lg:h-7 inline-flex items-center gap-1 pl-3 pr-2 lg:pl-2.5 lg:pr-1.5 rounded-full bg-kumo-contrast text-kumo-inverse text-sm font-medium hover:opacity-90 transition-opacity"
                 >
-                  <span>{g}</span>
-                  <X className="w-3 h-3 text-[#12091c]" />
+                  {g}
+                  <X className="size-3.5" />
                 </button>
               ))}
-            </div>
-
-            {/* Available genre chips */}
-            <div className="flex flex-wrap gap-1.5 pt-1 border-t border-purple-900/40">
               {filteredGenres.map(g => {
-                const isSelected = filterState.selectedGenres.includes(g);
-                if (isSelected) return null;
+                if (filterState.selectedGenres.includes(g)) return null;
                 return (
                   <button
                     key={g}
                     onClick={() => toggleGenre(g)}
-                    className="px-2.5 py-1 rounded-full text-xs bg-purple-950/70 text-purple-300 border border-purple-800/40 hover:border-purple-500 hover:text-white transition-all flex items-center gap-1"
+                    className="h-11 lg:h-7 px-3 lg:px-2.5 rounded-full text-sm bg-kumo-base ring ring-kumo-line text-kumo-default hover:bg-kumo-tint transition-colors"
                   >
-                    <span>+</span> {g}
+                    {g}
                   </button>
                 );
               })}
             </div>
           </div>
+        </div>
 
-          {/* Action buttons */}
-          <div className="pt-2 flex items-center gap-2 border-t border-purple-900/50">
-            <button
-              onClick={resetFilters}
-              className="flex-1 py-2 rounded-xl bg-purple-950/60 text-purple-300 hover:bg-purple-900/50 text-xs font-medium border border-purple-800/40 transition-colors"
-            >
-              Reset Filters
-            </button>
-            <button
-              onClick={() => setIsFilterOpen(false)}
-              className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-900/40 transition-all flex items-center justify-center gap-1.5"
-            >
-              <Check className="w-3.5 h-3.5" />
-              Apply
-            </button>
-          </div>
+        <div className="flex-shrink-0 flex items-center gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:pb-4 border-t border-kumo-hairline">
+          <button
+            onClick={resetFilters}
+            className="flex-1 h-11 lg:h-9 rounded-lg bg-kumo-base ring ring-kumo-line hover:bg-kumo-tint text-kumo-default text-base font-medium transition-colors"
+          >
+            Reset Filters
+          </button>
+          <button
+            onClick={() => setIsFilterOpen(false)}
+            className="flex-1 h-11 lg:h-9 rounded-lg bg-kumo-brand hover:bg-kumo-brand-hover text-kumo-on-brand text-base font-medium transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Check className="size-4" />
+            Apply
+          </button>
         </div>
       </div>
-    </div>
+    </aside>
   );
 };

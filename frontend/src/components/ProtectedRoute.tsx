@@ -14,8 +14,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#12091c]">
-        <div className="w-10 h-10 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin" />
       </div>
     );
   }
