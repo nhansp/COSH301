@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { FeatureProvider } from './context/FeatureContext';
 import { EventProvider } from './context/EventContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
@@ -12,6 +13,7 @@ import { MyTicketsPage } from './pages/MyTicketsPage';
 export default function App() {
   return (
     <BrowserRouter>
+      <FeatureProvider>
       <AuthProvider>
         <EventProvider>
           <Routes>
@@ -44,6 +46,7 @@ export default function App() {
           </Routes>
         </EventProvider>
       </AuthProvider>
+      </FeatureProvider>
     </BrowserRouter>
   );
 }

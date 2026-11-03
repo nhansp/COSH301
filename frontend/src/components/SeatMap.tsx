@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SeatItem, TicketTier } from '../types';
+import { useFeatures } from '../context/FeatureContext';
 import { getInitialSeatsForEvent, saveSeatsForEvent, formatPrice, apiFetchSeats, apiHoldSeat, apiReleaseSeat } from '../services/eventService';
 import {
   Armchair,
@@ -32,6 +33,8 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   onProceedToCheckout,
   maxSeats = 4
 }) => {
+  const { isEnabled } = useFeatures();
+  const holdEnabled = isEnabled('seat_hold');
   const [seats, setSeats] = useState<SeatItem[]>([]);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'error' | 'info' | 'success' } | null>(null);
   const [realtimeSync, setRealtimeSync] = useState(true);
@@ -158,6 +161,12 @@ export const SeatMap: React.FC<SeatMapProps> = ({
     // 2. Given bấm vào ghế đang được giữ bởi người khác -> thông báo ghế đang được giữ
     if (seat.status === 'held') {
       showToast(`Ghế ${seat.id} đang được người khác giữ trong 5 phút. Vui lòng chọn ghế khác!`, 'error');
+      return;
+    }
+
+    // Selecting a seat creates a hold, so it is unavailable when holding is off
+    if (!holdEnabled) {
+      showToast('Tính năng giữ chỗ đang tạm tắt, hiện chưa thể chọn ghế.', 'info');
       return;
     }
 

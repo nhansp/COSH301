@@ -4,6 +4,7 @@ import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
+import { useFeatures } from '../context/FeatureContext';
 import { formatPrice, DEFAULT_BANNER_IMAGE, DEFAULT_EVENT_IMAGE, apiFetchEventDetail } from '../services/eventService';
 import {
   Calendar,
@@ -28,6 +29,8 @@ export const EventDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { getEventById, isLoading } = useEvents();
   const { isAuthenticated } = useAuth();
+  const { isEnabled } = useFeatures();
+  const seatMapEnabled = isEnabled('seat_map_realtime');
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'seatmap'>('seatmap');
@@ -213,17 +216,19 @@ export const EventDetailPage: React.FC = () => {
                 {formatPrice(event.priceStart, event.currency)}
               </div>
               <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    setActiveTab('seatmap');
-                    const el = document.getElementById('seat-map-section');
-                    el?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg shadow-purple-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                >
-                  <Armchair className="w-4 h-4" />
-                  <span>Chọn ghế trực quan (Seat Map)</span>
-                </button>
+                {seatMapEnabled && (
+                  <button
+                    onClick={() => {
+                      setActiveTab('seatmap');
+                      const el = document.getElementById('seat-map-section');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-lg shadow-purple-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                  >
+                    <Armchair className="w-4 h-4" />
+                    <span>Chọn ghế trực quan (Seat Map)</span>
+                  </button>
+                )}
                 <button
                   onClick={() => handleProceedToCheckout()}
                   className="w-full py-2.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-200 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -242,20 +247,22 @@ export const EventDetailPage: React.FC = () => {
 
         {/* Navigation Tabs between Seat Map and Event Info */}
         <div id="seat-map-section" className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => setActiveTab('seatmap')}
-            className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'seatmap'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-950 ring-2 ring-purple-400/50'
-                : 'bg-[#1b0d2d] text-purple-300 hover:text-white border border-purple-800/60'
-            }`}
-          >
-            <Armchair className="w-4 h-4" />
-            <span>Sơ đồ ghế trực quan (Prototype FR-01)</span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] border border-emerald-500/40 font-mono font-semibold">
-              REAL-TIME
-            </span>
-          </button>
+          {seatMapEnabled && (
+            <button
+              onClick={() => setActiveTab('seatmap')}
+              className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'seatmap'
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-950 ring-2 ring-purple-400/50'
+                  : 'bg-[#1b0d2d] text-purple-300 hover:text-white border border-purple-800/60'
+              }`}
+            >
+              <Armchair className="w-4 h-4" />
+              <span>Sơ đồ ghế trực quan (Prototype FR-01)</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] border border-emerald-500/40 font-mono font-semibold">
+                REAL-TIME
+              </span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('info')}
@@ -272,15 +279,21 @@ export const EventDetailPage: React.FC = () => {
 
         {activeTab === 'seatmap' && (
           <div className="mb-10">
-            <SeatMap
-              eventId={event.id}
-              currency={event.currency}
-              ticketTiers={event.ticketTiers}
-              selectedSeatIds={selectedSeats.map(s => s.id)}
-              onSeatsChange={setSelectedSeats}
-              onProceedToCheckout={handleProceedWithSeats}
-              maxSeats={4}
-            />
+            {seatMapEnabled ? (
+              <SeatMap
+                eventId={event.id}
+                currency={event.currency}
+                ticketTiers={event.ticketTiers}
+                selectedSeatIds={selectedSeats.map(s => s.id)}
+                onSeatsChange={setSelectedSeats}
+                onProceedToCheckout={handleProceedWithSeats}
+                maxSeats={4}
+              />
+            ) : (
+              <div className="rounded-2xl bg-[#1d0e32]/70 border border-purple-800/40 p-6 text-sm text-purple-200/90">
+                Sơ đồ ghế hiện chưa được mở. Bạn có thể mua vé nhanh theo hạng vé.
+              </div>
+            )}
           </div>
         )}
 
