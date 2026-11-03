@@ -1,430 +1,486 @@
-# Sơ đồ lớp theo mô hình BCE (Boundary — Control — Entity)
+# Sơ đồ lớp theo BCE (Boundary — Control — Entity)
 
-Tài liệu này đặc tả thiết kế hướng đối tượng của hệ thống EventTicketing theo kiến trúc BCE (bài B05), phân tách rành mạch giữa giao diện ngoại vi, nghiệp vụ điều khiển và thực thể dữ liệu.
+Sơ đồ lớp của backend, chia theo BCE như bài B05.
+Mục 2 và 3 vẽ đúng code đang có, tức phạm vi Sprint 2.
+Mục 5 liệt kê các lớp dự kiến cho Sprint 3–5, chưa có trong code.
 
-## 1. Nguyên tắc phân lớp BCE
+## 1. Phân lớp
 
-- **Boundary (`internal/httpapi`):** Tiếp nhận yêu cầu HTTP/SSE từ trình duyệt hoặc ứng dụng di động, giải mã dữ liệu, xác thực phiên đăng nhập, kiểm tra cờ tính năng (`RequireFeature`), phân quyền vai trò và đóng gói phản hồi JSON.
-- **Control (`internal/service`):** Xử lý quy tắc nghiệp vụ, điều phối giao dịch ACID, khóa ghế độc quyền bằng `pg_advisory_xact_lock`, phát thông báo thời gian thực qua `LISTEN/NOTIFY`, và thực thi các tiến trình chạy nền.
-- **Entity (`internal/store`):** Mô hình hóa các bảng dữ liệu trong PostgreSQL, quản lý truy vấn qua `sqlc` và ánh xạ dữ liệu trực tiếp từ cơ sở dữ liệu.
+- **Boundary** — `internal/httpapi`.
+  Handler nhận request HTTP và SSE, đọc JSON, lấy phiên đăng nhập và trả JSON.
+  Handler không gọi `store` trực tiếp, mọi truy cập dữ liệu đều qua service.
+- **Control** — `internal/service`.
+  Service giữ quy tắc nghiệp vụ và mở giao dịch với PostgreSQL.
+  Khi ghế đổi trạng thái, service gửi `pg_notify` trong cùng giao dịch.
+  `RealtimeHub` và `HoldReaper` chạy nền từ lúc api khởi động.
+- **Entity** — `internal/store`.
+  `sqlc` sinh struct từ schema trong `migrations/` và sinh hàm truy vấn từ `queries/`.
+  Mỗi struct ứng với một bảng trong [ERD](erd.md).
 
----
+Middleware trong `httpapi` không vẽ thành lớp, vì chúng là hàm bọc handler:
+- `RequireFeature` trả `404 feature_disabled` khi cờ tắt;
+- `RequireRole` chặn người dùng không đúng vai trò;
+- `RateLimiter` giới hạn số lần gọi API OTP theo IP;
+- `LoggingMiddleware`, `CORSMiddleware`.
 
-## 2. Sơ đồ lớp tổng thể
+Quy ước ghi trong sơ đồ:
+- Kiểu trả về bỏ `error` và bỏ dấu con trỏ.
+  Ví dụ `HoldSeat` trả `(*store.SeatHold, error)`, sơ đồ ghi `SeatHold`.
+- `List~T~` là slice `[]T` của Go.
+- Kiểu cột bỏ tiền tố `pgtype.`.
+  `Text` là chuỗi cho phép `NULL`.
+  `Numeric` là kiểu `numeric` của PostgreSQL, dùng cho tiền và tọa độ ghế.
+
+## 2. Sơ đồ BCE của code hiện tại
 
 ```mermaid
 classDiagram
-    %% ==========================================
-    %% BOUNDARY LAYER (internal/httpapi)
-    %% ==========================================
+    direction LR
+
     class SystemHandler {
+        <<boundary>>
         -FeatureManager features
         +HandleHealth(w, r)
         +HandleFeatures(w, r)
     }
 
     class AuthHandler {
+        <<boundary>>
         -AuthService authService
+        -bool cookieSecure
         +HandleRequestOTP(w, r)
         +HandleVerifyOTP(w, r)
         +HandleMe(w, r)
         +HandleLogout(w, r)
+        -session(w, r) GetSessionByTokenHashRow, bool
     }
 
     class EventHandler {
+        <<boundary>>
         -EventService eventService
         +HandleEvents(w, r)
-        +HandleEventDetail(w, r, slug)
+        -handleEventDetail(w, r, identifier)
     }
 
     class SeatHandler {
+        <<boundary>>
         -SeatService seatService
         -AuthService authService
+        -EventService eventService
         +HandleEventSeats(w, r)
         +HandleHolds(w, r)
     }
 
     class StreamHandler {
+        <<boundary>>
         -RealtimeHub hub
+        -EventService eventService
         +HandleEventStream(w, r)
     }
 
-    class OrderHandler {
-        -OrderService orderService
-        -AuthService authService
-        +HandleCreateOrder(w, r)
-        +HandleGetOrder(w, r)
+    class OrganizerHandler {
+        <<boundary>>
+        -OrganizerService organizer
+        -EventService events
+        +HandleListEvents(w, r, sess)
+        +HandleUpdateZonePricing(w, r, sess)
+        -writeErr(w, r, err)
     }
 
-    class PaymentHandler {
-        -PaymentService paymentService
-        +HandleCreatePayment(w, r)
-        +HandleIPN(w, r, provider)
-        +HandleReturn(w, r, provider)
-    }
-
-    class GateHandler {
-        -GateCheckinService checkinService
-        +HandleScan(w, r)
-        +HandleSyncOffline(w, r)
-        +HandleManifest(w, r)
-    }
-
-    class DashboardHandler {
-        -DashboardService dashboardService
-        +HandleStream(w, r)
-        +HandleExportCSV(w, r)
-        +HandleExportXLSX(w, r)
-    }
-
-    %% ==========================================
-    %% CONTROL LAYER (internal/service)
-    %% ==========================================
     class AuthService {
+        <<control>>
         -Queries queries
         -Config cfg
-        +RequestOTP(ctx, destination, channel) string
-        +VerifyOTP(ctx, destination, code, ip, ua) tuple
-        +GetUserByToken(ctx, token) SessionUser
-        +Logout(ctx, token) error
-    }
-
-    class SeatService {
-        -Pool dbPool
-        -Queries queries
-        +GetSeatMap(ctx, eventID, userID) list
-        +HoldSeat(ctx, eventID, seatID, userID) SeatHold
-        +ReleaseSeat(ctx, eventID, seatID, userID) error
-        +ExpireStaleHolds(ctx) list
+        +RequestOTP(ctx, destination) OTPIssue
+        +VerifyOTP(ctx, destination, code, ipAddress, userAgent) string, User
+        +GetUserByToken(ctx, rawToken) GetSessionByTokenHashRow
+        +Logout(ctx, rawToken)
     }
 
     class EventService {
+        <<control>>
         -Queries queries
-        +ListEvents(ctx) list
+        +ListEvents(ctx) List~ListPublishedEventsRow~
+        +GetEventDetail(ctx, identifier) EventDetailDTO
         +GetEventDetailBySlug(ctx, slug) EventDetailDTO
-        +GetEventByID(ctx, id) Event
+        +ResolveEventID(ctx, identifier) UUID
+        +GetEventByID(ctx, id) GetEventByIDRow
+    }
+
+    class SeatService {
+        <<control>>
+        -Pool dbPool
+        -Queries queries
+        -bool limitTickets
+        +GetSeatMap(ctx, eventID, currentUserID) List~SeatMapItem~
+        +HoldSeat(ctx, eventID, seatID, userID) SeatHold
+        +ReleaseSeat(ctx, eventID, seatID, userID)
+        +ExpireStaleHolds(ctx) List~ExpireStaleSeatHoldsRow~
+    }
+
+    class OrganizerService {
+        <<control>>
+        -Pool dbPool
+        -Queries queries
+        +ListEvents(ctx, userID, isAdmin) List~OrganizerEventDTO~
+        +AuthorizeEvent(ctx, eventID, userID, isAdmin)
+        +UpdateZonePricing(ctx, eventID, zoneID, userID, p) ZonePricing
     }
 
     class RealtimeHub {
+        <<control>>
         -Pool dbPool
+        -RWMutex subMu
         -map eventSubs
         +Subscribe(eventID) ClientChannel
         +Unsubscribe(eventID, ch)
         +Broadcast(eventID, payload)
         +StartListener(ctx)
+        -listen(ctx)
     }
 
     class HoldReaper {
+        <<control>>
         -SeatService seatService
         -Duration interval
         +Start(ctx)
     }
 
-    class OrderService {
-        -Pool dbPool
-        -Queries queries
-        +CreateOrderFromHolds(ctx, userID, eventID) Order
-        +GetOrderByCode(ctx, orderCode) Order
-        +CancelExpiredOrders(ctx) list
-    }
-
-    class PaymentService {
-        -Pool dbPool
-        -Queries queries
-        +InitiatePayment(ctx, orderID, provider) Payment
-        +ProcessIPN(ctx, provider, txnID, payload) error
-        +ReconcilePayments(ctx) list
-    }
-
-    class GateCheckinService {
-        -Queries queries
-        +ValidateOnline(ctx, qrToken, gateID) CheckinResult
-        +SyncOfflineCheckins(ctx, checkins) SyncReport
-    }
-
-    class DynamicPricingEngine {
-        -Queries queries
-        +CalculateSuggestions(ctx, eventID) list
-        +ApproveSuggestion(ctx, suggestionID, userID) error
-        +RejectSuggestion(ctx, suggestionID, userID) error
-    }
-
-    %% ==========================================
-    %% ENTITY LAYER (internal/store)
-    %% ==========================================
     class User {
+        <<entity>>
+    }
+    class OtpVerification {
+        <<entity>>
+    }
+    class Session {
+        <<entity>>
+    }
+    class Venue {
+        <<entity>>
+    }
+    class VenueZone {
+        <<entity>>
+    }
+    class Seat {
+        <<entity>>
+    }
+    class Event {
+        <<entity>>
+    }
+    class EventZone {
+        <<entity>>
+    }
+    class EventSeat {
+        <<entity>>
+    }
+    class SeatHold {
+        <<entity>>
+    }
+    class Ticket {
+        <<entity>>
+    }
+    class PriceChange {
+        <<entity>>
+    }
+
+    AuthHandler --> AuthService
+    EventHandler --> EventService
+    SeatHandler --> SeatService
+    SeatHandler --> AuthService
+    SeatHandler --> EventService
+    StreamHandler --> RealtimeHub
+    StreamHandler --> EventService
+    OrganizerHandler --> OrganizerService
+    OrganizerHandler --> EventService
+    HoldReaper --> SeatService : gọi định kỳ
+
+    AuthService ..> User : đọc, tạo, cập nhật
+    AuthService ..> OtpVerification : tạo, xác minh
+    AuthService ..> Session : tạo, đọc, xóa
+
+    EventService ..> Event : đọc
+    EventService ..> Venue : đọc
+    EventService ..> EventZone : đọc giá
+    EventService ..> VenueZone : đọc
+
+    SeatService ..> Event : kiểm tra đang bán
+    SeatService ..> EventSeat : đổi trạng thái
+    SeatService ..> SeatHold : tạo, nhả, hết hạn
+    SeatService ..> Seat : đọc
+    SeatService ..> VenueZone : đọc
+    SeatService ..> Ticket : đếm vé đã mua
+
+    OrganizerService ..> Event : đọc, kiểm tra BTC
+    OrganizerService ..> Venue : đọc
+    OrganizerService ..> EventZone : cập nhật giá
+    OrganizerService ..> EventSeat : đổi giá ghế trống
+    OrganizerService ..> PriceChange : ghi nhật ký giá
+```
+
+Cách các lớp phối hợp:
+- `SeatHandler` gọi `AuthService.GetUserByToken` để lấy người dùng, rồi gọi `SeatService`.
+- `OrganizerHandler` dùng `RequireRole`, nên chỉ `ORGANIZER` và `ADMIN` vào được.
+  Trước khi đổi giá, handler gọi `OrganizerService.AuthorizeEvent` để kiểm tra người gọi là BTC của sự kiện.
+- `SeatService` không gọi `RealtimeHub` trực tiếp.
+  Service gửi `pg_notify` lên kênh `event_seats_channel`.
+  `RealtimeHub` giữ một kết nối `LISTEN` riêng trên kênh này và chuyển tin tới các `StreamHandler` đang mở.
+- `HoldReaper` gọi `SeatService.ExpireStaleHolds` mỗi 5 giây.
+- `SeatService` chỉ đếm vé trong bảng `tickets` khi bật cờ `ticket_limit`.
+  Khi đó, `HoldSeat` khóa cặp (người dùng, sự kiện) bằng `pg_advisory_xact_lock` trước khi đếm.
+- `HoldSeat` không dùng khóa advisory để chống bán trùng.
+  Ghế chỉ chuyển sang `HELD` khi đang `AVAILABLE`.
+  Partial unique index trên `seat_holds` là lớp chặn thứ hai.
+
+## 3. Thuộc tính các Entity đang dùng
+
+Thuộc tính lấy đúng tên trường trong `internal/store/models.go`.
+
+```mermaid
+classDiagram
+    class User {
+        <<entity>>
         +UUID ID
-        +string Phone
-        +string Email
-        +string FullName
+        +Text Phone
+        +Text Email
+        +Text FullName
         +UserRole Role
         +UserStatus Status
-        +Time CreatedAt
+        +Timestamptz PhoneVerifiedAt
+        +Timestamptz EmailVerifiedAt
+        +Timestamptz LastLoginAt
+        +Timestamptz CreatedAt
+        +Timestamptz UpdatedAt
     }
 
     class OtpVerification {
+        <<entity>>
         +UUID ID
         +string Destination
         +string Channel
         +string Purpose
         +string CodeHash
-        +Time ExpiresAt
-        +Time VerifiedAt
+        +Timestamptz ExpiresAt
+        +Timestamptz VerifiedAt
+        +int32 AttemptCount
+        +Timestamptz CreatedAt
     }
 
     class Session {
+        <<entity>>
         +UUID ID
         +UUID UserID
         +string TokenHash
-        +string IPAddress
-        +Time ExpiresAt
+        +Text IpAddress
+        +Text UserAgent
+        +Timestamptz ExpiresAt
+        +Timestamptz CreatedAt
     }
 
     class Venue {
+        <<entity>>
         +UUID ID
         +string Name
-        +string Address
+        +Text Address
         +string Timezone
+        +Timestamptz CreatedAt
     }
 
     class VenueZone {
+        <<entity>>
         +UUID ID
         +UUID VenueID
         +string Code
         +string Name
-        +int Capacity
+        +Text Floor
+        +int32 Capacity
+        +Timestamptz CreatedAt
     }
 
     class Seat {
+        <<entity>>
         +UUID ID
         +UUID ZoneID
-        +string RowLabel
-        +string SeatNumber
+        +Text RowLabel
+        +Text SeatNumber
         +string SeatLabel
+        +Numeric XPosition
+        +Numeric YPosition
         +bool IsActive
+        +Timestamptz CreatedAt
     }
 
     class Event {
+        <<entity>>
         +UUID ID
         +UUID OrganizerID
         +UUID VenueID
         +string Name
         +string Slug
+        +Text Description
+        +Text Genre
+        +Text ImageUrl
+        +Text ImageCredit
+        +Text City
+        +Timestamptz StartsAt
+        +Timestamptz EndsAt
+        +Timestamptz SalesStartsAt
+        +Timestamptz SalesEndsAt
         +EventStatus Status
-        +int MaxTicketsPerUser
+        +int32 MaxTicketsPerUser
         +bool WaitingRoomEnabled
+        +int32 WaitingRoomCapacity
+        +Timestamptz CreatedAt
+        +Timestamptz UpdatedAt
+    }
+
+    class EventZone {
+        <<entity>>
+        +UUID ID
+        +UUID EventID
+        +UUID ZoneID
+        +Numeric BasePrice
+        +Numeric FloorPrice
+        +Numeric CeilingPrice
+        +bool IsDynamicPricingEnabled
+        +Timestamptz CreatedAt
+        +Timestamptz UpdatedAt
     }
 
     class EventSeat {
+        <<entity>>
         +UUID ID
         +UUID EventID
         +UUID SeatID
         +SeatStatus Status
-        +int64 CurrentPrice
+        +Numeric CurrentPrice
         +int64 Version
-    }
-
-    class EventZone {
-        +UUID ID
-        +UUID EventID
-        +UUID ZoneID
-        +int64 BasePrice
-        +int64 FloorPrice
-        +int64 CeilingPrice
-        +bool IsDynamicPricingEnabled
+        +Timestamptz UpdatedAt
     }
 
     class SeatHold {
+        <<entity>>
         +UUID ID
         +UUID EventID
         +UUID SeatID
         +UUID UserID
         +string HoldToken
         +HoldStatus Status
-        +Time ExpiresAt
-    }
-
-    class Order {
-        +UUID ID
-        +UUID EventID
-        +UUID UserID
-        +string OrderCode
-        +OrderStatus Status
-        +int64 TotalAmount
-        +int64 FinalAmount
-    }
-
-    class OrderItem {
-        +UUID ID
-        +UUID OrderID
-        +UUID SeatID
-        +int64 Price
-    }
-
-    class Payment {
-        +UUID ID
-        +UUID OrderID
-        +string PaymentCode
-        +string Provider
-        +string ProviderTxnID
-        +int64 Amount
-        +PaymentStatus Status
+        +Timestamptz CreatedAt
+        +Timestamptz ExpiresAt
     }
 
     class Ticket {
+        <<entity>>
         +UUID ID
         +UUID OrderID
         +UUID EventID
         +UUID SeatID
         +UUID UserID
         +string TicketCode
-        +string QRSecret
+        +string QrSecret
         +TicketStatus Status
-    }
-
-    class GateDevice {
-        +UUID ID
-        +UUID VenueID
-        +string GateName
-        +string DeviceCode
-        +bool IsActive
-    }
-
-    class Checkin {
-        +UUID ID
-        +UUID TicketID
-        +UUID EventID
-        +UUID GateDeviceID
-        +CheckinResult Result
-        +bool IsOffline
+        +Timestamptz IssuedAt
+        +Timestamptz UpdatedAt
     }
 
     class PriceChange {
+        <<entity>>
         +int64 ID
         +UUID EventID
         +UUID ZoneID
-        +int64 OldPrice
-        +int64 NewPrice
+        +Numeric OldPrice
+        +Numeric NewPrice
         +UUID ChangedBy
         +string Reason
+        +Timestamptz CreatedAt
     }
 
-    class PriceSuggestion {
-        +UUID ID
-        +UUID EventID
-        +UUID ZoneID
-        +int64 CurrentPrice
-        +int64 SuggestedPrice
-        +string Reason
-        +string Status
-    }
-
-    class QueueEntry {
-        +UUID ID
-        +UUID EventID
-        +UUID UserID
-        +int Position
-        +string Status
-    }
-
-    class Promotion {
-        +UUID ID
-        +UUID EventID
-        +string Code
-        +string DiscountType
-        +int64 DiscountValue
-        +bool IsActive
-    }
-
-    class PromotionUsage {
-        +UUID ID
-        +UUID PromotionID
-        +UUID OrderID
-        +UUID UserID
-        +int64 DiscountAmount
-    }
-
-    class AuditLog {
-        +int64 ID
-        +UUID ActorUserID
-        +UUID EventID
-        +string Action
-        +string EntityType
-    }
-
-    class SalesSnapshot {
-        +int64 ID
-        +UUID EventID
-        +int TicketsSold
-        +int64 GrossRevenue
-    }
-
-    %% ==========================================
-    %% RELATIONSHIPS (Boundary -> Control -> Entity)
-    %% ==========================================
-    AuthHandler --> AuthService : "goi nghiep vu xac thuc"
-    EventHandler --> EventService : "truy van thong tin su kien"
-    SeatHandler --> SeatService : "dieu phoi giu va nha ghe"
-    StreamHandler --> RealtimeHub : "dang ky kenh SSE"
-    HoldReaper --> SeatService : "kich hoat quet dinh ky"
-    OrderHandler --> OrderService : "xu ly dat ve"
-    PaymentHandler --> PaymentService : "xu ly thanh toan & IPN"
-    GateHandler --> GateCheckinService : "xac thuc ve tai cong"
-    DashboardHandler --> DynamicPricingEngine : "quan tri de xuat gia"
-
-    AuthService ..> User : "quan ly"
-    AuthService ..> OtpVerification : "tao & xac minh"
-    AuthService ..> Session : "ghi nhan phien"
-
-    SeatService ..> EventSeat : "kiem tra & khoa status"
-    SeatService ..> SeatHold : "tao ban ghi giu 5 phut"
-    SeatService ..> Seat : "doc toa do"
-
-    EventService ..> Event : "doc thong tin"
-    EventService ..> EventZone : "lay danh sach gia"
-    EventService ..> Venue : "thong tin dia diem"
-
-    OrderService ..> Order : "tao don hang"
-    OrderService ..> OrderItem : "chi tiet ve trong don"
-
-    PaymentService ..> Payment : "ghi nhan giao dich"
-    PaymentService ..> Ticket : "phat hanh khi paid"
-
-    GateCheckinService ..> Ticket : "kiem tra chu ky HMAC"
-    GateCheckinService ..> Checkin : "luu lich su quet"
-
-    DynamicPricingEngine ..> PriceSuggestion : "sinh de xuat"
-    DynamicPricingEngine ..> PriceChange : "ghi nhat ky khi duyet"
+    User "1" -- "*" Session
+    User "1" -- "*" Event : tổ chức
+    User "1" -- "*" SeatHold
+    User "1" -- "*" Ticket
+    User "1" -- "*" PriceChange : đổi giá
+    Venue "1" -- "*" VenueZone
+    Venue "1" -- "*" Event
+    VenueZone "1" -- "*" Seat
+    VenueZone "1" -- "*" EventZone
+    VenueZone "1" -- "*" PriceChange
+    Event "1" -- "*" EventZone
+    Event "1" -- "*" EventSeat
+    Event "1" -- "*" SeatHold
+    Event "1" -- "*" Ticket
+    Event "1" -- "*" PriceChange
+    Seat "1" -- "*" EventSeat
+    Seat "1" -- "*" SeatHold
+    Seat "1" -- "*" Ticket
 ```
 
----
+`OtpVerification` không có khóa ngoại tới `User`, vì mã OTP được gửi trước khi có tài khoản.
+`Ticket.OrderID` trỏ tới `Order`, lớp này chưa có service nào dùng nên không vẽ ở đây.
 
-## 3. Bảng ánh xạ Entity với Bảng Cơ sở dữ liệu
+Các kiểu enum lấy từ `models.go`:
 
-Mỗi thực thể (Entity) trong sơ đồ lớp đều ánh xạ 1-1 với một bảng trong cơ sở dữ liệu PostgreSQL (`internal/store`):
+| Kiểu | Giá trị |
+|---|---|
+| `UserRole` | `CUSTOMER`, `ORGANIZER`, `CEO`, `GATE_STAFF`, `ADMIN` |
+| `UserStatus` | `PENDING`, `ACTIVE`, `LOCKED`, `DISABLED` |
+| `EventStatus` | `DRAFT`, `ON_SALE`, `SOLD_OUT`, `PAUSED`, `ENDED`, `CANCELLED` |
+| `SeatStatus` | `AVAILABLE`, `HELD`, `SOLD`, `BLOCKED` |
+| `HoldStatus` | `ACTIVE`, `EXPIRED`, `RELEASED`, `CONVERTED` |
+| `TicketStatus` | `ISSUED`, `ACTIVE`, `USED`, `REVOKED`, `VOID` |
 
-| Lớp Thực thể (Entity) | Bảng trong Database | Mục đích nghiệp vụ |
-|---|---|---|
-| `User` | `users` | Thông tin tài khoản, vai trò và trạng thái người dùng |
-| `OtpVerification` | `otp_verifications` | Lưu trữ mã hash OTP và mốc hết hạn phục vụ đăng nhập |
-| `Session` | `sessions` | Quản lý phiên làm việc của người dùng trên máy chủ |
-| `Venue` | `venues` | Địa điểm tổ chức sự kiện |
-| `VenueZone` | `venue_zones` | Khu vực ghế thuộc địa điểm (VIP, Khán đài A, GA...) |
-| `Seat` | `seats` | Vị trí ghế vật lý (hàng, số ghế, tọa độ hiển thị) |
-| `Event` | `events` | Sự kiện, thời gian diễn ra, trạng thái mở bán |
-| `EventSeat` | `event_seats` | Trạng thái (`AVAILABLE`, `HELD`, `SOLD`) và giá hiện tại của ghế trong sự kiện |
-| `EventZone` | `event_zones` | Cấu hình giá cơ bản, giá sàn, giá trần của từng khu vực trong sự kiện |
-| `SeatHold` | `seat_holds` | Lịch sử và thông tin khóa ghế độc quyền trong 5 phút |
-| `Order` | `orders` | Đơn hàng mua vé kèm tổng tiền thanh toán |
-| `OrderItem` | `order_items` | Danh sách ghế chi tiết nằm trong đơn hàng |
-| `Payment` | `payments` | Giao dịch qua cổng MoMo / VNPAY và đối soát |
-| `Ticket` | `tickets` | Vé điện tử đã phát hành kèm mã bí mật sinh QR xoay vòng |
-| `GateDevice` | `gate_devices` | Thiết bị máy quét soát vé tại các cổng vào |
-| `Checkin` | `checkins` | Nhật ký các lượt quét vé (trực tuyến và ngoại tuyến) |
-| `PriceChange` | `price_changes` | Nhật ký bất biến ghi lại lịch sử thay đổi giá vé |
-| `PriceSuggestion` | `price_suggestions` | Đề xuất giá vé tự động chờ Ban Tổ chức phê duyệt |
-| `QueueEntry` | `queue_entries` | Hàng chờ ảo sắp xếp vị trí mua vé công bằng |
-| `Promotion` | `promotions` | Chương trình khuyến mại và mã giảm giá |
-| `PromotionUsage` | `promotion_usages` | Lịch sử áp dụng mã giảm giá theo từng đơn hàng |
-| `AuditLog` | `audit_logs` | Nhật ký kiểm toán bất biến phục vụ truy vết hệ thống |
-| `SalesSnapshot` | `sales_snapshots` | Dữ liệu tổng hợp theo phút phục vụ CEO Dashboard |
+## 4. Ánh xạ Entity với bảng
+
+`models.go` có đủ 23 struct cho 23 bảng của ERD.
+Cột "Control dùng" cho biết service nào đang đọc hoặc ghi bảng đó.
+Dấu "—" nghĩa là chưa có code dùng, bảng chờ tính năng của cờ tương ứng.
+
+| Entity | Bảng | Control dùng | Cờ |
+|---|---|---|---|
+| `User` | `users` | `AuthService` | `otp_login` |
+| `OtpVerification` | `otp_verifications` | `AuthService` | `otp_login` |
+| `Session` | `sessions` | `AuthService` | `otp_login` |
+| `Venue` | `venues` | `EventService`, `OrganizerService` | `organizer_console` |
+| `VenueZone` | `venue_zones` | `EventService`, `SeatService` | `organizer_console` |
+| `Seat` | `seats` | `SeatService` | `seat_map_realtime` |
+| `Event` | `events` | `EventService`, `SeatService`, `OrganizerService` | FR-02, luôn bật |
+| `EventZone` | `event_zones` | `EventService`, `OrganizerService` | `zone_pricing` |
+| `EventSeat` | `event_seats` | `SeatService`, `OrganizerService` | `seat_map_realtime`, `seat_hold` |
+| `SeatHold` | `seat_holds` | `SeatService` | `seat_hold` |
+| `PriceChange` | `price_changes` | `OrganizerService` | `zone_pricing`, `price_log` |
+| `Ticket` | `tickets` | `SeatService` (chỉ đếm) | `ticket_limit`, `payments`, `rotating_qr` |
+| `Order` | `orders` | — | `payments` |
+| `OrderItem` | `order_items` | — | `payments` |
+| `Payment` | `payments` | — | `payments`, `reconciliation` |
+| `QueueEntry` | `queue_entries` | — | `waiting_room` |
+| `GateDevice` | `gate_devices` | — | `gate_checkin` |
+| `Checkin` | `checkins` | — | `gate_checkin`, `offline_checkin` |
+| `SalesSnapshot` | `sales_snapshots` | — | `ceo_dashboard` |
+| `PriceSuggestion` | `price_suggestions` | — | `dynamic_pricing` |
+| `Promotion` | `promotions` | — | `promo_suggestions` |
+| `PromotionUsage` | `promotion_usages` | — | `promo_suggestions` |
+| `AuditLog` | `audit_logs` | — | chưa gắn cờ |
+
+Bảng `price_changes` luôn được ghi khi giá cơ bản đổi.
+Cờ `price_log` chỉ ẩn hoặc hiện trang xem nhật ký.
+
+## 5. Lớp dự kiến (chưa làm)
+
+Các lớp dưới đây chưa có trong code.
+Tên lớp là tên dự kiến, có thể đổi khi viết code.
+Endpoint lấy từ mục 7 của [thiết kế](design/README.md).
+
+| Lớp dự kiến | Cờ | Endpoint, tác vụ nền | Bảng |
+|---|---|---|---|
+| Mở rộng `OrganizerHandler`, `OrganizerService` | `organizer_console` | `/api/organizer/venues/…`, `/api/organizer/events/…` | `venues`, `venue_zones`, `seats`, `events`, `event_seats` |
+| `QueueHandler`, `QueueService` | `waiting_room` | `POST /api/events/{id}/queue`, `GET /api/events/{id}/queue/me`; tác vụ cho người kế tiếp vào | `queue_entries` |
+| Middleware kiểm tra Turnstile | `bot_check` | Bọc `POST /api/auth/otp/request` | — |
+| `OrderHandler`, `OrderService` | `payments` | `POST /api/orders`, `GET /api/orders/{id}` | `orders`, `order_items`, `seat_holds` |
+| `PaymentHandler`, `PaymentService` | `payments`, `reconciliation` | `POST /api/orders/{id}/payments`, `GET /api/payments/{provider}/return`, `POST /api/payments/{provider}/ipn`; tác vụ đối soát | `payments`, `orders`, `tickets` |
+| `TicketHandler`, `TicketService` | `rotating_qr`, `ticket_email` | `GET /api/me/tickets`, `GET /api/tickets/{id}/qr` | `tickets` |
+| Lớp gửi OTP và vé qua SMTP, SMS Gateway | `otp_login`, `ticket_email` | Dùng trong `AuthService` và `TicketService` | — |
+| `GateHandler`, `GateCheckinService` | `gate_checkin`, `offline_checkin` | `GET /api/gate/events/{id}/manifest`, `POST /api/gate/checkins`, `POST /api/gate/sync` | `tickets`, `checkins`, `gate_devices` |
+| `DashboardHandler`, `DashboardService` | `ceo_dashboard`, `reports_export` | `GET /api/dashboard/stream`, `GET /api/reports/sales.csv`, `GET /api/reports/sales.xlsx`; tác vụ chụp số liệu | `sales_snapshots` |
+| `DynamicPricingEngine` | `dynamic_pricing` | Tác vụ tính đề xuất 5 phút một lần; `POST /api/organizer/suggestions/{id}/approve`, `…/reject` | `price_suggestions`, `price_changes`, `event_zones`, `event_seats` |
+| Chưa thiết kế | `promo_suggestions` | Chưa có endpoint trong thiết kế | `promotions`, `promotion_usages` |
+| Chưa thiết kế | `price_log` | Chưa có endpoint trong thiết kế | `price_changes` |
