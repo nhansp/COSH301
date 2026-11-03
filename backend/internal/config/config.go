@@ -3,15 +3,21 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
-	Port               int
-	DatabaseURL        string
-	AppEnv             string
-	CORSAllowedOrigins string
-	OTPMock            bool
-	Features           *FeatureManager
+	Port        int
+	DatabaseURL string
+	AppEnv      string
+	// CORSAllowedOrigins lists origins allowed to call the API cross-origin.
+	// Empty means same-origin only (the frontend proxies /api through nginx).
+	CORSAllowedOrigins []string
+	// OTPDemo shows customer login codes on screen instead of sending them.
+	// Staff codes are only ever written to the server log.
+	OTPDemo      bool
+	CookieSecure bool
+	Features     *FeatureManager
 }
 
 func Load() *Config {
@@ -30,19 +36,20 @@ func Load() *Config {
 		appEnv = "development"
 	}
 
-	corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
-	if corsOrigins == "" {
-		corsOrigins = "*"
+	var origins []string
+	for _, o := range strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			origins = append(origins, o)
+		}
 	}
-
-	otpMock := os.Getenv("OTP_MOCK") != "false" // default to true in dev for convenience
 
 	return &Config{
 		Port:               port,
 		DatabaseURL:        dbURL,
 		AppEnv:             appEnv,
-		CORSAllowedOrigins: corsOrigins,
-		OTPMock:            otpMock,
+		CORSAllowedOrigins: origins,
+		OTPDemo:            os.Getenv("OTP_DEMO") == "true",
+		CookieSecure:       os.Getenv("COOKIE_SECURE") == "true",
 		Features:           NewFeatureManagerFromEnv(),
 	}
 }

@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"eventticketing/internal/config"
 	"eventticketing/internal/httpapi"
 	"eventticketing/internal/service"
 	"eventticketing/internal/store"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -22,11 +22,8 @@ func main() {
 	log.Printf("Starting EventTicketing API on port %d [env: %s, profile: %s]", cfg.Port, cfg.AppEnv, cfg.Features.Profile())
 
 	// Run migrations
-	log.Println("Checking & running database migrations...")
 	if err := store.RunMigrations(cfg.DatabaseURL); err != nil {
-		log.Printf("Warning: Database migration failed (will proceed if database is still starting): %v", err)
-	} else {
-		log.Println("Database migrations applied successfully")
+		log.Fatalf("Database migration failed: %v", err)
 	}
 
 	// Connect to PGX pool
@@ -42,18 +39,17 @@ func main() {
 
 	dbPool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
-		log.Printf("Warning: Failed to connect to PostgreSQL pool: %v", err)
-	} else {
-		defer dbPool.Close()
-		log.Println("Connected to PostgreSQL pool successfully")
+		log.Fatalf("Failed to create PostgreSQL pool: %v", err)
 	}
+	defer dbPool.Close()
 
 	queries := store.New(dbPool)
 
 	// Initialize BCE Control services
 	authService := service.NewAuthService(queries, cfg)
 	eventService := service.NewEventService(queries)
-	seatService := service.NewSeatService(dbPool, queries)
+	seatService := service.NewSeatService(dbPool, queries, cfg.Features.IsEnabled(config.FlagTicketLimit))
+	organizerService := service.NewOrganizerService(dbPool, queries)
 	realtimeHub := service.NewRealtimeHub(dbPool)
 	holdReaper := service.NewHoldReaper(seatService, 5*time.Second)
 
@@ -69,6 +65,7 @@ func main() {
 		EventService: eventService,
 		SeatService:  seatService,
 		RealtimeHub:  realtimeHub,
+		Organizer:    organizerService,
 	})
 
 	server := &http.Server{

@@ -13,9 +13,9 @@ import (
 
 func TestAuthHandler_RequestOTP_Validation(t *testing.T) {
 	cfg := config.Load()
-	cfg.OTPMock = true
+	cfg.OTPDemo = true
 	as := service.NewAuthService(nil, cfg)
-	handler := NewAuthHandler(as)
+	handler := NewAuthHandler(as, false)
 
 	// Missing destination
 	body, _ := json.Marshal(map[string]string{"destination": ""})
@@ -38,7 +38,7 @@ func TestAuthHandler_RequestOTP_Validation(t *testing.T) {
 
 func TestAuthHandler_Me_Unauthorized(t *testing.T) {
 	as := service.NewAuthService(nil, config.Load())
-	handler := NewAuthHandler(as)
+	handler := NewAuthHandler(as, false)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
 	rec := httptest.NewRecorder()

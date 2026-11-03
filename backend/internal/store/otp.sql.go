@@ -11,20 +11,94 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const consumeOTPAttempt = `-- name: ConsumeOTPAttempt :one
+UPDATE otp_verifications
+SET attempt_count = attempt_count + 1
+WHERE id = (
+    SELECT o.id FROM otp_verifications o
+    WHERE o.destination = $1 AND o.purpose = $2
+      AND o.verified_at IS NULL
+      AND o.expires_at > now()
+      AND o.attempt_count < $3::int
+    ORDER BY o.created_at DESC
+    LIMIT 1
+    FOR UPDATE
+)
+RETURNING id, destination, channel, purpose, code_hash, expires_at, verified_at, attempt_count, created_at
+`
+
+type ConsumeOTPAttemptParams struct {
+	Destination string `json:"destination"`
+	Purpose     string `json:"purpose"`
+	MaxAttempts int32  `json:"max_attempts"`
+}
+
+// ConsumeOTPAttempt counts one verification attempt against the newest usable code
+// and returns it, so concurrent guesses cannot exceed the attempt limit.
+func (q *Queries) ConsumeOTPAttempt(ctx context.Context, arg ConsumeOTPAttemptParams) (OtpVerification, error) {
+	row := q.db.QueryRow(ctx, consumeOTPAttempt, arg.Destination, arg.Purpose, arg.MaxAttempts)
+	var i OtpVerification
+	err := row.Scan(
+		&i.ID,
+		&i.Destination,
+		&i.Channel,
+		&i.Purpose,
+		&i.CodeHash,
+		&i.ExpiresAt,
+		&i.VerifiedAt,
+		&i.AttemptCount,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const countRecentOTPs = `-- name: CountRecentOTPs :one
+SELECT
+    COUNT(*) FILTER (WHERE created_at > now() - make_interval(secs => $3::int))::int AS in_cooldown,
+    COUNT(*)::int AS in_window
+FROM otp_verifications
+WHERE destination = $1 AND purpose = $2
+  AND created_at > now() - make_interval(secs => $4::int)
+`
+
+type CountRecentOTPsParams struct {
+	Destination     string `json:"destination"`
+	Purpose         string `json:"purpose"`
+	CooldownSeconds int32  `json:"cooldown_seconds"`
+	WindowSeconds   int32  `json:"window_seconds"`
+}
+
+type CountRecentOTPsRow struct {
+	InCooldown int32 `json:"in_cooldown"`
+	InWindow   int32 `json:"in_window"`
+}
+
+func (q *Queries) CountRecentOTPs(ctx context.Context, arg CountRecentOTPsParams) (CountRecentOTPsRow, error) {
+	row := q.db.QueryRow(ctx, countRecentOTPs,
+		arg.Destination,
+		arg.Purpose,
+		arg.CooldownSeconds,
+		arg.WindowSeconds,
+	)
+	var i CountRecentOTPsRow
+	err := row.Scan(&i.InCooldown, &i.InWindow)
+	return i, err
+}
+
 const createOTP = `-- name: CreateOTP :one
 INSERT INTO otp_verifications (
     destination, channel, purpose, code_hash, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, now() + make_interval(secs => $5::int)
 ) RETURNING id, destination, channel, purpose, code_hash, expires_at, verified_at, attempt_count, created_at
 `
 
 type CreateOTPParams struct {
-	Destination string             `json:"destination"`
-	Channel     string             `json:"channel"`
-	Purpose     string             `json:"purpose"`
-	CodeHash    string             `json:"code_hash"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	Destination string `json:"destination"`
+	Channel     string `json:"channel"`
+	Purpose     string `json:"purpose"`
+	CodeHash    string `json:"code_hash"`
+	TtlSeconds  int32  `json:"ttl_seconds"`
 }
 
 func (q *Queries) CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerification, error) {
@@ -33,7 +107,7 @@ func (q *Queries) CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerifi
 		arg.Channel,
 		arg.Purpose,
 		arg.CodeHash,
-		arg.ExpiresAt,
+		arg.TtlSeconds,
 	)
 	var i OtpVerification
 	err := row.Scan(
@@ -50,53 +124,16 @@ func (q *Queries) CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerifi
 	return i, err
 }
 
-const getLatestOTP = `-- name: GetLatestOTP :one
-SELECT id, destination, channel, purpose, code_hash, expires_at, verified_at, attempt_count, created_at FROM otp_verifications
-WHERE destination = $1 AND purpose = $2 AND verified_at IS NULL
-ORDER BY created_at DESC
-LIMIT 1
-`
-
-type GetLatestOTPParams struct {
-	Destination string `json:"destination"`
-	Purpose     string `json:"purpose"`
-}
-
-func (q *Queries) GetLatestOTP(ctx context.Context, arg GetLatestOTPParams) (OtpVerification, error) {
-	row := q.db.QueryRow(ctx, getLatestOTP, arg.Destination, arg.Purpose)
-	var i OtpVerification
-	err := row.Scan(
-		&i.ID,
-		&i.Destination,
-		&i.Channel,
-		&i.Purpose,
-		&i.CodeHash,
-		&i.ExpiresAt,
-		&i.VerifiedAt,
-		&i.AttemptCount,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const incrementOTPAttempts = `-- name: IncrementOTPAttempts :exec
-UPDATE otp_verifications
-SET attempt_count = attempt_count + 1
-WHERE id = $1
-`
-
-func (q *Queries) IncrementOTPAttempts(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, incrementOTPAttempts, id)
-	return err
-}
-
-const markOTPVerified = `-- name: MarkOTPVerified :exec
+const markOTPVerified = `-- name: MarkOTPVerified :execrows
 UPDATE otp_verifications
 SET verified_at = now()
-WHERE id = $1
+WHERE id = $1 AND verified_at IS NULL
 `
 
-func (q *Queries) MarkOTPVerified(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, markOTPVerified, id)
-	return err
+func (q *Queries) MarkOTPVerified(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markOTPVerified, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"eventticketing/internal/store"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type EventService struct {
@@ -17,22 +17,23 @@ func NewEventService(queries *store.Queries) *EventService {
 }
 
 type EventDetailDTO struct {
-	ID                 string                  `json:"id"`
-	Name               string                  `json:"name"`
-	Slug               string                  `json:"slug"`
-	Description        string                  `json:"description"`
-	Genre              string                  `json:"genre"`
-	ImageURL           string                  `json:"imageUrl"`
-	City               string                  `json:"city"`
-	VenueName          string                  `json:"venueName"`
-	VenueAddress       string                  `json:"venueAddress"`
-	VenueTimezone      string                  `json:"venueTimezone"`
-	StartsAt           string                  `json:"startsAt"`
-	EndsAt             string                  `json:"endsAt"`
-	Status             string                  `json:"status"`
-	MaxTicketsPerUser  int32                   `json:"maxTicketsPerUser"`
-	WaitingRoomEnabled bool                    `json:"waitingRoomEnabled"`
-	Zones              []EventZonePriceDTO     `json:"zones"`
+	ID                 string              `json:"id"`
+	Name               string              `json:"name"`
+	Slug               string              `json:"slug"`
+	Description        string              `json:"description"`
+	Genre              string              `json:"genre"`
+	ImageURL           string              `json:"imageUrl"`
+	ImageCredit        string              `json:"imageCredit"`
+	City               string              `json:"city"`
+	VenueName          string              `json:"venueName"`
+	VenueAddress       string              `json:"venueAddress"`
+	VenueTimezone      string              `json:"venueTimezone"`
+	StartsAt           string              `json:"startsAt"`
+	EndsAt             string              `json:"endsAt"`
+	Status             string              `json:"status"`
+	MaxTicketsPerUser  int32               `json:"maxTicketsPerUser"`
+	WaitingRoomEnabled bool                `json:"waitingRoomEnabled"`
+	Zones              []EventZonePriceDTO `json:"zones"`
 }
 
 type EventZonePriceDTO struct {
@@ -55,7 +56,7 @@ func (s *EventService) buildEventDetailDTO(
 	ctx context.Context,
 	id pgtype.UUID,
 	name, slug string,
-	desc, genre, img, city pgtype.Text,
+	desc, genre, img, imgCredit, city pgtype.Text,
 	venueName string,
 	venueAddress pgtype.Text,
 	venueTimezone string,
@@ -95,6 +96,7 @@ func (s *EventService) buildEventDetailDTO(
 		Description:        desc.String,
 		Genre:              genre.String,
 		ImageURL:           img.String,
+		ImageCredit:        imgCredit.String,
 		City:               city.String,
 		VenueName:          venueName,
 		VenueAddress:       venueAddress.String,
@@ -115,7 +117,7 @@ func (s *EventService) GetEventDetail(ctx context.Context, identifier string) (*
 	if uid, err := store.StringToUUID(identifier); err == nil {
 		e, err := s.queries.GetEventByID(ctx, uid)
 		if err == nil {
-			return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
+			return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.ImageCredit, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
 		}
 	}
 
@@ -123,7 +125,7 @@ func (s *EventService) GetEventDetail(ctx context.Context, identifier string) (*
 	if err != nil {
 		return nil, fmt.Errorf("event not found: %w", err)
 	}
-	return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
+	return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.ImageCredit, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
 }
 
 // ResolveEventID resolves an identifier (UUID or slug) to a pgtype.UUID.

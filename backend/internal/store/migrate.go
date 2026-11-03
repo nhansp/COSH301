@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 
+	"eventticketing/internal/store/migrations"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
-	"eventticketing/internal/store/migrations"
 )
 
 // RunMigrations applies all pending migrations using goose.

@@ -68,51 +68,48 @@ func (h *RealtimeHub) Broadcast(eventID string, payload []byte) {
 	}
 }
 
-// StartListener starts the PostgreSQL LISTEN loop on event_seats_channel.
+// StartListener relays notifications from event_seats_channel to subscribers,
+// reconnecting with a dedicated connection whenever the current one fails.
 func (h *RealtimeHub) StartListener(ctx context.Context) {
 	go func() {
+		const retryDelay = 3 * time.Second
 		for {
+			err := h.listen(ctx)
+			if ctx.Err() != nil {
+				return
+			}
+			log.Printf("[SSE Hub] listener stopped: %v; reconnecting in %s", err, retryDelay)
 			select {
 			case <-ctx.Done():
 				return
-			default:
-			}
-
-			if h.dbPool == nil {
-				time.Sleep(2 * time.Second)
-				continue
-			}
-
-			conn, err := h.dbPool.Acquire(ctx)
-			if err != nil {
-				log.Printf("[SSE Hub] Acquire connection failed: %v. Retrying in 3s...", err)
-				time.Sleep(3 * time.Second)
-				continue
-			}
-
-			_, err = conn.Exec(ctx, "LISTEN "+SeatNotificationChannel)
-			if err != nil {
-				conn.Release()
-				log.Printf("[SSE Hub] LISTEN failed: %v. Retrying in 3s...", err)
-				time.Sleep(3 * time.Second)
-				continue
-			}
-
-			log.Printf("[SSE Hub] Listening for PostgreSQL notifications on '%s'", SeatNotificationChannel)
-
-			for {
-				notification, err := conn.Conn().WaitForNotification(ctx)
-				if err != nil {
-					log.Printf("[SSE Hub] Connection interrupted: %v", err)
-					conn.Release()
-					break
-				}
-
-				var msg SeatUpdateMessage
-				if err := json.Unmarshal([]byte(notification.Payload), &msg); err == nil && msg.EventID != "" {
-					h.Broadcast(msg.EventID, []byte(notification.Payload))
-				}
+			case <-time.After(retryDelay):
 			}
 		}
 	}()
+}
+
+func (h *RealtimeHub) listen(ctx context.Context) error {
+	pooled, err := h.dbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	// A LISTENing connection must never go back to the pool.
+	conn := pooled.Hijack()
+	defer conn.Close(context.Background())
+
+	if _, err := conn.Exec(ctx, "LISTEN "+SeatNotificationChannel); err != nil {
+		return err
+	}
+	log.Printf("[SSE Hub] Listening on '%s'", SeatNotificationChannel)
+
+	for {
+		n, err := conn.WaitForNotification(ctx)
+		if err != nil {
+			return err
+		}
+		var msg SeatUpdateMessage
+		if err := json.Unmarshal([]byte(n.Payload), &msg); err == nil && msg.EventID != "" {
+			h.Broadcast(msg.EventID, []byte(n.Payload))
+		}
+	}
 }

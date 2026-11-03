@@ -88,8 +88,8 @@ var sprint4Flags = map[string]bool{
 
 // FeatureManager manages runtime feature flags based on profile and environment overrides.
 type FeatureManager struct {
-	mu     sync.RWMutex
-	flags  map[string]bool
+	mu      sync.RWMutex
+	flags   map[string]bool
 	profile string
 }
 

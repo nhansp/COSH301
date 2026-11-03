@@ -1,5 +1,6 @@
 -- name: ListPublishedEvents :many
-SELECT e.*, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone
+SELECT e.*, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone,
+       (SELECT MIN(ez.base_price) FROM event_zones ez WHERE ez.event_id = e.id)::bigint AS price_from
 FROM events e
 JOIN venues v ON e.venue_id = v.id
 WHERE e.status IN ('ON_SALE', 'SOLD_OUT', 'PAUSED')

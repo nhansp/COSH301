@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:alpine AS builder
+FROM golang:1.26.10-alpine3.24 AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/api ./cmd/api
 
 # Final runtime stage
-FROM alpine:3.21
+FROM alpine:3.24.3
 
 WORKDIR /app
 

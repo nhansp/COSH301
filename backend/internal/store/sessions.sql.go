@@ -15,16 +15,16 @@ const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (
     user_id, token_hash, ip_address, user_agent, expires_at
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, now() + make_interval(hours => $5::int)
 ) RETURNING id, user_id, token_hash, ip_address, user_agent, expires_at, created_at
 `
 
 type CreateSessionParams struct {
-	UserID    pgtype.UUID        `json:"user_id"`
-	TokenHash string             `json:"token_hash"`
-	IpAddress pgtype.Text        `json:"ip_address"`
-	UserAgent pgtype.Text        `json:"user_agent"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UserID    pgtype.UUID `json:"user_id"`
+	TokenHash string      `json:"token_hash"`
+	IpAddress pgtype.Text `json:"ip_address"`
+	UserAgent pgtype.Text `json:"user_agent"`
+	TtlHours  int32       `json:"ttl_hours"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
@@ -33,7 +33,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		arg.TokenHash,
 		arg.IpAddress,
 		arg.UserAgent,
-		arg.ExpiresAt,
+		arg.TtlHours,
 	)
 	var i Session
 	err := row.Scan(
@@ -70,7 +70,7 @@ const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
 SELECT s.id, s.user_id, s.token_hash, s.ip_address, s.user_agent, s.expires_at, s.created_at, u.phone, u.email, u.full_name, u.role, u.status AS user_status
 FROM sessions s
 JOIN users u ON s.user_id = u.id
-WHERE s.token_hash = $1 AND s.expires_at > now()
+WHERE s.token_hash = $1 AND s.expires_at > now() AND u.status = 'ACTIVE'
 LIMIT 1
 `
 

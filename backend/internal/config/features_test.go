@@ -49,7 +49,7 @@ func TestFeatureManager_Profiles(t *testing.T) {
 
 func TestFeatureManager_EnvOverride(t *testing.T) {
 	os.Setenv("FEATURE_PROFILE", "sprint2")
-	os.Setenv("FEATURE_PAYMENTS", "on") // Override disabled flag in sprint2
+	os.Setenv("FEATURE_PAYMENTS", "on")   // Override disabled flag in sprint2
 	os.Setenv("FEATURE_SEAT_HOLD", "off") // Override enabled flag in sprint2
 	defer func() {
 		os.Unsetenv("FEATURE_PROFILE")

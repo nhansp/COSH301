@@ -40,16 +40,16 @@ const createSeatHold = `-- name: CreateSeatHold :one
 INSERT INTO seat_holds (
     event_id, seat_id, user_id, hold_token, status, expires_at
 ) VALUES (
-    $1, $2, $3, $4, 'ACTIVE', $5
+    $1, $2, $3, $4, 'ACTIVE', now() + make_interval(secs => $5::int)
 ) RETURNING id, event_id, seat_id, user_id, hold_token, status, created_at, expires_at
 `
 
 type CreateSeatHoldParams struct {
-	EventID   pgtype.UUID        `json:"event_id"`
-	SeatID    pgtype.UUID        `json:"seat_id"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	HoldToken string             `json:"hold_token"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	EventID     pgtype.UUID `json:"event_id"`
+	SeatID      pgtype.UUID `json:"seat_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+	HoldToken   string      `json:"hold_token"`
+	HoldSeconds int32       `json:"hold_seconds"`
 }
 
 func (q *Queries) CreateSeatHold(ctx context.Context, arg CreateSeatHoldParams) (SeatHold, error) {
@@ -58,7 +58,7 @@ func (q *Queries) CreateSeatHold(ctx context.Context, arg CreateSeatHoldParams) 
 		arg.SeatID,
 		arg.UserID,
 		arg.HoldToken,
-		arg.ExpiresAt,
+		arg.HoldSeconds,
 	)
 	var i SeatHold
 	err := row.Scan(
@@ -113,6 +113,27 @@ func (q *Queries) ExpireStaleSeatHolds(ctx context.Context) ([]ExpireStaleSeatHo
 		return nil, err
 	}
 	return items, nil
+}
+
+const getEventSaleState = `-- name: GetEventSaleState :one
+SELECT status, max_tickets_per_user,
+       (sales_starts_at IS NULL OR sales_starts_at <= now())
+       AND (sales_ends_at IS NULL OR sales_ends_at > now()) AS in_sales_window
+FROM events
+WHERE id = $1
+`
+
+type GetEventSaleStateRow struct {
+	Status            EventStatus `json:"status"`
+	MaxTicketsPerUser int32       `json:"max_tickets_per_user"`
+	InSalesWindow     pgtype.Bool `json:"in_sales_window"`
+}
+
+func (q *Queries) GetEventSaleState(ctx context.Context, id pgtype.UUID) (GetEventSaleStateRow, error) {
+	row := q.db.QueryRow(ctx, getEventSaleState, id)
+	var i GetEventSaleStateRow
+	err := row.Scan(&i.Status, &i.MaxTicketsPerUser, &i.InSalesWindow)
+	return i, err
 }
 
 const getEventSeatMap = `-- name: GetEventSeatMap :many

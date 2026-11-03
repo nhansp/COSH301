@@ -39,17 +39,20 @@ func (h *EventHandler) HandleEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type EventSummaryDTO struct {
-		ID            string `json:"id"`
-		Name          string `json:"title"`
-		Slug          string `json:"slug"`
-		Description   string `json:"description"`
-		Genre         string `json:"genre"`
-		City          string `json:"city"`
-		ImageURL      string `json:"imageUrl"`
-		VenueName     string `json:"venue"`
-		VenueAddress  string `json:"address"`
-		StartsAt      string `json:"date"`
-		Status        string `json:"status"`
+		ID           string `json:"id"`
+		Name         string `json:"title"`
+		Slug         string `json:"slug"`
+		Description  string `json:"description"`
+		Genre        string `json:"genre"`
+		City         string `json:"city"`
+		ImageURL     string `json:"imageUrl"`
+		ImageCredit  string `json:"imageCredit"`
+		VenueName    string `json:"venue"`
+		VenueAddress string `json:"address"`
+		StartsAt     string `json:"date"`
+		EndsAt       string `json:"endsAt"`
+		Status       string `json:"status"`
+		PriceFrom    int64  `json:"priceFrom"`
 	}
 
 	dtos := make([]EventSummaryDTO, 0, len(events))
@@ -62,10 +65,13 @@ func (h *EventHandler) HandleEvents(w http.ResponseWriter, r *http.Request) {
 			Genre:        e.Genre.String,
 			City:         e.City.String,
 			ImageURL:     e.ImageUrl.String,
+			ImageCredit:  e.ImageCredit.String,
 			VenueName:    e.VenueName,
 			VenueAddress: e.VenueAddress.String,
 			StartsAt:     e.StartsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
+			EndsAt:       e.EndsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
 			Status:       string(e.Status),
+			PriceFrom:    e.PriceFrom,
 		})
 	}
 

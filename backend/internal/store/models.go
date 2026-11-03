@@ -460,6 +460,7 @@ type Event struct {
 	WaitingRoomCapacity int32              `json:"waiting_room_capacity"`
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	ImageCredit         pgtype.Text        `json:"image_credit"`
 }
 
 type EventSeat struct {

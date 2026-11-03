@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"eventticketing/internal/service"
 	"eventticketing/internal/store"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type SeatHandler struct {
@@ -58,7 +58,7 @@ func (h *SeatHandler) HandleEventSeats(w http.ResponseWriter, r *http.Request) {
 
 	seats, err := h.seatService.GetSeatMap(r.Context(), eventID, currentUserID)
 	if err != nil {
-		http.Error(w, `{"error":"failed_to_fetch_seats"}`, http.StatusInternalServerError)
+		internalError(w, r, err)
 		return
 	}
 
@@ -118,8 +118,12 @@ func (h *SeatHandler) HandleHolds(w http.ResponseWriter, r *http.Request) {
 				_ = json.NewEncoder(w).Encode(map[string]string{"error": "ticket_limit_reached"})
 				return
 			}
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			if errors.Is(err, service.ErrEventNotOnSale) {
+				w.WriteHeader(http.StatusConflict)
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": "event_not_on_sale"})
+				return
+			}
+			internalError(w, r, err)
 			return
 		}
 
@@ -155,9 +159,11 @@ func (h *SeatHandler) HandleHolds(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := h.seatService.ReleaseSeat(r.Context(), eventID, seatID, sess.UserID); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			if errors.Is(err, service.ErrHoldNotFound) {
+				writeError(w, http.StatusNotFound, err.Error())
+				return
+			}
+			internalError(w, r, err)
 			return
 		}
 

@@ -56,7 +56,7 @@ RETURNING id, event_id, seat_id, status, current_price, version, updated_at;
 INSERT INTO seat_holds (
     event_id, seat_id, user_id, hold_token, status, expires_at
 ) VALUES (
-    $1, $2, $3, $4, 'ACTIVE', $5
+    $1, $2, $3, $4, 'ACTIVE', now() + make_interval(secs => sqlc.arg(hold_seconds)::int)
 ) RETURNING *;
 
 -- name: ReleaseSeatHold :one
@@ -94,3 +94,10 @@ WHERE sh.event_id = $1 AND sh.user_id = $2 AND sh.status = 'ACTIVE' AND sh.expir
 
 -- name: NotifyChannel :exec
 SELECT pg_notify($1, $2);
+
+-- name: GetEventSaleState :one
+SELECT status, max_tickets_per_user,
+       (sales_starts_at IS NULL OR sales_starts_at <= now())
+       AND (sales_ends_at IS NULL OR sales_ends_at > now()) AS in_sales_window
+FROM events
+WHERE id = $1;

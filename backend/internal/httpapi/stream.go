@@ -49,6 +49,12 @@ func (h *StreamHandler) HandleEventStream(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no") // Prevents Nginx response buffering
 
+	// The server-wide write timeout would cut this long-lived response.
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Time{}); err != nil {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
 	ch := h.hub.Subscribe(eventID)
 	defer h.hub.Unsubscribe(eventID, ch)
 
