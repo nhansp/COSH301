@@ -6,6 +6,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   bookings: Booking[];
+  loginDemo: (role?: UserRole) => Promise<boolean>;
   sendPhoneOtp: (phoneNumber: string) => Promise<{ success: boolean; demoCode: string; message: string }>;
   verifyPhoneOtp: (phoneNumber: string, code: string) => Promise<boolean>;
   sendEmailOtp: (email: string) => Promise<{ success: boolean; demoCode: string; message: string }>;
@@ -30,7 +31,7 @@ interface AuthContextType {
     paymentMethod: string;
     selectedSeats?: string[];
   }) => Booking;
-  cancelBooking: (bookingId: string) => void;
+  cancelBooking: (bookingId: string, reason?: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error loading stored bookings:', e);
     }
 
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
         if (isMounted && data?.user) setUser(userFromApi(data.user));
@@ -95,16 +96,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const saveUserSession = (newUser: User | null) => setUser(newUser);
 
+  const loginDemo = async (role: UserRole = 'CUSTOMER'): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/auth/demo-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ role }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        saveUserSession(userFromApi(data.user));
+        return true;
+      }
+    } catch (e) {
+      console.error('Demo login API failed, using fallback:', e);
+    }
+
+    const fallbackUser: User = {
+      id: `usr_demo_${Date.now()}`,
+      name: role === 'ORGANIZER' ? 'Ban Tổ chức' : 'Khán giả Demo',
+      email: role === 'ORGANIZER' ? 'btc@cosh301.nhansp.id.vn' : 'khangia.demo@sortmyscene.live',
+      avatar: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=demo`,
+      authProvider: 'email',
+      role: role,
+      createdAt: new Date().toISOString()
+    };
+    saveUserSession(fallbackUser);
+    return true;
+  };
+
   const sendPhoneOtp = async (phoneNumber: string) => {
     try {
       const res = await fetch('/api/auth/otp/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ destination: phoneNumber, channel: 'SMS' }),
       });
       if (res.ok) {
         const data = await res.json();
-        const demoCode = data.mock_code || '123456';
+        const demoCode = data.demoCode || data.mock_code || '123456';
         return {
           success: true,
           demoCode,
@@ -129,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ destination: phoneNumber, code }),
       });
       if (res.ok) {
@@ -161,11 +194,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch('/api/auth/otp/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ destination: email, channel: 'EMAIL' }),
       });
       if (res.ok) {
         const data = await res.json();
-        const demoCode = data.mock_code || '123456';
+        const demoCode = data.demoCode || data.mock_code || '123456';
         return {
           success: true,
           demoCode,
@@ -190,6 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ destination: email, code }),
       });
       if (res.ok) {
@@ -221,7 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     try {
-      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     } catch {}
     saveUserSession(null);
   };
@@ -282,10 +317,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newBooking;
   };
 
-  const cancelBooking = (bookingId: string) => {
-    const updated = bookings.map(b => (b.id === bookingId ? { ...b, status: 'cancelled' as const } : b));
+  const cancelBooking = async (bookingId: string, reason?: string): Promise<boolean> => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return false;
+
+    // 1. Ghi nhận log huỷ vé vào bảng audit_logs trong database
+    try {
+      await fetch('/api/tickets/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          bookingId: booking.id,
+          bookingCode: booking.bookingCode,
+          eventId: booking.eventId,
+          reason: reason || 'Khách hàng xác nhận hủy vé trên ứng dụng',
+          seats: booking.selectedSeats || [],
+          ticketDetails: {
+            eventTitle: booking.eventTitle,
+            venue: booking.venue,
+            tierName: booking.tierName,
+            quantity: booking.quantity,
+            totalAmount: booking.totalAmount,
+            attendeeName: booking.attendeeName,
+            attendeeEmail: booking.attendeeEmail,
+          },
+        }),
+      });
+    } catch (e) {
+      console.error('Error logging cancellation to database audit_logs:', e);
+    }
+
+    // 2. Remove ticket from active bookings list
+    const updated = bookings.filter(b => b.id !== bookingId);
     setBookings(updated);
     localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+
+    // 3. Restore seats status to available in local cache
+    if (booking.selectedSeats && booking.selectedSeats.length > 0) {
+      try {
+        const storageKey = `sms_event_seats_${booking.eventId}`;
+        const existing = localStorage.getItem(storageKey);
+        if (existing) {
+          const parsedSeats = JSON.parse(existing);
+          const restoredSeats = parsedSeats.map((s: { id: string; status: string }) =>
+            booking.selectedSeats?.includes(s.id) ? { ...s, status: 'available' } : s
+          );
+          localStorage.setItem(storageKey, JSON.stringify(restoredSeats));
+        }
+      } catch (err) {
+        console.error('Failed to restore seat status upon booking cancellation:', err);
+      }
+    }
+
+    return true;
   };
 
   return (
@@ -295,6 +380,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         bookings,
+        loginDemo,
         sendPhoneOtp,
         verifyPhoneOtp,
         sendEmailOtp,

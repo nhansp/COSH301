@@ -32,6 +32,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	eventHandler := NewEventHandler(deps.EventService)
 	seatHandler := NewSeatHandler(deps.SeatService, deps.AuthService, deps.EventService)
 	streamHandler := NewStreamHandler(deps.RealtimeHub, deps.EventService)
+	ticketHandler := NewTicketHandler(deps.DBPool, deps.Store, deps.AuthService, deps.EventService, deps.SeatService, deps.RealtimeHub)
 
 	// 1. System Endpoints
 	mux.HandleFunc("GET /api/health", sysHandler.HandleHealth)
@@ -40,6 +41,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	// 2. Authentication Endpoints (gated by otp_login feature flag)
 	mux.HandleFunc("POST /api/auth/otp/request", RequireFeature(fm, config.FlagOtpLogin, otpLimiter.Wrap(authHandler.HandleRequestOTP)))
 	mux.HandleFunc("POST /api/auth/otp/verify", RequireFeature(fm, config.FlagOtpLogin, otpLimiter.Wrap(authHandler.HandleVerifyOTP)))
+	mux.HandleFunc("POST /api/auth/demo-login", authHandler.HandleDemoLogin)
 	mux.HandleFunc("GET /api/auth/me", authHandler.HandleMe)
 	mux.HandleFunc("POST /api/auth/logout", authHandler.HandleLogout)
 
@@ -60,6 +62,10 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		RequireRole(authHandler, organizerRoles, organizerHandler.HandleListEvents)))
 	mux.HandleFunc("PUT /api/organizer/events/{id}/zones/{zoneId}/pricing", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireFeature(fm, config.FlagZonePricing, RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateZonePricing))))
+
+	// 7. Ticket Cancellation & Audit Logs
+	mux.HandleFunc("POST /api/tickets/cancel", ticketHandler.HandleCancelTicket)
+	mux.HandleFunc("GET /api/tickets/audit-logs", ticketHandler.HandleListAuditLogs)
 
 	// Wrap with middlewares
 	handler := LoggingMiddleware(mux)

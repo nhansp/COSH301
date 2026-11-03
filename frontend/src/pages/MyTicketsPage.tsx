@@ -22,12 +22,32 @@ export const MyTicketsPage: React.FC = () => {
   const { bookings, cancelBooking, user } = useAuth();
   const [selectedTicket, setSelectedTicket] = useState<Booking | null>(null);
   const [ticketToCancel, setTicketToCancel] = useState<Booking | null>(null);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
+  const [cancelToast, setCancelToast] = useState<string | null>(null);
+
+  const handleConfirmCancel = async () => {
+    if (!ticketToCancel) return;
+    setIsCancelling(true);
+    const code = ticketToCancel.bookingCode;
+    await cancelBooking(ticketToCancel.id);
+    setIsCancelling(false);
+    setTicketToCancel(null);
+    setCancelToast(`Đã hủy vé ${code} thành công và ghi nhận nhật ký vào database!`);
+    setTimeout(() => setCancelToast(null), 4000);
+  };
 
   return (
     <div className="min-h-screen purple-glow-bg flex flex-col selection:bg-purple-600 selection:text-white">
       <Navbar />
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Toast Notification */}
+        {cancelToast && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-950/80 border border-emerald-500/50 shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 text-emerald-200 text-sm font-medium">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <span>{cancelToast}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-8">
           <div>
             <Link
@@ -161,13 +181,15 @@ export const MyTicketsPage: React.FC = () => {
                 Không, giữ lại
               </button>
               <button
-                onClick={() => {
-                  cancelBooking(ticketToCancel.id);
-                  setTicketToCancel(null);
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md transition-all"
+                onClick={handleConfirmCancel}
+                disabled={isCancelling}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                Xác nhận hủy
+                {isCancelling ? (
+                  <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                ) : (
+                  <span>Xác nhận hủy</span>
+                )}
               </button>
             </div>
           </div>

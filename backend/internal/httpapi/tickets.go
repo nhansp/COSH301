@@ -1,0 +1,256 @@
+package httpapi
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"eventticketing/internal/service"
+	"eventticketing/internal/store"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type TicketHandler struct {
+	dbPool       *pgxpool.Pool
+	store        *store.Queries
+	authService  *service.AuthService
+	eventService *service.EventService
+	seatService  *service.SeatService
+	realtimeHub  *service.RealtimeHub
+}
+
+func NewTicketHandler(
+	dbPool *pgxpool.Pool,
+	s *store.Queries,
+	as *service.AuthService,
+	es *service.EventService,
+	ss *service.SeatService,
+	hub *service.RealtimeHub,
+) *TicketHandler {
+	return &TicketHandler{
+		dbPool:       dbPool,
+		store:        s,
+		authService:  as,
+		eventService: es,
+		seatService:  ss,
+		realtimeHub:  hub,
+	}
+}
+
+type CancelTicketRequest struct {
+	BookingID     string         `json:"bookingId"`
+	BookingCode   string         `json:"bookingCode"`
+	EventID       string         `json:"eventId"`
+	Reason        string         `json:"reason"`
+	Seats         []string       `json:"seats"`
+	TicketDetails map[string]any `json:"ticketDetails"`
+}
+
+// HandleCancelTicket handles POST /api/tickets/cancel
+// It releases any booked seats and creates an immutable audit log record.
+func (h *TicketHandler) HandleCancelTicket(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+
+	var req CancelTicketRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_payload")
+		return
+	}
+
+	// 1. Resolve user ID from session or fallback to demo user
+	var actorUserID pgtype.UUID
+	userEmail := "khangia.demo@sortmyscene.live"
+	token := extractToken(r)
+	if token != "" {
+		if sess, err := h.authService.GetUserByToken(r.Context(), token); err == nil {
+			actorUserID = sess.UserID
+			userEmail = sess.Email.String
+		}
+	}
+
+	if !actorUserID.Valid {
+		// Look up default customer user
+		if u, err := h.store.GetUserByEmail(r.Context(), pgtype.Text{String: userEmail, Valid: true}); err == nil {
+			actorUserID = u.ID
+		}
+	}
+
+	// 2. Resolve event ID if provided
+	var resolvedEventID pgtype.UUID
+	if req.EventID != "" {
+		if eid, err := h.eventService.ResolveEventID(r.Context(), req.EventID); err == nil {
+			resolvedEventID = eid
+		}
+	}
+
+	// 3. Release any seats and notify realtime subscribers
+	if resolvedEventID.Valid && len(req.Seats) > 0 {
+		for _, sLabelOrID := range req.Seats {
+			var seatUUID pgtype.UUID
+			if u, err := store.StringToUUID(sLabelOrID); err == nil {
+				seatUUID = u
+			} else {
+				row := h.dbPool.QueryRow(r.Context(),
+					`SELECT s.id FROM seats s 
+					 JOIN event_seats es ON es.seat_id = s.id 
+					 WHERE es.event_id = $1 AND (s.seat_label = $2 OR s.id::text = $2) LIMIT 1`,
+					resolvedEventID, sLabelOrID)
+				_ = row.Scan(&seatUUID)
+			}
+
+			if seatUUID.Valid {
+				// Update event_seats back to AVAILABLE
+				_, _ = h.dbPool.Exec(r.Context(),
+					`UPDATE event_seats SET status = 'AVAILABLE', version = version + 1, updated_at = now()
+					 WHERE event_id = $1 AND seat_id = $2`,
+					resolvedEventID, seatUUID)
+
+				// Release any seat_holds
+				_, _ = h.dbPool.Exec(r.Context(),
+					`UPDATE seat_holds SET status = 'RELEASED'
+					 WHERE event_id = $1 AND seat_id = $2 AND status = 'ACTIVE'`,
+					resolvedEventID, seatUUID)
+
+				// Broadcast SSE notification
+				notifyPayload, _ := json.Marshal(map[string]any{
+					"type":      "seat_released",
+					"eventId":   store.UUIDToString(resolvedEventID),
+					"seatId":    store.UUIDToString(seatUUID),
+					"status":    "AVAILABLE",
+					"timestamp": time.Now().UTC().Format(time.RFC3339),
+				})
+				_, _ = h.dbPool.Exec(r.Context(), "SELECT pg_notify($1, $2)", "event_seats_channel", string(notifyPayload))
+			}
+		}
+	}
+
+	// 4. Construct old and new data JSON for audit log
+	oldDataJSON, _ := json.Marshal(map[string]any{
+		"bookingId":     req.BookingID,
+		"bookingCode":   req.BookingCode,
+		"eventId":       req.EventID,
+		"seats":         req.Seats,
+		"ticketDetails": req.TicketDetails,
+		"userEmail":     userEmail,
+	})
+	newDataJSON, _ := json.Marshal(map[string]any{
+		"status":       "CANCELLED",
+		"cancelled_at": time.Now().UTC().Format(time.RFC3339),
+	})
+
+	reason := strings.TrimSpace(req.Reason)
+	if reason == "" {
+		reason = "Khách hàng xác nhận hủy vé trên ứng dụng"
+	}
+	reqID := fmt.Sprintf("req_cancel_%d", time.Now().UnixNano())
+
+	// 5. Insert immutable audit log into database
+	auditLog, err := h.store.CreateAuditLog(r.Context(), store.CreateAuditLogParams{
+		ActorUserID: actorUserID,
+		EventID:     resolvedEventID,
+		Action:      "TICKET_CANCELLED",
+		EntityType:  "BOOKING",
+		EntityID:    pgtype.UUID{},
+		OldData:     oldDataJSON,
+		NewData:     newDataJSON,
+		Reason:      pgtype.Text{String: reason, Valid: true},
+		RequestID:   pgtype.Text{String: reqID, Valid: true},
+	})
+	if err != nil {
+		internalError(w, r, fmt.Errorf("create audit log: %w", err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":     true,
+		"status":      "cancelled",
+		"auditLogId":  auditLog.ID,
+		"bookingCode": req.BookingCode,
+		"cancelledAt": auditLog.CreatedAt.Time.Format(time.RFC3339),
+		"message":     "Hủy vé thành công và đã ghi nhận vào nhật ký hệ thống (audit_logs)",
+	})
+}
+
+// HandleListAuditLogs handles GET /api/tickets/audit-logs
+func (h *TicketHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+
+	rows, err := h.dbPool.Query(r.Context(), `
+		SELECT 
+			a.id,
+			a.action,
+			a.entity_type,
+			COALESCE(a.reason, '') AS reason,
+			a.created_at,
+			COALESCE(u.email, 'guest') AS actor_email,
+			COALESCE(e.name, 'N/A') AS event_name,
+			a.old_data,
+			a.new_data
+		FROM audit_logs a
+		LEFT JOIN users u ON a.actor_user_id = u.id
+		LEFT JOIN events e ON a.event_id = e.id
+		ORDER BY a.created_at DESC
+		LIMIT 50
+	`)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	defer rows.Close()
+
+	type AuditItem struct {
+		ID         int64          `json:"id"`
+		Action     string         `json:"action"`
+		EntityType string         `json:"entityType"`
+		Reason     string         `json:"reason"`
+		CreatedAt  string         `json:"createdAt"`
+		ActorEmail string         `json:"actorEmail"`
+		EventName  string         `json:"eventName"`
+		OldData    map[string]any `json:"oldData,omitempty"`
+		NewData    map[string]any `json:"newData,omitempty"`
+	}
+
+	var results []AuditItem
+	for rows.Next() {
+		var item AuditItem
+		var t time.Time
+		var oldBytes, newBytes []byte
+		if err := rows.Scan(
+			&item.ID,
+			&item.Action,
+			&item.EntityType,
+			&item.Reason,
+			&t,
+			&item.ActorEmail,
+			&item.EventName,
+			&oldBytes,
+			&newBytes,
+		); err != nil {
+			internalError(w, r, err)
+			return
+		}
+		item.CreatedAt = t.Format(time.RFC3339)
+		if len(oldBytes) > 0 {
+			_ = json.Unmarshal(oldBytes, &item.OldData)
+		}
+		if len(newBytes) > 0 {
+			_ = json.Unmarshal(newBytes, &item.NewData)
+		}
+		results = append(results, item)
+	}
+
+	if results == nil {
+		results = []AuditItem{}
+	}
+
+	writeJSON(w, http.StatusOK, results)
+}
