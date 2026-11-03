@@ -1,0 +1,288 @@
+@startuml EventTicketing_ClassDiagram_Core
+skinparam style strictuml
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI", Helvetica, Arial, sans-serif
+skinparam defaultFontSize 11
+skinparam packageFontSize 13
+skinparam packageFontStyle bold
+skinparam classFontStyle bold
+skinparam package {
+    BorderColor #444444
+    BorderThickness 1.5
+}
+skinparam class {
+    BorderColor #333333
+    BorderThickness 1.2
+    ArrowColor #222222
+}
+
+title EventTicketing — Core Domain / Entity Class Diagram\n(khớp đúng EventTicketingSchema.sql — 26 bảng — theo System design.docx)
+
+package "Domain / Entity Layer" #F3E5F5 {
+
+    class User {
+        -id: UUID
+        -phone: String
+        -email: String
+        -fullName: String
+        -role: Enum{CUSTOMER,ORGANIZER,CEO,GATE_STAFF,ADMIN}
+        -status: Enum{PENDING,ACTIVE,LOCKED,DISABLED}
+        -phoneVerifiedAt: DateTime
+        +isEligibleToPurchase(): boolean
+    }
+    class OtpVerification {
+        -id: UUID
+        -purpose: String
+        -codeHash: String
+        -expiresAt: DateTime
+        -attemptCount: int
+        +verify(code: String): boolean
+    }
+
+    class Venue {
+        -id: UUID
+        -name: String
+        -address: String
+        -timezone: String
+    }
+    class VenueZone {
+        -id: UUID
+        -code: String
+        -name: String
+        -capacity: int
+    }
+    class Seat {
+        -id: UUID
+        -rowLabel: String
+        -seatNumber: String
+        -seatLabel: String
+        -isActive: boolean
+    }
+    class Event {
+        -id: UUID
+        -name: String
+        -slug: String
+        -startsAt: DateTime
+        -endsAt: DateTime
+        -status: Enum{DRAFT,ON_SALE,SOLD_OUT,PAUSED,ENDED,CANCELLED}
+        -maxTicketsPerUser: int
+        +isOnSale(): boolean
+    }
+    class EventSeat {
+        -id: UUID
+        -status: Enum{AVAILABLE,HELD,SOLD,BLOCKED}
+        -currentPrice: Decimal
+        -version: long
+        +lockAtomic(userId: String, duration: int): boolean
+    }
+
+    class ZonePriceRule {
+        -id: UUID
+        -basePrice: Decimal
+        -floorPrice: Decimal
+        -ceilingPrice: Decimal
+        -isActive: boolean
+        +checkBounds(price: Decimal): boolean
+    }
+    class PriceChange {
+        -id: UUID
+        -oldPrice: Decimal
+        -newPrice: Decimal
+        -reason: String
+        -source: Enum{MANUAL,RULE,AI,PROMOTION}
+        -changedAt: DateTime
+    }
+
+    class QueueEntry {
+        -id: UUID
+        -sessionId: String
+        -position: long
+        -status: Enum{WAITING,ADMITTED,EXPIRED,LEFT,BLOCKED}
+        -botScore: Decimal
+    }
+    class BotChallenge {
+        -id: UUID
+        -challengeType: String
+        -deviceFingerprint: String
+        -riskScore: Decimal
+        -result: Enum{PASSED,FAILED,BLOCKED}
+    }
+
+    class Order {
+        -id: UUID
+        -orderCode: String
+        -subtotal: Decimal
+        -discountAmount: Decimal
+        -totalAmount: Decimal
+        -status: Enum{PENDING_PAYMENT,PAYMENT_PROCESSING,PAID,FAILED,CANCELLED,REFUND_PENDING,REFUNDED,PARTIALLY_REFUNDED}
+        -expiresAt: DateTime
+        +isExpired(): boolean
+        +calculateTotal(): Decimal
+    }
+    class SeatHold {
+        -id: UUID
+        -status: Enum{ACTIVE,EXPIRED,CONVERTED,CANCELLED}
+        -heldAt: DateTime
+        -expiresAt: DateTime
+        +release(): void
+    }
+    class OrderItem {
+        -id: UUID
+        -unitPrice: Decimal
+        -quantity: int
+    }
+
+    class PaymentTransaction {
+        -id: UUID
+        -provider: Enum{MOMO,VNPAY,SHOPEEPAY,CARD}
+        -providerTransactionId: String
+        -amount: Decimal
+        -currency: String
+        -status: Enum{INITIATED,PENDING,SUCCEEDED,FAILED,CANCELLED,REFUND_PENDING,REFUNDED}
+        +markAsPaid(): void
+    }
+    class PaymentReconciliation {
+        -id: UUID
+        -detectedAt: DateTime
+        -status: Enum{PENDING,MATCHED,TICKET_ISSUED,REFUND_TRIGGERED,RESOLVED,MANUAL_REVIEW}
+        -resolution: String
+    }
+    class Refund {
+        -id: UUID
+        -amount: Decimal
+        -reason: String
+        -status: String
+        +canRefund(): boolean
+    }
+
+    class Ticket {
+        -id: UUID
+        -ticketCode: String
+        -status: Enum{ISSUED,ACTIVE,USED,VOID,REFUNDED}
+        -issuedAt: DateTime
+        -usedAt: DateTime
+        +markAsUsed(): void
+        +isValid(): boolean
+    }
+    class TicketQrToken {
+        -id: UUID
+        -tokenHash: String
+        -validFrom: DateTime
+        -validUntil: DateTime
+        +isExpired(): boolean
+    }
+    class TicketDelivery {
+        -id: UUID
+        -channel: Enum{EMAIL,APP,APPLE_WALLET,GOOGLE_WALLET}
+        -destination: String
+        -status: String
+    }
+
+    class GateDevice {
+        -id: UUID
+        -deviceCode: String
+        -gateName: String
+        -lastSyncAt: DateTime
+        -isActive: boolean
+    }
+    class Checkin {
+        -id: UUID
+        -scannedAt: DateTime
+        -result: Enum{VALID,ALREADY_USED,INVALID,VOID,OFFLINE_CONFLICT}
+        -isOffline: boolean
+        -clientEventId: String
+        +resolveOfflineConflict(): void
+    }
+
+    class Promotion {
+        -id: UUID
+        -code: String
+        -discountType: Enum{PERCENT,FIXED}
+        -discountValue: Decimal
+        -usageLimit: int
+        -isActive: boolean
+    }
+    class PromotionUsage {
+        -id: UUID
+        -discountAmount: Decimal
+        -usedAt: DateTime
+    }
+
+    class AuditLog {
+        -id: long
+        -action: String
+        -entityType: String
+        -entityId: UUID
+        -oldData: JSON
+        -newData: JSON
+    }
+    class SalesSnapshot {
+        -id: long
+        -capturedAt: DateTime
+        -ticketsSold: int
+        -ticketsAvailable: int
+        -grossRevenue: Decimal
+        -netRevenue: Decimal
+    }
+}
+
+' --- Entity <-> Entity (đúng theo FK trong EventTicketingSchema.sql) ---
+User "1" o-- "0..*" OtpVerification
+Venue "1" *-- "1..*" VenueZone : Chứa khu vực
+VenueZone "1" *-- "1..*" Seat : Phân bổ ghế
+User "1" --> "0..*" Event : tổ chức (organizer)
+Venue "1" --> "0..*" Event : diễn ra tại
+Event "1" *-- "1..*" EventSeat : Phiên bản ghế theo sự kiện
+Seat "1" --> "0..*" EventSeat
+Event "1" *-- "0..*" ZonePriceRule
+VenueZone "1" --> "0..*" ZonePriceRule
+Event "1" *-- "0..*" PriceChange
+User "0..1" --> "0..*" PriceChange : changedBy
+Event "1" *-- "0..*" QueueEntry
+User "0..1" --> "0..*" QueueEntry
+Event "0..1" --> "0..*" BotChallenge
+User "0..1" --> "0..*" BotChallenge
+Event "1" --> "0..*" Order
+User "1" --> "0..*" Order : đặt mua
+QueueEntry "0..1" --> "0..1" Order
+Event "1" *-- "0..*" SeatHold
+EventSeat "1" --> "0..*" SeatHold
+User "1" --> "0..*" SeatHold
+Order "0..1" --> "0..*" SeatHold
+Order "1" *-- "1..*" OrderItem : Bao gồm
+EventSeat "1" --> "0..*" OrderItem
+Order "1" --> "0..*" PaymentTransaction
+PaymentTransaction "1" --> "0..*" PaymentReconciliation
+Event "1" --> "0..*" PaymentReconciliation
+PaymentTransaction "1" --> "0..*" Refund
+Order "1" --> "0..*" Refund
+OrderItem "1" --> "1" Ticket : Phát hành vé
+Event "1" --> "0..*" Ticket
+User "1" --> "0..*" Ticket
+EventSeat "1" --> "1" Ticket
+Ticket "1" *-- "0..*" TicketQrToken : Mã QR động
+Ticket "1" *-- "0..*" TicketDelivery
+Event "1" *-- "0..*" GateDevice
+User "0..1" --> "0..*" GateDevice : staff
+Ticket "1" *-- "0..*" Checkin : Lịch sử soát vé
+Event "1" --> "0..*" Checkin
+GateDevice "0..1" --> "0..*" Checkin
+Event "1" *-- "0..*" Promotion
+User "0..1" --> "0..*" Promotion : approvedBy
+Promotion "1" --> "0..*" PromotionUsage
+Order "1" --> "0..*" PromotionUsage
+User "1" --> "0..*" PromotionUsage
+User "0..1" --> "0..*" AuditLog
+Event "0..1" --> "0..*" AuditLog
+Event "1" --> "0..*" SalesSnapshot
+
+legend right
+  |= Ký hiệu |= Ý nghĩa |
+  | *-- | Composition |
+  | o-- | Aggregation |
+  | --> | Association một chiều |
+endlegend
+
+@enduml

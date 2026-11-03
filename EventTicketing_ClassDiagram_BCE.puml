@@ -1,0 +1,284 @@
+@startuml EventTicketing_ClassDiagram_BCE
+skinparam style strictuml
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Segoe UI", Helvetica, Arial, sans-serif
+skinparam defaultFontSize 11
+skinparam packageFontSize 13
+skinparam packageFontStyle bold
+skinparam classFontStyle bold
+skinparam package {
+    BorderColor #444444
+    BorderThickness 1.5
+}
+skinparam class {
+    BorderColor #333333
+    BorderThickness 1.2
+    ArrowColor #222222
+}
+
+title EventTicketing — Boundary / Control / Entity Overview\n(dựa trên System design.docx — FR-01..FR-23 — và source code hiện có trong frontend/src)
+
+' ==========================================
+' BOUNDARY LAYER
+' ==========================================
+package "Boundary Layer (UI)" #FEF9E7 {
+    class CustomerAuthUI <<FR-01, FR-04 — có code: LoginPage.tsx, AuthContext.tsx>> {
+        +submitPhoneNumber(phone: String): void
+        +submitOTP(code: String): boolean
+    }
+
+    class EventBrowsingUI <<FR-02 — có code: HomePage, EventList, EventCard, FilterBar/Drawer>> {
+        +renderEventList(events: List<Event>): void
+        +applyFilters(state: FilterState): void
+    }
+
+    class WaitingRoomUI <<FR-09 — CHƯA có code (planned Sprint 3)>> {
+        +displayQueueStatus(position: int, waitTime: int): void
+        +redirectToSeatMap(queueToken: String): void
+    }
+
+    class SeatMapUI <<FR-03, FR-05, FR-06 — có code: EventDetailPage.tsx, SeatMap.tsx>> {
+        +displaySeatMap(seats: List<SeatItem>): void
+        +onSeatSelected(seatId: String): void
+        +startHoldCountdown(seconds: int): void
+    }
+
+    class CheckoutUI <<FR-13 — có code: CheckoutPage.tsx>> {
+        +renderOrderSummary(order: Order): void
+        +submitPayment(method: String): void
+    }
+
+    class TicketDisplayUI <<FR-14 — có code: MyTicketsPage.tsx>> {
+        +renderTicketList(tickets: List<Ticket>): void
+        +cancelBooking(bookingId: String): void
+    }
+
+    class PaymentGatewayAdapter <<FR-13 — CHƯA có code (planned)>> {
+        +buildPaymentPayload(order: Order, provider: String): String
+        +verifyWebhookSignature(payload: Map, signature: String): boolean
+    }
+
+    class GateScannerUI <<FR-16, FR-17, FR-18 — CHƯA có code (planned Sprint 5)>> {
+        +captureQRCode(): String
+        +showScanResult(isValid: boolean): void
+        +triggerOfflineSync(): void
+    }
+
+    class OrganizerDashboardUI <<FR-08, FR-19, FR-21 — CHƯA có code (planned Sprint 5)>> {
+        +setPriceLimits(zoneId: String, min: Decimal, max: Decimal): void
+        +showRevenueByMinute(): void
+        +exportReport(format: String): void
+    }
+}
+
+' ==========================================
+' CONTROL LAYER (planned theo FR, chưa có backend)
+' ==========================================
+package "Control Layer (Application & Business Logic)" #E0F7FA {
+    class AuthController <<FR-01, FR-04>> {
+        +sendOtp(phone: String): boolean
+        +verifyOtp(phone: String, code: String): boolean
+        +createSession(user: User): String
+    }
+
+    class QueueController <<FR-09>> {
+        +enqueue(userId: String, eventId: String): long
+        +estimateWaitTime(position: long): int
+        +admitNext(eventId: String): String
+    }
+
+    class AntiBotController <<FR-10, FR-11, NFR-07>> {
+        +runChallenge(sessionId: String): String
+        +checkTicketQuota(userId: String, eventId: String, max: int): boolean
+    }
+
+    class SeatHoldController <<FR-05, FR-06, FR-07>> {
+        +getLiveSeatMap(eventId: String): List<EventSeat>
+        +holdSeat(eventId: String, seatId: String, userId: String): boolean
+        +releaseExpiredHolds(): void
+    }
+
+    class PricingController <<FR-08, FR-20, FR-22, FR-23>> {
+        +setZonePriceRule(zoneId: String, floor: Decimal, ceiling: Decimal): void
+        +adjustPrice(eventSeatId: String, newPrice: Decimal, source: String): void
+    }
+
+    class OrderController <<FR-13>> {
+        +createOrder(userId: String, eventId: String, seatIds: List<String>): Order
+        +applyPromotion(orderId: String, code: String): void
+        +expireUnpaidOrder(orderId: String): void
+    }
+
+    class PaymentController <<FR-13, FR-14>> {
+        +initiatePayment(orderId: String, provider: String): PaymentTransaction
+        +handleWebhook(providerTxId: String, status: String): void
+        +issueTickets(orderId: String): List<Ticket>
+    }
+
+    class ReconciliationController <<FR-15, NFR-04>> {
+        +detectMismatch(): List<PaymentReconciliation>
+        +resolveViaTicketIssue(reconId: String): void
+        +resolveViaRefund(reconId: String): Refund
+    }
+
+    class TicketController <<FR-12, FR-14>> {
+        +generateTicket(orderItemId: String): Ticket
+        +rotateQrToken(ticketId: String): TicketQrToken
+        +deliverTicket(ticketId: String, channel: String): void
+    }
+
+    class CheckInController <<FR-16, FR-17, FR-18>> {
+        +validateQrToken(tokenHash: String): boolean
+        +recordCheckin(ticketId: String, gateDeviceId: String): Checkin
+        +syncOfflineLogs(deviceCode: String, logs: List<Checkin>): boolean
+    }
+
+    class DashboardController <<FR-19, FR-21>> {
+        +getRevenueByMinute(eventId: String): List<SalesSnapshot>
+        +exportReport(eventId: String, format: String): File
+    }
+}
+
+' ==========================================
+' ENTITY LAYER (tham chiếu rút gọn — xem chi tiết tại
+' EventTicketing_ClassDiagram_Core.puml)
+' ==========================================
+package "Entity Layer (xem chi tiết ở diagram Core)" #F3E5F5 {
+    class User {
+        -id: UUID
+        -phone: String
+        -role: Enum
+    }
+    class OtpVerification {
+        -id: UUID
+        -purpose: String
+    }
+    class Event {
+        -id: UUID
+        -name: String
+        -status: Enum
+    }
+    class EventSeat {
+        -id: UUID
+        -status: Enum
+        -currentPrice: Decimal
+    }
+    class ZonePriceRule {
+        -id: UUID
+        -floorPrice: Decimal
+        -ceilingPrice: Decimal
+    }
+    class QueueEntry {
+        -id: UUID
+        -position: long
+    }
+    class BotChallenge {
+        -id: UUID
+        -riskScore: Decimal
+    }
+    class Order {
+        -id: UUID
+        -status: Enum
+        -totalAmount: Decimal
+    }
+    class SeatHold {
+        -id: UUID
+        -status: Enum
+        -expiresAt: DateTime
+    }
+    class PaymentTransaction {
+        -id: UUID
+        -provider: Enum
+        -status: Enum
+    }
+    class PaymentReconciliation {
+        -id: UUID
+        -status: Enum
+    }
+    class Refund {
+        -id: UUID
+        -amount: Decimal
+    }
+    class Ticket {
+        -id: UUID
+        -ticketCode: String
+        -status: Enum
+    }
+    class TicketQrToken {
+        -id: UUID
+        -validUntil: DateTime
+    }
+    class Checkin {
+        -id: UUID
+        -result: Enum
+    }
+    class GateDevice {
+        -id: UUID
+        -deviceCode: String
+    }
+    class Promotion {
+        -id: UUID
+        -code: String
+    }
+    class SalesSnapshot {
+        -id: long
+        -capturedAt: DateTime
+    }
+}
+
+' ==========================================
+' RELATIONSHIPS
+' ==========================================
+
+' Boundary -> Control
+CustomerAuthUI ..> AuthController : gửi yêu cầu OTP
+EventBrowsingUI ..> QueueController : vào hàng chờ khi quá tải
+WaitingRoomUI ..> QueueController : truy vấn số thứ tự
+SeatMapUI ..> SeatHoldController : lock / release ghế
+SeatMapUI ..> AntiBotController : kiểm tra trước khi giữ ghế
+CheckoutUI ..> OrderController : tạo đơn hàng
+CheckoutUI ..> PaymentController : thanh toán
+TicketDisplayUI ..> TicketController : hủy vé / tải vé
+PaymentGatewayAdapter ..> PaymentController : gửi callback/webhook
+GateScannerUI ..> CheckInController : quét & kiểm tra vé
+OrganizerDashboardUI ..> PricingController : điều chỉnh trần/sàn
+OrganizerDashboardUI ..> DashboardController : xem báo cáo
+
+' Control -> Control
+QueueController ..> AntiBotController
+QueueController ..> SeatHoldController : cấp quyền truy cập sơ đồ ghế
+SeatHoldController ..> OrderController : chuyển ghế giữ sang đơn hàng
+OrderController ..> PaymentController : khởi tạo thanh toán
+PaymentController ..> ReconciliationController : đối soát giao dịch
+PaymentController ..> TicketController : phát hành vé
+PricingController ..> SeatHoldController : áp dụng giá hiện tại
+
+' Control -> Entity
+AuthController ..> User
+AuthController ..> OtpVerification
+QueueController ..> QueueEntry
+AntiBotController ..> BotChallenge
+SeatHoldController ..> EventSeat
+SeatHoldController ..> SeatHold
+PricingController ..> ZonePriceRule
+OrderController ..> Order
+PaymentController ..> PaymentTransaction
+ReconciliationController ..> PaymentReconciliation
+ReconciliationController ..> Refund
+TicketController ..> Ticket
+TicketController ..> TicketQrToken
+CheckInController ..> Checkin
+CheckInController ..> GateDevice
+DashboardController ..> SalesSnapshot
+
+legend right
+  |= Ký hiệu |= Ý nghĩa |
+  | <<FR-xx>> | Yêu cầu chức năng tương ứng trong System design.docx |
+  | "có code" | Đã hiện diện trong frontend/src |
+  | "CHƯA có code (planned)" | Theo FR nhưng chưa triển khai |
+  | ..> | Dependency (gọi / sử dụng) |
+endlegend
+
+@enduml
