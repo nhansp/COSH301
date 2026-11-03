@@ -11,6 +11,7 @@ export const Navbar: React.FC = () => {
   const { isEnabled } = useFeatures();
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -64,6 +65,16 @@ export const Navbar: React.FC = () => {
                     {bookings.length}
                   </span>
                 )}
+              </Link>
+            )}
+            {isOrganizer && isEnabled('organizer_console') && (
+              <Link
+                to="/organizer"
+                className={`transition-colors hover:text-white ${
+                  location.pathname === '/organizer' ? 'text-white font-semibold' : 'text-purple-200/70'
+                }`}
+              >
+                Quản lý sự kiện
               </Link>
             )}
           </nav>

@@ -9,6 +9,7 @@ import { EventDetailPage } from './pages/EventDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { MyTicketsPage } from './pages/MyTicketsPage';
+import { OrganizerPage } from './pages/OrganizerPage';
 
 export default function App() {
   return (
@@ -37,6 +38,15 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <MyTicketsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/organizer"
+              element={
+                <ProtectedRoute roles={['ORGANIZER', 'ADMIN']}>
+                  <OrganizerPage />
                 </ProtectedRoute>
               }
             />
