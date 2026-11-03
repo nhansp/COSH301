@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Booking } from '../types';
+import { User, UserRole, Booking } from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -35,41 +35,65 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USER_STORAGE_KEY = 'sms_auth_user';
 const BOOKINGS_STORAGE_KEY = 'sms_user_bookings';
+
+interface ApiUser {
+  id: string;
+  phone?: string | null;
+  email?: string | null;
+  fullName?: string | null;
+  role?: UserRole;
+}
+
+function userFromApi(u: ApiUser): User {
+  const phone = u.phone || undefined;
+  const email = u.email || undefined;
+  const handle = phone || email || u.id;
+  return {
+    id: u.id,
+    name: u.fullName || (phone ? `User ${phone.slice(-4)}` : (email ? email.split('@')[0] : 'User')),
+    phone,
+    email,
+    avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(handle)}`,
+    authProvider: phone ? 'phone' : 'email',
+    role: u.role,
+    createdAt: new Date().toISOString()
+  };
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Initialize session from localStorage
+  // The server session (HttpOnly cookie) is the source of truth; restore it via /api/auth/me.
   useEffect(() => {
+    let isMounted = true;
     try {
-      const savedUser = localStorage.getItem(USER_STORAGE_KEY);
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
       const savedBookings = localStorage.getItem(BOOKINGS_STORAGE_KEY);
       if (savedBookings) {
         setBookings(JSON.parse(savedBookings));
       }
     } catch (e) {
-      console.error('Error loading stored auth state:', e);
-    } finally {
-      setIsLoading(false);
+      console.error('Error loading stored bookings:', e);
     }
+
+    fetch('/api/auth/me')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (isMounted && data?.user) setUser(userFromApi(data.user));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Save changes to localStorage
-  const saveUserSession = (newUser: User | null) => {
-    setUser(newUser);
-    if (newUser) {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
-    } else {
-      localStorage.removeItem(USER_STORAGE_KEY);
-    }
-  };
+  const saveUserSession = (newUser: User | null) => setUser(newUser);
 
   const sendPhoneOtp = async (phoneNumber: string) => {
     try {
@@ -109,15 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (res.ok) {
         const data = await res.json();
-        const newUser: User = {
-          id: data.user.id,
-          name: data.user.fullName || `User ${phoneNumber.slice(-4) || 'VIP'}`,
-          phone: data.user.phone || phoneNumber,
-          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${phoneNumber}`,
-          authProvider: 'phone',
-          createdAt: new Date().toISOString()
-        };
-        saveUserSession(newUser);
+        saveUserSession(userFromApi(data.user));
         return true;
       }
     } catch {
@@ -178,17 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (res.ok) {
         const data = await res.json();
-        const namePart = email.split('@')[0];
-        const capitalized = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-        const newUser: User = {
-          id: data.user.id,
-          name: data.user.fullName || capitalized,
-          email: data.user.email || email,
-          avatar: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${email}`,
-          authProvider: 'email',
-          createdAt: new Date().toISOString()
-        };
-        saveUserSession(newUser);
+        saveUserSession(userFromApi(data.user));
         return true;
       }
     } catch {

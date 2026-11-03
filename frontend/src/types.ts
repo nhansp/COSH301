@@ -48,8 +48,11 @@ export interface User {
   email?: string;
   avatar: string;
   authProvider: 'phone' | 'email';
+  role?: UserRole;
   createdAt: string;
 }
+
+export type UserRole = 'CUSTOMER' | 'ORGANIZER' | 'ADMIN';
 
 export interface Booking {
   id: string;
