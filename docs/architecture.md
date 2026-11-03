@@ -1,156 +1,210 @@
-# Kiến trúc hệ thống (System Architecture)
+# Kiến trúc hệ thống
 
-Tài liệu đặc tả kiến trúc tổng thể của hệ thống **EventTicketing**, mô tả các thành phần phần mềm, nguyên lý phân tầng BCE (Boundary - Control - Entity), luồng dữ liệu thời gian thực và cấu hình triển khai Docker Compose dựa trên Mục 3 của [`docs/design/README.md`](design/README.md).
+Tài liệu mô tả kiến trúc đang chạy ở `compose.yaml`, `backend/` và `frontend/`.
+Nguyên tắc thiết kế nằm ở mục 3 của [`design/README.md`](design/README.md).
+Đặc tả API nằm ở [`api/openapi.yaml`](api/openapi.yaml).
 
----
+## 1. Nguyên tắc
 
-## 1. Nguyên lý kiến trúc cốt lõi
+Chỉ một database, không dùng Redis.
+PostgreSQL lo cả ba việc:
+- khóa ghế, bằng câu `UPDATE` có điều kiện và partial unique index trên `seat_holds`;
+- hàng chờ, bằng bảng `queue_entries`;
+- phát sự kiện realtime, bằng `LISTEN/NOTIFY`.
 
-1. **Đơn cơ sở dữ liệu (Single Source of Truth - Không dùng Redis):**
-   Hệ thống không sử dụng Redis để lưu trạng thái tạm hay hàng chờ. Toàn bộ các bài toán hóc búa về tính toàn vẹn và hiệu năng đều được giao phó cho **PostgreSQL 18**:
-   - **Khóa ghế & Chống bán trùng:** Sử dụng khóa có điều kiện nguyên tử (`atomic row-level update`) và chỉ mục một phần duy nhất (`partial unique index`).
-   - **Hàng chờ ảo:** Lưu trực tiếp trong bảng `queue_entries` có index theo thứ tự thời gian.
-   - **Phát sự kiện thời gian thực (Realtime Event Bus):** Tận dụng tính năng `LISTEN / NOTIFY` nội tại của PostgreSQL trong cùng giao dịch ACID.
-   - **Kiểm toán bất biến:** Sử dụng database trigger ngăn chặn thao tác `UPDATE` và `DELETE` trên bảng `price_changes` và `audit_logs`.
-   $\implies$ Kiến trúc giảm thiểu độ phức tạp vận hành, loại trừ hoàn toàn nguy cơ mất đồng bộ giữa Cache và Database.
+Mọi thay đổi trạng thái ghế và thông báo `NOTIFY` nằm trong cùng một giao dịch.
+Giao dịch bị hủy thì trình duyệt cũng không nhận thông báo.
 
-2. **Phát trực tiếp qua Server-Sent Events (SSE):**
-   Thay vì bắt hàng chục ngàn trình duyệt phải liên tục gửi request hỏi trạng thái (polling) gây quá tải server, backend duy trì một kết nối dài hạn qua SSE (`/api/events/{id}/stream`). Khi cơ sở dữ liệu phát tín hiệu `pg_notify`, background worker của Go chuyển tiếp ngay lập tức thông báo đến các client đang lắng nghe.
+Realtime dùng SSE.
+Trình duyệt mở `EventSource` một lần, không phải hỏi lại liên tục.
 
-3. **Phân lớp kiến trúc BCE (Boundary - Control - Entity):**
-   - **Boundary (`internal/httpapi`):** Tiếp nhận HTTP request, xác thực token cookie, parse JSON, kiểm tra cờ tính năng (`feature flags`) và trả về mã HTTP chuẩn.
-   - **Control (`internal/service`):** Đóng gói toàn bộ nghiệp vụ lõi (quy trình giữ ghế, kiểm tra quota 4 vé, tính toán định giá động, xử lý đối soát IPN).
-   - **Entity / Store (`internal/store`):** Tầng truy cập dữ liệu được sinh tự động bằng `sqlc` và thư viện driver `pgx/v5`, bảo đảm an toàn kiểu dữ liệu (type-safe) tại thời điểm biên dịch.
+api là một file chạy Go duy nhất, chia lớp theo BCE (bài B05):
 
----
+| Lớp | Gói | Việc |
+|---|---|---|
+| Boundary | `internal/httpapi` | Định tuyến, đọc JSON, tra phiên, kiểm tra cờ và vai trò, trả mã HTTP |
+| Control | `internal/service` | Nghiệp vụ: OTP, giữ ghế, giá khu vực, realtime, nhả ghế hết hạn |
+| Entity | `internal/store` | Model và truy vấn sinh bằng `sqlc` từ `queries/*.sql`, chạy trên `pgx/v5` |
 
-## 2. Sơ đồ kiến trúc triển khai (Deployment Architecture)
+## 2. Triển khai
 
 ```mermaid
-flowchart TD
-    subgraph Clients["Tác nhân Client"]
-        BrowserA["Trình duyệt Khán giả A"]
-        BrowserB["Trình duyệt Khán giả B"]
-        MobileApp["Thiết bị Soát vé Cổng"]
-        CEODash["Dashboard Mobile CEO"]
+flowchart LR
+    B["Trình duyệt"]
+    CF["Cloudflare"]
+
+    subgraph Compose["Docker Compose"]
+        T["tunnel<br/>cloudflared<br/>(profile tunnel)"]
+        F["frontend<br/>nginx<br/>SPA + proxy /api"]
+        A["api<br/>Go, cổng 8080"]
+        D[("db<br/>PostgreSQL 18<br/>volume pgdata")]
     end
 
-    subgraph Edge["Lớp Biên mạng"]
-        CFTunnel["Cloudflare Tunnel<br/>(HTTPS Reverse Proxy & DDoS / Turnstile)"]
-    end
-
-    subgraph ContainerStack["Docker Compose Stack"]
-        subgraph FrontendContainer["frontend (nginx:alpine)"]
-            Nginx["Nginx Reverse Proxy<br/>- Phục vụ React 19 SPA tĩnh<br/>- Proxy /api/* sang Go API<br/>- Proxy /api/events/{id}/stream (SSE không đệm)"]
-        end
-
-        subgraph BackendContainer["api (Go 1.24+ - 1 Binary độc lập)"]
-            subgraph BoundaryLayer["Boundary Layer (internal/httpapi)"]
-                Router["HTTP Router (net/http ServeMux)"]
-                AuthH["AuthHandler"]
-                SeatH["SeatHandler"]
-                EventH["EventHandler"]
-                OrderH["OrderHandler"]
-                GateH["GateHandler"]
-                CEOH["CEOHandler"]
-            end
-
-            subgraph ControlLayer["Control Layer (internal/service)"]
-                AuthS["AuthService"]
-                SeatS["SeatService"]
-                EventS["EventService"]
-                OrderS["OrderService"]
-                RealtimeHub["RealtimeHub (SSE Bus)"]
-                HoldReaper["HoldReaper (Worker giải phóng ghế)"]
-                PricingWorker["DynamicPricingWorker"]
-            end
-
-            subgraph EntityLayer["Entity / Store Layer (internal/store)"]
-                SqlcQueries["sqlc Queries (Generated Data Access)"]
-                PgxPool["pgxpool Connection Pool"]
-            end
-        end
-
-        subgraph DBContainer["db (postgres:17-alpine)"]
-            PG[(PostgreSQL 18 / 17<br/>- ACID Transactions<br/>- Advisory Locks<br/>- Partial Unique Indexes<br/>- LISTEN / NOTIFY Bus)]
-        end
-    end
-
-    subgraph ExternalServices["Dịch vụ Bên ngoài"]
-        MOMO["Cổng MoMo"]
-        VNPAY["Cổng VNPAY"]
-        SMTP["Máy chủ SMTP (Email)"]
-        SMS["SMS Gateway (Android App)"]
-    end
-
-    %% Client traffic
-    Clients -->|HTTPS| CFTunnel
-    CFTunnel -->|HTTP :80| Nginx
-    Nginx -->|Proxy :8080| Router
-
-    %% Router to Handlers
-    Router --> AuthH
-    Router --> SeatH
-    Router --> EventH
-    Router --> OrderH
-    Router --> GateH
-    Router --> CEOH
-
-    %% Handlers to Services
-    AuthH --> AuthS
-    SeatH --> SeatS
-    EventH --> EventS
-    OrderH --> OrderS
-    SeatH -.-> RealtimeHub
-
-    %% Background Workers & Services to Entity
-    AuthS --> SqlcQueries
-    SeatS --> SqlcQueries
-    EventS --> SqlcQueries
-    OrderS --> SqlcQueries
-    HoldReaper --> SqlcQueries
-    PricingWorker --> SqlcQueries
-
-    SqlcQueries --> PgxPool
-    PgxPool -->|TCP Connection Pool| PG
-
-    %% Realtime loop
-    PG -.->|LISTEN events_stream| RealtimeHub
-    RealtimeHub -.->|SSE Stream| Nginx
-    Nginx -.->|Server-Sent Events| BrowserA
-    Nginx -.->|Server-Sent Events| BrowserB
-
-    %% Outgoing integrations
-    OrderS --> MOMO
-    OrderS --> VNPAY
-    AuthS --> SMTP
-    AuthS --> SMS
+    B -- HTTPS --> CF
+    CF -- "kết nối ra ngoài từ tunnel" --- T
+    T -- "HTTP :80" --> F
+    B -. "chạy cục bộ: 127.0.0.1:3001" .-> F
+    F -- "/api/* → :8080" --> A
+    A -- "SQL + LISTEN" --> D
 ```
 
----
+| Dịch vụ | Image | Cổng | Ghi chú |
+|---|---|---|---|
+| `db` | `postgres:18.6-alpine3.24` | 5432, chỉ trong mạng Compose | Healthcheck `pg_isready` |
+| `api` | Build từ `backend/Dockerfile`: `golang:1.26.10-alpine3.24`, chạy trên `alpine:3.24.3` | 8080, chỉ trong mạng Compose | Chạy bằng user không phải root. Healthcheck `GET /api/health` |
+| `frontend` | Build từ `frontend/Dockerfile`: `oven/bun:1.4.4-alpine`, chạy trên `nginx:1.31.8-alpine3.24` | `127.0.0.1:${FRONTEND_PORT:-3001}` → 80 | Cổng duy nhất mở ra máy chủ |
+| `tunnel` | `cloudflare/cloudflared:2026.10.7` | Không mở cổng | Chỉ chạy khi bật profile `tunnel` và có `TUNNEL_TOKEN` |
 
-## 3. Các thành phần hệ thống và Trách nhiệm
+Thứ tự khởi động: `db` khỏe → `api` khỏe → `frontend` → `tunnel`.
 
-| Thành phần | Công nghệ | Cấu hình & Vai trò chính |
+nginx của `frontend`:
+- trả file tĩnh của SPA, đường dẫn lạ thì trả `index.html`;
+- chuyển `/api/` sang `http://api:8080/api/`;
+- đặt `X-Real-IP` để api biết IP thật của khách;
+- tắt `proxy_buffering` và để `proxy_read_timeout 24h` cho luồng SSE.
+
+## 3. Bên trong api
+
+```mermaid
+flowchart TB
+    subgraph Boundary["Boundary: internal/httpapi"]
+        MW["Middleware<br/>CORS, log, RequireFeature,<br/>RequireRole, RateLimiter"]
+        SysH["SystemHandler"]
+        AuthH["AuthHandler"]
+        EvH["EventHandler"]
+        SeatH["SeatHandler"]
+        StrH["StreamHandler"]
+        OrgH["OrganizerHandler"]
+    end
+
+    subgraph Control["Control: internal/service"]
+        AuthS["AuthService"]
+        EvS["EventService"]
+        SeatS["SeatService"]
+        OrgS["OrganizerService"]
+        Hub["RealtimeHub"]
+        Reaper["HoldReaper<br/>(5 giây một lần)"]
+    end
+
+    subgraph Entity["Entity: internal/store"]
+        Q["Queries (sqlc)"]
+    end
+
+    PG[("PostgreSQL")]
+
+    MW --> SysH & AuthH & EvH & SeatH & StrH & OrgH
+    AuthH --> AuthS
+    EvH --> EvS
+    SeatH --> SeatS & AuthS & EvS
+    StrH --> Hub & EvS
+    OrgH --> OrgS & EvS
+    Reaper --> SeatS
+
+    AuthS & EvS & SeatS & OrgS --> Q
+    Q --> PG
+    PG -. "NOTIFY event_seats_channel" .-> Hub
+```
+
+Khi khởi động, `cmd/api/main.go`:
+1. Đọc cấu hình từ biến môi trường.
+2. Chạy migration bằng `goose` (`store.RunMigrations`).
+3. Mở pool `pgxpool`, tối thiểu 5, tối đa 30 kết nối.
+4. Tạo các service.
+5. Chạy `RealtimeHub` và `HoldReaper` ở nền.
+6. Mở HTTP server.
+   Timeout đọc và ghi là 15 giây; riêng luồng SSE bỏ hạn ghi.
+
+Nhận tín hiệu dừng thì server có 10 giây để đóng các kết nối đang mở.
+
+## 4. Luồng realtime
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Trình duyệt A
+    actor B as Trình duyệt B
+    participant SeatS as SeatService
+    participant PG as PostgreSQL
+    participant Hub as RealtimeHub
+    participant StrH as StreamHandler
+
+    B->>StrH: GET /api/events/{id}/stream
+    StrH->>Hub: Subscribe(eventId)
+    StrH-->>B: event: connected
+
+    A->>SeatS: POST /api/holds (qua SeatHandler)
+    SeatS->>PG: BEGIN, giữ ghế, pg_notify(event_seats_channel, SeatUpdate), COMMIT
+    PG--)Hub: NOTIFY (chỉ gửi sau COMMIT)
+    Hub->>Hub: Đọc eventId trong payload
+    Hub--)StrH: Gửi payload cho mọi kênh của eventId
+    StrH--)B: event: update
+```
+
+`RealtimeHub` giữ riêng một kết nối `LISTEN`, kết nối này không trả về pool.
+Mất kết nối thì sau 3 giây hub tự kết nối lại.
+Hàng đợi của một trình duyệt bị đầy thì thông báo đó bị bỏ, để một trình duyệt chậm không chặn các trình duyệt khác.
+
+Có ba loại thông báo:
+- `seat_held`: vừa giữ ghế;
+- `seat_released`: khách tự nhả ghế;
+- `seat_expired`: `HoldReaper` nhả ghế hết hạn.
+
+## 5. Cấu hình
+
+| Biến | Mặc định trong `compose.yaml` | Ý nghĩa |
 |---|---|---|
-| **Edge Proxy** | Cloudflare Tunnel | Bảo vệ DDoS, cung cấp SSL/TLS tự động, tích hợp dịch vụ Cloudflare Turnstile (`bot_check`). |
-| **Frontend Web** | React 19, TypeScript, Vite, Tailwind | Ứng dụng Single Page Application (SPA), tích hợp TanStack Query quản lý state, hiển thị sơ đồ ghế động và đồng hồ đếm ngược. |
-| **Web Server / Proxy** | Nginx Alpine | Phục vụ file SPA tĩnh; cấu hình `proxy_buffering off` cho endpoint SSE `/api/events/*/stream` để không bị nghẽn thông báo. |
-| **Backend API** | Go 1.24+, `net/http` | Biên dịch thành 1 file thực thi tĩnh (Single Binary); tiêu thụ ít bộ nhớ (< 50MB RAM), thời gian khởi động tức thì (< 100ms). |
-| **Cơ sở dữ liệu** | PostgreSQL 18 | Quản lý 26 bảng dữ liệu, chạy cơ chế khóa hàng nguyên tử, hàng chờ ảo và kênh pub/sub `LISTEN/NOTIFY`. |
-| **Realtime Hub** | Go Goroutines & Channels | Mở 1 kết nối chuyên biệt `LISTEN events_stream` tới Postgres; điều phối sự kiện tới các HTTP response writer qua SSE. |
-| **Hold Reaper Worker** | Go Background Worker | Chạy ngầm định kỳ quét các lượt giữ ghế quá 5 phút (`expires_at <= now()`), thu hồi ghế về `AVAILABLE` và phát tín hiệu giải phóng. |
+| `POSTGRES_PASSWORD` | Bắt buộc | Mật khẩu database |
+| `POSTGRES_USER`, `POSTGRES_DB` | `postgres`, `event_ticketing` | Tài khoản và tên database |
+| `FEATURE_PROFILE` | `sprint2` | Profile cờ: `sprint2`, `sprint3`, `sprint4`, `final` |
+| `FEATURE_<TÊN>` | — | Bật/tắt riêng một cờ, ví dụ `FEATURE_TICKET_LIMIT=on` |
+| `OTP_DEMO` | `false` | `true` thì trả mã OTP của khách hàng ngay trong phản hồi |
+| `COOKIE_SECURE` | `false` | `true` khi chạy qua HTTPS |
+| `APP_ENV` | `development` | Môi trường chạy |
+| `FRONTEND_PORT` | `3001` | Cổng trên máy chủ |
+| `COMPOSE_PROFILES`, `TUNNEL_TOKEN` | — | Đặt `tunnel` và token để mở ra Internet |
 
----
+Cờ tắt thì:
+- giao diện ẩn tính năng;
+- api trả `404` với `{"error":"feature_disabled","feature":"<tên cờ>"}`.
 
-## 4. Quản lý cấu hình & Cờ tính năng (Feature Flags)
+`GET /api/features` trả profile và trạng thái từng cờ để frontend biết nên hiện gì.
 
-Mọi tính năng được kiểm soát thông qua biến môi trường độc lập hoặc thông qua hồ sơ (**Profile**):
-- `FEATURE_PROFILE=sprint2` (Giữa kỳ: Đăng nhập OTP, Sơ đồ ghế SSE, Giữ ghế 5 phút, Cấu hình giá sàn/trần).
-- `FEATURE_PROFILE=sprint3` (Hàng chờ ảo, Cloudflare Turnstile, Giới hạn 4 vé, QR xoay vòng).
-- `FEATURE_PROFILE=sprint4` (Thanh toán MoMo/VNPAY, Gửi vé qua Email, Đối soát tự động).
-- `FEATURE_PROFILE=final` (Bật toàn bộ tính năng, bao gồm Soát vé cổng, Dashboard CEO và Định giá động).
+## 6. Trạng thái API
 
-Khi một cờ tính năng bị tắt (`disabled`):
-- Giao diện người dùng ẩn toàn bộ các nút bấm và màn hình liên quan.
-- API máy chủ từ chối phục vụ ngay tại tầng Boundary với mã phản hồi `404 Not Found` kèm nội dung `{"error": "feature_disabled"}`.
+Đã làm, có trong `openapi.yaml`:
+
+| Endpoint | Cờ |
+|---|---|
+| `GET /api/health`, `GET /api/features` | — |
+| `POST /api/auth/otp/request`, `POST /api/auth/otp/verify` | `otp_login` |
+| `GET /api/auth/me`, `POST /api/auth/logout` | — |
+| `GET /api/events`, `GET /api/events/{slug}` | — (FR-02 luôn bật) |
+| `GET /api/events/{id}/seats`, `GET /api/events/{id}/stream` | `seat_map_realtime` |
+| `POST /api/holds`, `DELETE /api/holds/{seatId}` | `seat_hold` |
+| `GET /api/organizer/events` | `organizer_console` |
+| `PUT /api/organizer/events/{id}/zones/{zoneId}/pricing` | `organizer_console`, `zone_pricing` |
+
+Chưa làm, theo mục 7 của thiết kế:
+
+| Nhóm | Cờ |
+|---|---|
+| Hàng chờ: `/api/events/{id}/queue…` | `waiting_room` |
+| Đơn hàng, thanh toán, IPN | `payments`, `reconciliation` |
+| Vé và QR: `/api/me/tickets`, `/api/tickets/{id}/qr` | `rotating_qr`, `ticket_email` |
+| BTC: địa điểm, tạo sự kiện, duyệt đề xuất giá | `organizer_console`, `dynamic_pricing` |
+| Soát vé: `/api/gate/…` | `gate_checkin`, `offline_checkin` |
+| CEO: `/api/dashboard/stream`, `/api/reports/…` | `ceo_dashboard`, `reports_export` |
+
+## 7. Khác biệt so với thiết kế
+
+- **Nhả ghế hết hạn.**
+  Thiết kế đặt bộ hẹn giờ chạy đúng lúc lượt giữ sớm nhất hết hạn.
+  Code hiện quét 5 giây một lần, nên ghế có thể trễ tối đa 5 giây mới trống lại.
+  Trong lúc đó, ghế vẫn giữ được, vì `TryStealExpiredSeatHold` cho phép lấy lượt giữ đã hết hạn.
+- **Gửi OTP.**
+  Chưa có SMTP hay SMS Gateway.
+  Mã chỉ hiện trên màn hình (`OTP_DEMO`) hoặc ghi vào log của api.
+- **Turnstile.**
+  Cờ `bot_check` có trong profile `sprint3` nhưng api chưa kiểm tra token.
+- **Frontend.**
+  Thiết kế có TanStack Query, nhưng `frontend/package.json` chưa dùng.
