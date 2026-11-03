@@ -1,139 +1,231 @@
 # Sơ đồ tuần tự: Đăng nhập bằng OTP (FR-01, FR-04)
 
-Tài liệu đặc tả sơ đồ tuần tự (Sequence Diagram) cho quy trình xác thực không mật khẩu (Passwordless Authentication) qua mã OTP gửi bằng Email hoặc SMS, tích hợp chống bot bằng Cloudflare Turnstile và quản lý phiên làm việc tập trung theo chuẩn kiến trúc BCE tại [`docs/class-diagram.md`](../class-diagram.md).
+Luồng đăng nhập không mật khẩu: khán giả nhập SĐT hoặc email, nhận mã 6 số, nhập mã để mở phiên.
+Lần đầu đăng nhập thì hệ thống tự tạo tài khoản `CUSTOMER`.
 
----
+Cờ tính năng: `otp_login` (Sprint 2).
+Cờ tắt thì `POST /api/auth/otp/request` và `POST /api/auth/otp/verify` trả `404 feature_disabled`.
 
-## 1. Tổng quan cơ chế bảo mật xác thực OTP
+## 1. Quy tắc
 
-1. **Xác minh người thật (Turnstile Challenge - `FR-10`):** Mỗi yêu cầu gửi mã OTP bắt buộc phải kèm theo `turnstile_token` do Cloudflare cấp nhằm ngăn chặn hoàn toàn việc bot spam SMS/Email gây kiệt quệ tài nguyên.
-2. **Băm mã an toàn trong cơ sở dữ liệu:** Hệ thống không lưu mã OTP dưới dạng văn bản thô (plain-text). Mã OTP 6 chữ số được băm bằng thuật toán SHA-256 trước khi ghi vào bảng `otp_verifications`.
-3. **Giới hạn số lần thử (Rate-limit & Brute-force Prevention):** Mỗi mã OTP chỉ có hiệu lực trong 5 phút và cho phép tối đa 5 lần nhập sai (`attempts <= 5`). Quá 5 lần, mã lập tức bị vô hiệu hóa.
-4. **Quản lý phiên tập trung trên máy chủ (`sessions`):** Sau khi xác thực thành công, hệ thống sinh mã phiên ngẫu nhiên an toàn 256-bit, lưu trong bảng `sessions` và gắn vào trình duyệt qua HTTP Cookie `event_session` có cờ `HttpOnly`, `SameSite=Lax`, `Secure`.
+Kênh gửi:
+- chuỗi có `@` là email, kênh `EMAIL`, chuyển về chữ thường;
+- còn lại là SĐT, kênh `SMS`, bỏ dấu cách, `-`, `.` và phải có 9–15 chữ số.
 
----
+Giới hạn yêu cầu:
+- mỗi IP tối đa 30 lần gọi `otp/request` và `otp/verify` mỗi phút;
+- mỗi `destination` phải cách lần xin mã trước ít nhất 60 giây;
+- mỗi `destination` tối đa 5 mã trong 1 giờ.
 
-## 2. Sơ đồ tuần tự tương tác (Sequence Diagram)
+Mã OTP:
+- 6 chữ số, sinh bằng `crypto/rand`;
+- chỉ lưu SHA-256 của mã trong `otp_verifications.code_hash`;
+- hết hạn sau 5 phút;
+- mỗi mã cho nhập tối đa 5 lần, tính cả lần đúng;
+- chỉ mã mới nhất còn hạn được dùng;
+- dùng xong thì ghi `verified_at`, không dùng lại được.
 
-Tên các đối tượng tuân thủ chặt chẽ mô hình BCE đã thiết kế:
-- **Boundary:** `AuthHandler` (`internal/httpapi`)
-- **Control:** `AuthService` (`internal/service`)
-- **External:** `Cloudflare Turnstile`, `Notifier (SMTP / SMS Gateway)`
-- **Entity / Store:** `DB (PostgreSQL 18)` (`internal/store`: `otp_verifications`, `users`, `sessions`)
+Lượt nhập được trừ trước khi so mã, bằng một câu `UPDATE … FOR UPDATE`.
+Vì vậy gửi nhiều yêu cầu cùng lúc cũng không vượt được 5 lần.
+
+Phiên đăng nhập:
+- token ngẫu nhiên 32 byte, trả cho trình duyệt dạng hex;
+- bảng `sessions` chỉ lưu SHA-256 của token;
+- hiệu lực 7 ngày;
+- cookie `session_token`: `HttpOnly`, `SameSite=Lax`, `Path=/`;
+- cờ `Secure` bật khi `COOKIE_SECURE=true`;
+- api cũng nhận token qua header `Authorization: Bearer …`.
+
+Tài khoản `LOCKED` hoặc `DISABLED` không đăng nhập được.
+
+## 2. Đối tượng
+
+| Đối tượng | Lớp BCE | Vị trí |
+|---|---|---|
+| `AuthHandler` | Boundary | `internal/httpapi/auth.go` |
+| `AuthService` | Control | `internal/service/auth_service.go` |
+| `Queries` | Entity | `internal/store`, truy vấn bảng `otp_verifications`, `users`, `sessions` |
+
+`RateLimiter` và `RequireFeature` là middleware trong `internal/httpapi/middleware.go`.
+Sơ đồ gộp chúng vào `AuthHandler` cho gọn.
+
+## 3. Xin mã OTP
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Khán giả (Browser)
-    participant Turnstile as Cloudflare Turnstile
-    participant Boundary as AuthHandler (Boundary)
-    participant Control as AuthService (Control)
-    participant Notifier as Notifier (SMTP / SMS)
-    participant DB as PostgreSQL 18 (Entity / Store)
+    actor KG as Khán giả (trình duyệt)
+    participant H as AuthHandler
+    participant S as AuthService
+    participant Q as Queries
 
-    %% GIAI ĐOẠN 1: YÊU CẦU GỬI OTP
-    rect rgb(245, 248, 255)
-    Note over User,DB: Giai đoạn 1: Khởi tạo yêu cầu và gửi mã OTP (Request OTP Flow)
-    User->>Turnstile: Hoàn thành thử thách ngầm (Invisible Turnstile)
-    Turnstile-->>User: Cấp turnstile_token
-    User->>Boundary: POST /api/auth/otp/request {destination, channel, turnstile_token}
-    activate Boundary
-    Boundary->>Control: RequestOTP(ctx, req)
-    activate Control
-
-    Control->>Turnstile: Xác thực turnstile_token qua API Cloudflare
-    Turnstile-->>Control: Kết quả hợp lệ (Success: true)
-
-    Control->>Control: Sinh mã OTP ngẫu nhiên 6 chữ số (e.g. "849201")
-    Control->>Control: Băm mã: otp_hash = SHA256(raw_otp)
-
-    Control->>DB: INSERT INTO otp_verifications (destination, channel, otp_hash, expires_at: now() + 5m)
-    DB-->>Control: Ghi nhận thành công
-
-    alt channel == 'email'
-        Control->>Notifier: Gửi email chứa mã OTP (qua SMTP Server)
-    else channel == 'sms'
-        Control->>Notifier: Gửi tin nhắn SMS chứa mã OTP (qua SMS Gateway)
-    end
-    Notifier-->>Control: Gửi thành công
-
-    Control-->>Boundary: Trả về thành công
-    deactivate Control
-    Boundary-->>User: 200 OK {"status":"sent","expires_in":300}
-    deactivate Boundary
-    Note over User: Giao diện chuyển sang màn hình nhập 6 số OTP
+    KG->>H: POST /api/auth/otp/request {destination}
+    activate H
+    H->>H: Kiểm tra cờ otp_login và giới hạn 30 lần/phút theo IP
+    alt Cờ tắt
+        H-->>KG: 404 {error: "feature_disabled"}
+    else Quá 30 lần/phút
+        H-->>KG: 429 {error: "rate_limited"}
     end
 
-    %% GIAI ĐOẠN 2: XÁC THỰC MÃ OTP VÀ TẠO PHIÊN
-    rect rgb(245, 255, 248)
-    Note over User,DB: Giai đoạn 2: Xác thực mã OTP và cấp phát phiên làm việc (Verify OTP Flow)
-    User->>Boundary: POST /api/auth/otp/verify {destination, otp_code}
-    activate Boundary
-    Boundary->>Control: VerifyOTP(ctx, req)
-    activate Control
-
-    Control->>Control: Băm mã nhập vào: input_hash = SHA256(otp_code)
-    Control->>DB: SELECT * FROM otp_verifications WHERE destination = $1 AND verified_at IS NULL AND expires_at > now() ORDER BY created_at DESC LIMIT 1
-    DB-->>Control: Trả về bản ghi OTP hợp lệ
-
-    alt input_hash != otp_hash (Mã sai)
-        Control->>DB: UPDATE otp_verifications SET attempts = attempts + 1
-        Control-->>Boundary: Trả về ErrInvalidOTP
-        Boundary-->>User: 400 Bad Request {"error":"invalid_otp","message":"Mã xác thực không chính xác"}
-    else input_hash == otp_hash (Mã đúng)
-        Control->>DB: UPDATE otp_verifications SET verified_at = now() WHERE id = $id
-
-        Note over Control,DB: Kiểm tra hoặc tạo người dùng mới
-        Control->>DB: SELECT * FROM users WHERE phone = $dest OR email = $dest
-        alt Người dùng chưa tồn tại
-            Control->>DB: INSERT INTO users (role: 'CUSTOMER', phone/email) RETURNING *
-            DB-->>Control: Bản ghi User mới tạo
-        else Người dùng đã tồn tại
-            DB-->>Control: Bản ghi User hiện có
-        end
-
-        Note over Control,DB: Tạo phiên làm việc mới trên máy chủ
-        Control->>Control: Sinh session_token ngẫu nhiên 32 bytes (hex)
-        Control->>DB: INSERT INTO sessions (user_id, token_hash, expires_at: now() + 7 days)
-        DB-->>Control: Bản ghi Session tạo thành công
-
-        Control-->>Boundary: Trả về User & SessionToken
-        deactivate Control
-        Boundary->>User: Set-Cookie: event_session=token; HttpOnly; Secure; SameSite=Lax; Path=/
-        Boundary-->>User: 200 OK {"user":{"id":"...","role":"CUSTOMER","destination":"..."}}
-        deactivate Boundary
-        Note over User: Đăng nhập thành công, điều hướng về luồng mua vé
-    end
+    H->>S: RequestOTP(ctx, destination)
+    activate S
+    S->>S: NormalizeDestination(destination) → dest, channel
+    alt destination sai định dạng
+        S-->>H: ErrInvalidDestination
+        H-->>KG: 400 {error: "invalid_destination"}
     end
 
-    %% GIAI ĐOẠN 3: ĐĂNG XUẤT VÀ HỦY PHIÊN
-    rect rgb(255, 248, 248)
-    Note over User,DB: Giai đoạn 3: Đăng xuất người dùng (Logout Flow)
-    User->>Boundary: POST /api/auth/logout (Cookie: event_session=token)
-    activate Boundary
-    Boundary->>Control: Logout(ctx, session_token)
-    activate Control
-    Control->>DB: DELETE FROM sessions WHERE token_hash = SHA256(session_token)
-    DB-->>Control: Xóa thành công
-    Control-->>Boundary: Hoàn tất
-    deactivate Control
-    Boundary->>User: Set-Cookie: event_session=; Max-Age=0; Path=/
-    Boundary-->>User: 200 OK {"status":"logged_out"}
-    deactivate Boundary
+    S->>Q: CountRecentOTPs(dest, LOGIN, 60s, 1h)
+    Q-->>S: in_cooldown, in_window
+    alt in_cooldown > 0 hoặc in_window ≥ 5
+        S-->>H: ErrOTPRateLimited
+        H-->>KG: 429 {error: "otp_rate_limited"}
     end
+
+    S->>S: Sinh mã 6 số, code_hash = SHA256(code)
+    S->>Q: CreateOTP(dest, channel, LOGIN, code_hash, 300s)
+    Q-->>S: otp_verifications
+
+    S->>Q: GetUserByEmail / GetUserByPhone(dest)
+    Q-->>S: User hoặc không có
+
+    alt OTP_DEMO=true và không phải tài khoản nhân sự
+        S-->>H: OTPIssue{dest, demoCode}
+    else Còn lại
+        S->>S: Ghi mã vào log của api
+        S-->>H: OTPIssue{dest}
+    end
+    deactivate S
+    H-->>KG: 200 {status: "sent", destination, demoCode?}
+    deactivate H
+    Note over KG: Chuyển sang ô nhập 6 số
 ```
 
----
+## 4. Xác thực mã và mở phiên
 
-## 3. Bảng mã phản hồi API Xác thực
+```mermaid
+sequenceDiagram
+    autonumber
+    actor KG as Khán giả (trình duyệt)
+    participant H as AuthHandler
+    participant S as AuthService
+    participant Q as Queries
 
-| Endpoint | Tình huống | Mã HTTP | Thân phản hồi |
+    KG->>H: POST /api/auth/otp/verify {destination, code}
+    activate H
+    H->>H: Kiểm tra cờ otp_login và giới hạn 30 lần/phút theo IP
+    H->>S: VerifyOTP(ctx, destination, code, ip, userAgent)
+    activate S
+    S->>S: NormalizeDestination(destination)
+
+    S->>Q: ConsumeOTPAttempt(dest, LOGIN, max 5)
+    Note right of Q: Lấy mã mới nhất còn hạn, chưa dùng,<br/>attempt_count dưới 5, rồi tăng attempt_count
+    alt Không còn mã dùng được
+        Q-->>S: không có dòng
+        S-->>H: ErrOTPInvalid
+        H-->>KG: 401 {error: "otp_invalid"}
+    end
+    Q-->>S: otp_verifications
+
+    S->>S: So SHA256(code) với code_hash (so sánh thời gian hằng)
+    alt Mã sai
+        S-->>H: ErrOTPInvalid
+        H-->>KG: 401 {error: "otp_invalid"}
+    end
+
+    S->>Q: MarkOTPVerified(otp.id)
+    alt Yêu cầu khác đã dùng mã này trước
+        Q-->>S: 0 dòng
+        S-->>H: ErrOTPInvalid
+        H-->>KG: 401 {error: "otp_invalid"}
+    end
+    Q-->>S: 1 dòng
+
+    S->>Q: GetUserByEmail / GetUserByPhone(dest)
+    alt Chưa có tài khoản
+        S->>Q: CreateUser(role CUSTOMER, status ACTIVE, email/phone đã xác thực)
+        Q-->>S: User mới
+    else Tài khoản LOCKED hoặc DISABLED
+        S-->>H: ErrAccountInactive
+        H-->>KG: 403 {error: "account_inactive"}
+    else Tài khoản đang hoạt động
+        S->>Q: SetEmailVerified / SetPhoneVerified(user.id)
+    end
+
+    S->>Q: UpdateUserLastLogin(user.id)
+    S->>S: token = GenerateToken() (32 byte)
+    S->>Q: CreateSession(user.id, SHA256(token), ip, userAgent, 7 ngày)
+    Q-->>S: sessions
+    S-->>H: token, User
+    deactivate S
+
+    H-->>KG: 200 {user: {id, phone, email, fullName, role}}<br/>Set-Cookie: session_token=token, HttpOnly, SameSite=Lax
+    deactivate H
+    Note over KG: Quay lại trang đang mua
+```
+
+## 5. Kiểm tra phiên và đăng xuất
+
+`GET /api/auth/me` và mọi API cần đăng nhập đều tra phiên theo cùng một cách.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor KG as Khán giả (trình duyệt)
+    participant H as AuthHandler
+    participant S as AuthService
+    participant Q as Queries
+
+    KG->>H: GET /api/auth/me (cookie session_token)
+    activate H
+    H->>S: GetUserByToken(ctx, token)
+    S->>Q: GetSessionByTokenHash(SHA256(token))
+    Note right of Q: Phiên còn hạn và users.status = ACTIVE
+    alt Không tìm thấy
+        Q-->>S: không có dòng
+        S-->>H: ErrSessionNotFound
+        H-->>KG: 401 {error: "unauthorized"}
+    else Có phiên
+        Q-->>S: Session kèm User
+        S-->>H: Session kèm User
+        H-->>KG: 200 {user: {id, phone, email, fullName, role}}
+    end
+    deactivate H
+
+    KG->>H: POST /api/auth/logout (cookie session_token)
+    activate H
+    opt Có token
+        H->>S: Logout(ctx, token)
+        S->>Q: DeleteSession(SHA256(token))
+    end
+    H-->>KG: 200 {status: "logged_out"}<br/>Set-Cookie: session_token rỗng, Max-Age=0
+    deactivate H
+```
+
+## 6. Mã phản hồi
+
+| Endpoint | Tình huống | HTTP | `error` |
 |---|---|:---:|---|
-| `POST /api/auth/otp/request` | Yêu cầu gửi mã thành công | `200 OK` | `{"status":"sent","expires_in":300}` |
-| `POST /api/auth/otp/request` | Bot không vượt qua Turnstile | `400 Bad Request` | `{"error":"bot_check_failed","message":"Xác minh người thật thất bại"}` |
-| `POST /api/auth/otp/request` | Gửi yêu cầu quá nhanh (< 60s) | `429 Too Many Requests` | `{"error":"rate_limited","message":"Vui lòng đợi 60 giây trước khi yêu cầu lại"}` |
-| `POST /api/auth/otp/verify` | Mã OTP chính xác, đăng nhập thành công | `200 OK` | `{"user":{"id":"...","role":"CUSTOMER"},"expires_at":"..."}` |
-| `POST /api/auth/otp/verify` | Mã OTP sai hoặc hết hạn | `400 Bad Request` | `{"error":"invalid_otp","message":"Mã xác thực không đúng hoặc đã hết hạn"}` |
-| `POST /api/auth/otp/verify` | Nhập sai quá 5 lần | `429 Too Many Requests` | `{"error":"max_attempts_exceeded","message":"Đã thử sai quá số lần quy định"}` |
-| `GET /api/auth/me` | Phiên hợp lệ | `200 OK` | `{"user":{"id":"...","role":"CUSTOMER"}}` |
-| `GET /api/auth/me` | Chưa đăng nhập hoặc phiên hết hạn | `401 Unauthorized` | `{"error":"unauthorized","message":"Phiên làm việc không hợp lệ"}` |
+| `otp/request`, `otp/verify` | Cờ `otp_login` tắt | 404 | `feature_disabled` |
+| `otp/request`, `otp/verify` | Quá 30 lần/phút từ một IP | 429 | `rate_limited` |
+| `otp/request`, `otp/verify` | Body không phải JSON hoặc thiếu trường | 400 | `invalid_payload` |
+| `otp/request` | `destination` sai định dạng | 400 | `invalid_destination` |
+| `otp/request` | Xin lại trước 60 giây, hoặc quá 5 mã/giờ | 429 | `otp_rate_limited` |
+| `otp/request` | Thành công | 200 | — |
+| `otp/verify` | Mã sai, hết hạn, đã dùng, hoặc đã nhập sai 5 lần | 401 | `otp_invalid` |
+| `otp/verify` | Tài khoản bị khóa hoặc vô hiệu | 403 | `account_inactive` |
+| `otp/verify` | Thành công, đặt cookie phiên | 200 | — |
+| `me` | Không có phiên, phiên hết hạn, hoặc tài khoản không còn `ACTIVE` | 401 | `unauthorized` |
+| `logout` | Luôn thành công, kể cả khi chưa đăng nhập | 200 | — |
+
+## 7. Chưa làm so với thiết kế
+
+Mục 4.1 của thiết kế có hai bước mà code hiện tại chưa có:
+
+- Kiểm tra Turnstile trước khi gửi mã.
+  Bước này thuộc cờ `bot_check` (FR-10, Sprint 3).
+- Gửi mã qua máy chủ SMTP hoặc app SMS Gateway.
+  Hiện mã chỉ hiện trên màn hình (chế độ `OTP_DEMO`) hoặc ghi vào log của api.
+
+Khi hai bước này được làm, sơ đồ ở mục 3 cần thêm đối tượng `Cloudflare Turnstile` và bộ gửi thông báo.
