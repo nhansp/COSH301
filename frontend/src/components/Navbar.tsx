@@ -45,14 +45,14 @@ export const Navbar: React.FC = () => {
   const cityLabel = filterState.city === 'All Cities' ? 'Toàn quốc' : filterState.city;
 
   const navLink = (active: boolean) =>
-    `h-8 px-2.5 rounded-lg flex items-center gap-1.5 transition-colors ${
+    `h-8 px-2.5 rounded-lg flex items-center gap-1.5 transition-all duration-200 active:scale-95 ${
       active
-        ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 font-semibold'
+        ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 font-semibold shadow-2xs'
         : 'text-kumo-subtle hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-500/10'
     }`;
 
   const mobileLink = (active: boolean) =>
-    `h-11 px-3 -mx-3 rounded-lg flex items-center gap-2 text-lg transition-colors ${
+    `h-11 px-3 -mx-3 rounded-lg flex items-center gap-2 text-lg transition-all duration-200 active:scale-95 ${
       active ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 font-semibold' : 'text-kumo-default hover:bg-emerald-500/10'
     }`;
 
