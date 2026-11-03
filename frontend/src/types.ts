@@ -48,8 +48,11 @@ export interface User {
   email?: string;
   avatar: string;
   authProvider: 'phone' | 'email';
+  role?: UserRole;
   createdAt: string;
 }
+
+export type UserRole = 'CUSTOMER' | 'ORGANIZER' | 'CEO' | 'GATE_STAFF' | 'ADMIN';
 
 export interface Booking {
   id: string;
@@ -85,7 +88,7 @@ export interface SeatItem {
   row: string;
   number: number;
   price: number;
-  status: 'available' | 'sold' | 'held';
+  status: 'available' | 'sold' | 'held' | 'selected';
   tierId: string;
 }
 

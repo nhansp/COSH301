@@ -107,8 +107,8 @@ func (s *SeatService) GetSeatMap(ctx context.Context, eventID pgtype.UUID, curre
 		switch st {
 		case "AVAILABLE":
 			displayStatus = "available"
-		case "SOLD":
-			displayStatus = "sold"
+		case "SOLD", "BLOCKED":
+			displayStatus = "sold" // blocked seats are unavailable to buyers
 		case "HELD":
 			if isMyHold {
 				displayStatus = "selected" // purple for current user

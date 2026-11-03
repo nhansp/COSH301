@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Phone, Mail, ShieldCheck, ArrowLeft, ArrowRight, Sparkles, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEvents } from '../context/EventContext';
+import { useFeatures } from '../context/FeatureContext';
 
 export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -10,6 +11,7 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
   const { getEventById } = useEvents();
+  const { isEnabled, isLoading: featuresLoading } = useFeatures();
 
   // Extract event info if redirecting to checkout
   const checkoutEventId = redirectUrl.startsWith('/checkout/')
@@ -173,6 +175,21 @@ export const LoginPage: React.FC = () => {
     setIsSending(false);
     await handleVerifyOtp('123456');
   };
+
+  if (featuresLoading || !isEnabled('otp_login')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#12091c] px-4 text-center text-purple-200">
+        {featuresLoading ? (
+          <div className="w-10 h-10 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+        ) : (
+          <div>
+            <p className="mb-4">Tính năng đăng nhập hiện chưa được mở.</p>
+            <Link to="/" className="text-purple-400 hover:text-white underline">Về trang chủ</Link>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen purple-glow-bg flex flex-col justify-between py-8 px-4 sm:px-6 lg:px-8">

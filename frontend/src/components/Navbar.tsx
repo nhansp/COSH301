@@ -3,12 +3,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { MapPin, Search, ChevronDown, User as UserIcon, LogOut, Ticket } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEvents } from '../context/EventContext';
+import { useFeatures } from '../context/FeatureContext';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout, bookings } = useAuth();
   const { filterState, setCity } = useEvents();
+  const { isEnabled } = useFeatures();
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,6 +65,16 @@ export const Navbar: React.FC = () => {
                     {bookings.length}
                   </span>
                 )}
+              </Link>
+            )}
+            {isOrganizer && isEnabled('organizer_console') && (
+              <Link
+                to="/organizer"
+                className={`transition-colors hover:text-white ${
+                  location.pathname === '/organizer' ? 'text-white font-semibold' : 'text-purple-200/70'
+                }`}
+              >
+                Quản lý sự kiện
               </Link>
             )}
           </nav>
@@ -150,7 +163,7 @@ export const Navbar: React.FC = () => {
                 </div>
               )}
             </div>
-          ) : (
+          ) : isEnabled('otp_login') && (
             <button
               onClick={handleLoginClick}
               className="px-4 sm:px-5 py-2 rounded-full bg-white text-[#12091c] font-semibold text-xs sm:text-sm shadow-md hover:bg-purple-100 hover:shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
