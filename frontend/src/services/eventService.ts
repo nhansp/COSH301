@@ -447,87 +447,72 @@ export const MOCK_EVENTS: EventItem[] = [
 ];
 
 export async function fetchEventsFromAPI(): Promise<EventItem[]> {
-  const apiKey = import.meta.env.VITE_TICKETMASTER_API_KEY;
-
-  if (apiKey && apiKey !== 'YOUR_TICKETMASTER_API_KEY' && apiKey.trim().length > 5) {
-    try {
-      const response = await fetch(
-        `https://app.ticketmaster.com/discovery/v2/events.json?classificationName=music&size=20&apikey=${apiKey}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (data._embedded && data._embedded.events && data._embedded.events.length > 0) {
-          const apiEvents: EventItem[] = data._embedded.events.map((ev: any, idx: number) => {
-            const price = ev.priceRanges?.[0]?.min || 899;
-            const currency = ev.priceRanges?.[0]?.currency === 'USD' ? '$' : '₹';
-            const venue = ev._embedded?.venues?.[0]?.name || 'City Arena';
-            const city = ev._embedded?.venues?.[0]?.city?.name || 'Mumbai';
-            const rawDate = ev.dates?.start?.localDate || '2025-11-20';
-            const time = ev.dates?.start?.localTime ? ev.dates.start.localTime.slice(0, 5) : '08:00 PM';
-            const bestImage = ev.images?.find((img: any) => img.width > 600)?.url || ev.images?.[0]?.url;
-
-            return {
-              id: ev.id || `tm-${idx}`,
-              title: ev.name,
-              subTitle: ev.info || 'Live Music Concert Tour Experience',
-              imageUrl: bestImage || MOCK_EVENTS[0].imageUrl,
-              bannerUrl: bestImage || MOCK_EVENTS[0].bannerUrl,
-              date: new Date(rawDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-              time: time,
-              rawDate: rawDate,
-              venue: `${venue}, ${city}`,
-              city: city,
-              address: `${venue}, ${city}`,
-              priceStart: Math.round(price),
-              currency: currency,
-              genre: ev.classifications?.[0]?.genre?.name || 'Live Concert',
-              isTrending: idx % 2 === 0,
-              isPopular: true,
-              description: ev.info || `${ev.name} live in concert with state-of-the-art acoustics and unforgettable performances.`,
-              ageRestriction: ev.ageRestrictions?.legalAgeEnforced ? '18+' : 'All Ages',
-              organizer: {
-                name: ev.promoter?.name || 'Global Touring Network',
-                verified: true,
-                contact: 'support@ticketmaster.com'
+  try {
+    const res = await fetch('/api/events');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const realEvents: EventItem[] = data.map((ev: any) => {
+          const d = ev.date ? new Date(ev.date) : new Date();
+          return {
+            id: ev.id,
+            title: ev.title || ev.name,
+            subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
+            imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
+            bannerUrl: ev.imageUrl || DEFAULT_BANNER_IMAGE,
+            date: d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+            time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            rawDate: ev.date || d.toISOString(),
+            venue: ev.venue || 'Trung tâm Hội nghị Quốc gia',
+            city: ev.city || 'Hà Nội',
+            address: ev.address || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
+            priceStart: 500000,
+            currency: '₫',
+            genre: ev.genre || 'Classical & Symphony',
+            isTrending: true,
+            isPopular: true,
+            description: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam, mang đến không gian âm nhạc sống động và đầy cảm xúc.',
+            ageRestriction: '16+',
+            organizer: {
+              name: 'Ban Tổ Chức Mẫu',
+              verified: true,
+              contact: 'organizer@eventticketing.vn'
+            },
+            artists: [
+              {
+                name: 'Dàn nhạc Giao hưởng Quốc gia',
+                role: 'Dàn nhạc chính',
+                avatar: ev.imageUrl || DEFAULT_EVENT_IMAGE
+              }
+            ],
+            ticketTiers: [
+              {
+                id: '33333333-3333-3333-3333-333333333331',
+                name: 'Khu VIP',
+                description: 'Khu vực VIP tầm nhìn sân khấu trực diện',
+                price: 1500000,
+                available: 20,
+                perks: ['Ghế VIP trung tâm', 'Lối vào ưu tiên', 'Nước uống miễn phí']
               },
-              artists: [
-                {
-                  name: ev.name.split(' - ')[0] || ev.name,
-                  role: 'Headliner',
-                  avatar: bestImage || MOCK_EVENTS[0].imageUrl
-                }
-              ],
-              ticketTiers: [
-                {
-                  id: `tier-std-${ev.id}`,
-                  name: 'Standard Pass',
-                  description: 'General entry to concert venue',
-                  price: Math.round(price),
-                  available: 45,
-                  perks: ['General Entry', 'Concert Guide']
-                },
-                {
-                  id: `tier-vip-${ev.id}`,
-                  name: 'VIP Front Stage',
-                  description: 'Premium front stage viewing with express lane',
-                  price: Math.round(price * 2.2),
-                  available: 15,
-                  perks: ['VIP Lane', 'Front Stage Zone', 'Complimentary Drink']
-                }
-              ]
-            };
-          });
-
-          // Merge with our distinct hero concert items from screenshot for full visual parity
-          return [...MOCK_EVENTS, ...apiEvents];
-        }
+              {
+                id: '33333333-3333-3333-3333-333333333332',
+                name: 'Khu Phổ Thông (GA)',
+                description: 'Khu vực khán đài tiêu chuẩn',
+                price: 500000,
+                available: 30,
+                perks: ['Khán đài tiêu chuẩn', 'Trải nghiệm âm thanh vòm']
+              }
+            ]
+          };
+        });
+        return [...realEvents, ...MOCK_EVENTS];
       }
-    } catch (err) {
-      console.warn('Could not fetch from Ticketmaster API, using curated high-fidelity concert dataset:', err);
     }
+  } catch (err) {
+    console.warn('Could not fetch events from Backend API:', err);
   }
 
-  // Curated live events matching the screenshot design
+  // Fallback to mock events if API is unavailable
   return MOCK_EVENTS;
 }
 
