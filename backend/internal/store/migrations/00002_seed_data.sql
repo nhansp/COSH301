@@ -1,6 +1,7 @@
 -- +goose Up
 -- Seed basic venue, zones, seats and an active event for testing Sprint 2
 
+-- +goose StatementBegin
 DO $$
 DECLARE
     org_id UUID := '11111111-1111-1111-1111-111111111111';
@@ -103,6 +104,7 @@ BEGIN
     WHERE s.zone_id IN (z_vip, z_ga)
     ON CONFLICT (event_id, seat_id) DO NOTHING;
 END $$;
+-- +goose StatementEnd
 
 -- +goose Down
 DELETE FROM event_seats WHERE event_id = '44444444-4444-4444-4444-444444444444';

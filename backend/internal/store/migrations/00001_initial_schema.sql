@@ -377,12 +377,14 @@ CREATE INDEX idx_audit_event_time ON audit_logs(event_id, created_at DESC);
 CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id, created_at DESC);
 
 -- Trigger function to enforce append-only immutability
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION prevent_modification()
 RETURNS TRIGGER AS $$
 BEGIN
     RAISE EXCEPTION 'Modification or deletion is strictly forbidden on audit log table %', TG_TABLE_NAME;
 END;
 $$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 CREATE TRIGGER trg_immutable_price_changes
 BEFORE UPDATE OR DELETE ON price_changes
