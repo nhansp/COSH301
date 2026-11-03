@@ -640,7 +640,7 @@ export async function apiHoldSeat(eventId: string, seatId: string): Promise<{ su
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventId, seatId }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return { success: false, error: data.error || 'hold_failed' };
     }
@@ -652,7 +652,7 @@ export async function apiHoldSeat(eventId: string, seatId: string): Promise<{ su
 
 export async function apiReleaseSeat(eventId: string, seatId: string): Promise<boolean> {
   try {
-    const res = await fetch(`/api/holds/${seatId}?eventId=${eventId}`, {
+    const res = await fetch(`/api/holds/${encodeURIComponent(seatId)}?eventId=${encodeURIComponent(eventId)}`, {
       method: 'DELETE',
     });
     return res.ok;

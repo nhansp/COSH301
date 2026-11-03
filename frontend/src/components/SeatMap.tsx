@@ -37,8 +37,18 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'error' | 'info' | 'success' } | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [liveState, setLiveState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
-  const [timeLeft, setTimeLeft] = useState<number | null>(null); // seconds
+  // Server-provided hold expiry (epoch ms) per seat, known only for holds made in this session
+  const [holdExpiries, setHoldExpiries] = useState<Record<string, number>>({});
+  const [now, setNow] = useState(() => Date.now());
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Latest values for the long-lived SSE handlers
+  const seatsRef = useRef(seats);
+  const selectedIdsRef = useRef(selectedSeatIds);
+  const onSeatsChangeRef = useRef(onSeatsChange);
+  seatsRef.current = seats;
+  selectedIdsRef.current = selectedSeatIds;
+  onSeatsChangeRef.current = onSeatsChange;
 
   const loadSeats = useCallback(async () => {
     const apiSeats = await apiFetchSeats(eventId);
@@ -48,6 +58,13 @@ export const SeatMap: React.FC<SeatMapProps> = ({
     }
     setSeats(apiSeats);
     setLoadState('ready');
+
+    // Align the parent's selection with the holds the server reports for this user
+    const mine = apiSeats.filter(s => s.status === 'selected');
+    const current = selectedIdsRef.current;
+    if (mine.length !== current.length || mine.some(s => !current.includes(s.id))) {
+      onSeatsChangeRef.current(mine);
+    }
   }, [eventId]);
 
   useEffect(() => {
@@ -63,10 +80,28 @@ export const SeatMap: React.FC<SeatMapProps> = ({
     sse.onerror = () => setLiveState('disconnected');
     sse.addEventListener('update', (e: MessageEvent) => {
       try {
-        const payload = JSON.parse(e.data);
-        if (!payload.seatId || !payload.status) return;
-        const nextSt = payload.status === 'AVAILABLE' ? 'available' : (payload.status === 'SOLD' ? 'sold' : 'held');
-        setSeats(prev => prev.map(s => (s.id === payload.seatId ? { ...s, status: nextSt } : s)));
+        const { type, seatId, status } = JSON.parse(e.data);
+        if (!seatId || !status) return;
+        const nextSt = status === 'AVAILABLE' ? 'available' : (status === 'SOLD' ? 'sold' : 'held');
+        const isMine = selectedIdsRef.current.includes(seatId);
+
+        setSeats(prev => prev.map(s => {
+          if (s.id !== seatId) return s;
+          // The stream does not say who holds a seat; our own holds stay "selected"
+          if (nextSt === 'held' && (isMine || s.status === 'selected')) return { ...s, status: 'selected' };
+          return { ...s, status: nextSt };
+        }));
+
+        if (isMine && (type === 'seat_released' || type === 'seat_expired')) {
+          setHoldExpiries(prev => {
+            const { [seatId]: _dropped, ...rest } = prev;
+            return rest;
+          });
+          onSeatsChangeRef.current(seatsRef.current.filter(s => selectedIdsRef.current.includes(s.id) && s.id !== seatId));
+          if (type === 'seat_expired') {
+            showToast(`Ghế ${seatId} đã hết hạn giữ chỗ và được nhả về hệ thống.`, 'error');
+          }
+        }
       } catch {}
     });
     return () => sse.close();
@@ -81,34 +116,26 @@ export const SeatMap: React.FC<SeatMapProps> = ({
     }, 3200);
   };
 
-  // 5-minute Hold Timer (US-03: Giữ chỗ an toàn 5 phút)
-  useEffect(() => {
-    if (selectedSeatIds.length > 0) {
-      if (timeLeft === null) {
-        setTimeLeft(300); // 5 minutes = 300 seconds
-      }
-    } else {
-      setTimeLeft(null);
-    }
-  }, [selectedSeatIds.length]);
+  // Countdown to the earliest server-provided expiry among the user's current holds
+  const expiries = selectedSeatIds.map(id => holdExpiries[id]).filter((at): at is number => at !== undefined);
+  const earliestExpiry = expiries.length > 0 ? Math.min(...expiries) : null;
+  const timeLeft = earliestExpiry === null ? null : Math.max(0, Math.ceil((earliestExpiry - now) / 1000));
 
   useEffect(() => {
-    if (timeLeft === null) return;
-
-    if (timeLeft <= 0) {
-      // Hold timer expired: release seats back to available
-      onSeatsChange([]);
-      setTimeLeft(null);
-      showToast('Đã hết hạn giữ chỗ 5 phút! Các ghế đã chọn đã được nhả về hệ thống.', 'error');
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => (prev !== null ? prev - 1 : null));
-    }, 1000);
-
+    if (earliestExpiry === null) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, onSeatsChange]);
+  }, [earliestExpiry]);
+
+  useEffect(() => {
+    if (timeLeft !== 0) return;
+    // The server frees the seats and pushes the change over SSE; refetch to resync
+    onSeatsChange([]);
+    setHoldExpiries({});
+    showToast('Đã hết hạn giữ chỗ 5 phút! Các ghế đã chọn đã được nhả về hệ thống.', 'error');
+    loadSeats();
+  }, [timeLeft]);
 
   // Seat click handler adhering to US-02 and US-03 acceptance criteria
   const handleSeatClick = async (seat: SeatItem) => {
@@ -135,6 +162,11 @@ export const SeatMap: React.FC<SeatMapProps> = ({
     if (isAlreadySelected) {
       // Deselect seat & release hold on server
       apiReleaseSeat(eventId, seat.id).catch(() => {});
+      setSeats(prev => prev.map(s => (s.id === seat.id ? { ...s, status: 'available' } : s)));
+      setHoldExpiries(prev => {
+        const { [seat.id]: _dropped, ...rest } = prev;
+        return rest;
+      });
       const nextSeats = seats.filter(s => selectedSeatIds.includes(s.id) && s.id !== seat.id);
       onSeatsChange(nextSeats);
       showToast(`Đã bỏ chọn ghế ${seat.id}`, 'info');
@@ -151,19 +183,26 @@ export const SeatMap: React.FC<SeatMapProps> = ({
         if (holdRes.error === 'seat_not_available') {
           showToast(`Ghế ${seat.id} vừa được người khác giữ chỗ! Vui lòng chọn ghế khác.`, 'error');
           setSeats(prev => prev.map(s => s.id === seat.id ? { ...s, status: 'held' } : s));
-          return;
-        }
-        if (holdRes.error === 'ticket_limit_reached') {
+        } else if (holdRes.error === 'ticket_limit_reached') {
           showToast(`Đã đạt giới hạn tối đa ${maxSeats} vé cho tài khoản này!`, 'error');
-          return;
+        } else if (holdRes.error === 'unauthorized') {
+          showToast('Vui lòng đăng nhập để giữ chỗ.', 'error');
+        } else if (holdRes.error === 'event_not_on_sale') {
+          showToast('Sự kiện hiện không mở bán.', 'error');
+        } else {
+          showToast(`Không thể giữ ghế ${seat.id}. Vui lòng thử lại!`, 'error');
         }
+        return;
       }
 
-      // Add seat to selection and set 5-minute timer
+      const expiresAt = holdRes.expiresAt ? Date.parse(holdRes.expiresAt) : NaN;
+      if (!Number.isNaN(expiresAt)) {
+        setHoldExpiries(prev => ({ ...prev, [seat.id]: expiresAt }));
+      }
+      setSeats(prev => prev.map(s => (s.id === seat.id ? { ...s, status: 'selected' } : s)));
+
       const currentlySelected = seats.filter(s => selectedSeatIds.includes(s.id));
-      const nextSeats = [...currentlySelected, seat];
-      onSeatsChange(nextSeats);
-      setTimeLeft(300); // 5 minutes countdown
+      onSeatsChange([...currentlySelected, { ...seat, status: 'selected' }]);
       showToast(`Đã khóa giữ chỗ ghế ${seat.id} (${formatPrice(seat.price, currency)}) trong 5 phút`, 'success');
     }
   };
