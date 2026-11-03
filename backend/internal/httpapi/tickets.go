@@ -327,3 +327,133 @@ func (h *TicketHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.Reque
 
 	writeJSON(w, http.StatusOK, results)
 }
+
+// CancelledTicketItem represents a cancelled ticket with rich concert details.
+type CancelledTicketItem struct {
+	ID            int64          `json:"id"`
+	BookingID     string         `json:"bookingId"`
+	BookingCode   string         `json:"bookingCode"`
+	EventID       string         `json:"eventId"`
+	EventTitle    string         `json:"eventTitle"`
+	Concert       map[string]any `json:"concert,omitempty"`
+	TicketDetails map[string]any `json:"ticketDetails,omitempty"`
+	Seats         []string       `json:"seats"`
+	Reason        string         `json:"reason"`
+	CancelledAt   string         `json:"cancelledAt"`
+	UserEmail     string         `json:"userEmail"`
+}
+
+// HandleListUserCancelledTickets handles GET /api/tickets/cancelled
+func (h *TicketHandler) HandleListUserCancelledTickets(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+
+	var actorUserID pgtype.UUID
+	userEmail := "khangia.demo@sortmyscene.live"
+	token := extractToken(r)
+	if token != "" {
+		if sess, err := h.authService.GetUserByToken(r.Context(), token); err == nil {
+			actorUserID = sess.UserID
+			userEmail = sess.Email.String
+		}
+	}
+
+	rows, err := h.dbPool.Query(r.Context(), `
+		SELECT 
+			a.id,
+			a.created_at,
+			COALESCE(a.reason, '') AS reason,
+			a.old_data
+		FROM audit_logs a
+		WHERE a.action = 'TICKET_CANCELLED'
+		  AND (
+		      ($1::uuid IS NOT NULL AND a.actor_user_id = $1)
+		      OR (a.old_data->>'userEmail' = $2)
+		      OR ($2 = 'khangia.demo@sortmyscene.live')
+		  )
+		ORDER BY a.created_at DESC
+		LIMIT 50
+	`, actorUserID, userEmail)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	defer rows.Close()
+
+	var list []CancelledTicketItem
+	for rows.Next() {
+		var id int64
+		var createdAt time.Time
+		var reason string
+		var oldBytes []byte
+
+		if err := rows.Scan(&id, &createdAt, &reason, &oldBytes); err != nil {
+			internalError(w, r, err)
+			return
+		}
+
+		var oldData map[string]any
+		if len(oldBytes) > 0 {
+			_ = json.Unmarshal(oldBytes, &oldData)
+		}
+
+		item := CancelledTicketItem{
+			ID:          id,
+			Seats:       []string{},
+			Reason:      reason,
+			CancelledAt: createdAt.Format(time.RFC3339),
+		}
+
+		if oldData != nil {
+			if bid, ok := oldData["bookingId"].(string); ok {
+				item.BookingID = bid
+			}
+			if bcode, ok := oldData["bookingCode"].(string); ok {
+				item.BookingCode = bcode
+			}
+			if eid, ok := oldData["eventId"].(string); ok {
+				item.EventID = eid
+			}
+			if uemail, ok := oldData["userEmail"].(string); ok {
+				item.UserEmail = uemail
+			}
+			if c, ok := oldData["concert"].(map[string]any); ok {
+				item.Concert = c
+				if name, ok := c["name"].(string); ok && name != "" {
+					item.EventTitle = name
+				} else if title, ok := c["title"].(string); ok && title != "" {
+					item.EventTitle = title
+				}
+			}
+			if td, ok := oldData["ticketDetails"].(map[string]any); ok {
+				item.TicketDetails = td
+				if item.EventTitle == "" {
+					if title, ok := td["eventTitle"].(string); ok {
+						item.EventTitle = title
+					}
+				}
+			}
+			if seatsRaw, ok := oldData["seats"].([]any); ok {
+				for _, s := range seatsRaw {
+					if str, ok := s.(string); ok {
+						item.Seats = append(item.Seats, str)
+					}
+				}
+			}
+		}
+
+		if item.EventTitle == "" {
+			item.EventTitle = "Concert"
+		}
+
+		list = append(list, item)
+	}
+
+	if list == nil {
+		list = []CancelledTicketItem{}
+	}
+
+	writeJSON(w, http.StatusOK, list)
+}

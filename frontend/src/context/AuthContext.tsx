@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole, Booking } from '../types';
+import { User, UserRole, Booking, CancelledTicket } from '../types';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   bookings: Booking[];
+  cancelledBookings: CancelledTicket[];
+  fetchCancelledTickets: () => Promise<CancelledTicket[]>;
   loginDemo: (role?: UserRole) => Promise<boolean>;
   sendPhoneOtp: (phoneNumber: string) => Promise<{ success: boolean; demoCode: string; message: string }>;
   verifyPhoneOtp: (phoneNumber: string, code: string) => Promise<boolean>;
@@ -37,6 +39,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const BOOKINGS_STORAGE_KEY = 'sms_user_bookings';
+const CANCELLED_STORAGE_KEY = 'sms_user_cancelled_bookings';
 
 interface ApiUser {
   id: string;
@@ -65,7 +68,25 @@ function userFromApi(u: ApiUser): User {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [cancelledBookings, setCancelledBookings] = useState<CancelledTicket[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const fetchCancelledTickets = async (): Promise<CancelledTicket[]> => {
+    try {
+      const res = await fetch('/api/tickets/cancelled', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setCancelledBookings(data);
+          localStorage.setItem(CANCELLED_STORAGE_KEY, JSON.stringify(data));
+          return data;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch cancelled tickets:', e);
+    }
+    return cancelledBookings;
+  };
 
   // The server session (HttpOnly cookie) is the source of truth; restore it via /api/auth/me.
   useEffect(() => {
@@ -78,6 +99,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       console.error('Error loading stored bookings:', e);
     }
+
+    try {
+      const savedCancelled = localStorage.getItem(CANCELLED_STORAGE_KEY);
+      if (savedCancelled) {
+        setCancelledBookings(JSON.parse(savedCancelled));
+      }
+    } catch (e) {
+      console.error('Error loading stored cancelled tickets:', e);
+    }
+
+    fetch('/api/tickets/cancelled', { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setCancelledBookings(data);
+          localStorage.setItem(CANCELLED_STORAGE_KEY, JSON.stringify(data));
+        }
+      })
+      .catch(() => {});
 
     fetch('/api/auth/me', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
@@ -366,10 +406,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error logging cancellation to database audit_logs:', e);
     }
 
-    // 2. Remove ticket from active bookings list
+    // 2. Remove ticket from active bookings list and add to cancelled list
     const updated = bookings.filter(b => b.id !== bookingId);
     setBookings(updated);
     localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+
+    const cancelledRecord: CancelledTicket = {
+      id: `cancel_${Date.now()}`,
+      bookingId: booking.id,
+      bookingCode: booking.bookingCode,
+      eventId: booking.eventId,
+      eventTitle: booking.eventTitle,
+      reason: reason || 'Khách hàng xác nhận hủy vé trên ứng dụng',
+      cancelledAt: new Date().toISOString(),
+      seats: booking.selectedSeats || [],
+      concert: {
+        id: booking.eventId,
+        name: booking.eventTitle,
+        title: booking.eventTitle,
+        date: booking.eventDate,
+        time: booking.eventTime,
+        venue: booking.venue,
+        city: booking.city,
+        imageUrl: booking.imageUrl,
+      },
+      ticketDetails: {
+        eventTitle: booking.eventTitle,
+        eventDate: booking.eventDate,
+        eventTime: booking.eventTime,
+        venue: booking.venue,
+        city: booking.city,
+        tierName: booking.tierName,
+        tierId: booking.tierId,
+        quantity: booking.quantity,
+        totalAmount: booking.totalAmount,
+        currency: booking.currency,
+        attendeeName: booking.attendeeName,
+        attendeeEmail: booking.attendeeEmail,
+        attendeePhone: booking.attendeePhone,
+        paymentMethod: booking.paymentMethod,
+        purchasedAt: booking.purchasedAt,
+      },
+    };
+    setCancelledBookings(prev => {
+      const merged = [cancelledRecord, ...prev.filter(c => c.bookingCode !== booking.bookingCode)];
+      localStorage.setItem(CANCELLED_STORAGE_KEY, JSON.stringify(merged));
+      return merged;
+    });
 
     // 3. Restore seats status to available in local cache
     if (booking.selectedSeats && booking.selectedSeats.length > 0) {
@@ -398,6 +481,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         bookings,
+        cancelledBookings,
+        fetchCancelledTickets,
         loginDemo,
         sendPhoneOtp,
         verifyPhoneOtp,
