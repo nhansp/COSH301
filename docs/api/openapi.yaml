@@ -1,0 +1,826 @@
+openapi: 3.0.3
+info:
+  title: EventTicketing API
+  version: 1.0.0
+  description: >
+    Tài liệu đặc tả toàn diện OpenAPI 3.0 cho hệ thống EventTicketing, bao gồm các dịch vụ
+    xác thực OTP, sơ đồ ghế thời gian thực, giữ chỗ 5 phút, thanh toán, phát hành vé và quản trị.
+servers:
+  - url: http://localhost:8080
+    description: Local Development Server
+  - url: https://ticket.local
+    description: Production Edge via Cloudflare Tunnel
+
+paths:
+  /api/health:
+    get:
+      summary: Kiểm tra tình trạng sức khỏe hệ thống
+      tags:
+        - System
+      responses:
+        '200':
+          description: Hệ thống và kết nối database hoạt động bình thường
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  database:
+                    type: string
+                    example: connected
+                  time:
+                    type: string
+                    format: date-time
+
+  /api/features:
+    get:
+      summary: Lấy danh sách trạng thái các cờ tính năng (Feature Flags)
+      tags:
+        - System
+      responses:
+        '200':
+          description: Danh sách trạng thái cờ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    type: string
+                    example: sprint2
+                  features:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+
+  /api/auth/otp/request:
+    post:
+      summary: Yêu cầu gửi mã OTP xác thực
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - destination
+                - channel
+              properties:
+                destination:
+                  type: string
+                  description: Số điện thoại hoặc Email nhận OTP
+                  example: "0901234567"
+                channel:
+                  type: string
+                  enum: [sms, email]
+                  example: "sms"
+                turnstile_token:
+                  type: string
+                  description: Mã token từ Cloudflare Turnstile
+      responses:
+        '200':
+          description: Đã gửi mã OTP thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: sent
+                  expires_in:
+                    type: integer
+                    example: 300
+        '400':
+          description: Lỗi dữ liệu đầu vào hoặc bot check thất bại
+        '429':
+          description: Gửi yêu cầu quá nhanh (Rate-limited)
+
+  /api/auth/otp/verify:
+    post:
+      summary: Xác thực mã OTP và cấp phát phiên đăng nhập
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - destination
+                - otp_code
+              properties:
+                destination:
+                  type: string
+                  example: "0901234567"
+                otp_code:
+                  type: string
+                  description: Mã OTP 6 chữ số
+                  example: "849201"
+      responses:
+        '200':
+          description: Đăng nhập thành công, trả về cookie phiên và thông tin người dùng
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: event_session=3a7b9f...; HttpOnly; Secure; SameSite=Lax; Path=/
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Mã OTP không chính xác hoặc đã hết hạn
+
+  /api/auth/me:
+    get:
+      summary: Lấy thông tin tài khoản đang đăng nhập
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Thông tin tài khoản
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Chưa đăng nhập hoặc phiên đã hết hạn
+
+  /api/auth/logout:
+    post:
+      summary: Đăng xuất và hủy phiên làm việc
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Đăng xuất thành công
+
+  /api/events:
+    get:
+      summary: Lấy danh sách sự kiện đang mở bán
+      tags:
+        - Events
+      parameters:
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [UPCOMING, ON_SALE, ENDED]
+      responses:
+        '200':
+          description: Danh sách sự kiện
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+  /api/events/{slug}:
+    get:
+      summary: Lấy thông tin chi tiết một sự kiện theo slug
+      tags:
+        - Events
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chi tiết sự kiện
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetail'
+        '404':
+          description: Không tìm thấy sự kiện
+
+  /api/events/{id}/queue:
+    post:
+      summary: Tham gia hàng chờ ảo (Virtual Waiting Room)
+      tags:
+        - Queue
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Đã được xếp vào hàng chờ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry_id:
+                    type: string
+                    format: uuid
+                  position:
+                    type: integer
+                    example: 42
+                  estimated_wait_seconds:
+                    type: integer
+                    example: 120
+
+  /api/events/{id}/queue/me:
+    get:
+      summary: Kiểm tra vị trí hiện tại trong hàng chờ
+      tags:
+        - Queue
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Trạng thái và vị trí trong hàng chờ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [WAITING, ADMITTED, EXPIRED]
+                  position:
+                    type: integer
+                  estimated_wait_seconds:
+                    type: integer
+
+  /api/events/{id}/seats:
+    get:
+      summary: Lấy toàn bộ sơ đồ ghế và trạng thái hiện tại
+      tags:
+        - Seats
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Danh sách ghế và giá tương ứng
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SeatItem'
+
+  /api/events/{id}/stream:
+    get:
+      summary: Kênh cập nhật trạng thái thời gian thực qua Server-Sent Events (SSE)
+      tags:
+        - Seats
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Luồng sự kiện SSE (text/event-stream)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  event: seat_updated
+                  data: {"seat_id":"...","status":"HELD"}
+
+  /api/holds:
+    post:
+      summary: Khóa giữ chỗ một ghế trong 5 phút
+      tags:
+        - Seats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event_id
+                - seat_id
+              properties:
+                event_id:
+                  type: string
+                  format: uuid
+                seat_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Giữ chỗ thành công trong 5 phút
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hold_id:
+                    type: string
+                    format: uuid
+                  seat_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: ACTIVE
+                  expires_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Đã vượt quá giới hạn 4 vé hoặc thông tin không hợp lệ
+        '409':
+          description: Ghế đã có người khác giữ hoặc đã bán
+
+  /api/holds/{seatId}:
+    delete:
+      summary: Hủy giữ chỗ ghế trước thời hạn
+      tags:
+        - Seats
+      parameters:
+        - name: seatId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Đã giải phóng ghế thành công
+
+  /api/orders:
+    post:
+      summary: Khởi tạo đơn hàng từ các ghế đang giữ
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event_id
+                - seat_ids
+              properties:
+                event_id:
+                  type: string
+                  format: uuid
+                seat_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '201':
+          description: Đơn hàng được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /api/orders/{id}:
+    get:
+      summary: Lấy chi tiết đơn hàng
+      tags:
+        - Orders
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Chi tiết đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  /api/orders/{id}/payments:
+    post:
+      summary: Tạo liên kết thanh toán với cổng MoMo hoặc VNPAY
+      tags:
+        - Payments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+              properties:
+                provider:
+                  type: string
+                  enum: [momo, vnpay]
+      responses:
+        '200':
+          description: Trả về link điều hướng thanh toán
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payment_url:
+                    type: string
+
+  /api/payments/{provider}/return:
+    get:
+      summary: Điểm nhận kết quả điều hướng người dùng từ cổng thanh toán
+      tags:
+        - Payments
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [momo, vnpay]
+      responses:
+        '302':
+          description: Điều hướng về trang kết quả đơn hàng trên giao diện
+
+  /api/payments/{provider}/ipn:
+    post:
+      summary: Webhook / IPN tiếp nhận xác nhận giao dịch thanh toán từ đối tác
+      tags:
+        - Payments
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [momo, vnpay]
+      responses:
+        '200':
+          description: Giao dịch được xử lý thành công (Idempotent)
+
+  /api/me/tickets:
+    get:
+      summary: Lấy danh sách vé đã mua của người dùng hiện tại
+      tags:
+        - Tickets
+      responses:
+        '200':
+          description: Danh sách vé
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ticket'
+
+  /api/tickets/{id}/qr:
+    get:
+      summary: Lấy mã QR vé xoay vòng động theo thời gian thực (30 giây)
+      tags:
+        - Tickets
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Chuỗi mã QR động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  qr_data:
+                    type: string
+                    example: "TCK-102938.481920.8f1a4e5c..."
+                  step:
+                    type: integer
+                  expires_in_seconds:
+                    type: integer
+
+  /api/organizer/venues:
+    get:
+      summary: Danh sách địa điểm tổ chức
+      tags:
+        - Organizer
+      responses:
+        '200':
+          description: Danh sách địa điểm
+    post:
+      summary: Thêm địa điểm tổ chức mới
+      tags:
+        - Organizer
+      responses:
+        '201':
+          description: Tạo thành công
+
+  /api/organizer/events:
+    get:
+      summary: Danh sách sự kiện do BTC quản lý
+      tags:
+        - Organizer
+      responses:
+        '200':
+          description: Danh sách sự kiện
+    post:
+      summary: Tạo sự kiện mới
+      tags:
+        - Organizer
+      responses:
+        '201':
+          description: Tạo sự kiện thành công
+
+  /api/organizer/events/{id}/pricing:
+    post:
+      summary: Cấu hình giá cơ bản, giá sàn, giá trần cho các khu vực
+      tags:
+        - Organizer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cập nhật thành công
+
+  /api/organizer/suggestions/{id}/approve:
+    post:
+      summary: Phê duyệt đề xuất định giá động
+      tags:
+        - Organizer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Đã duyệt và áp dụng giá mới vào các ghế chưa bán
+
+  /api/organizer/suggestions/{id}/reject:
+    post:
+      summary: Từ chối đề xuất định giá động
+      tags:
+        - Organizer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Đã từ chối đề xuất
+
+  /api/gate/events/{id}/manifest:
+    get:
+      summary: Tải danh sách vé của sự kiện phục vụ soát vé ngoại tuyến
+      tags:
+        - Gate Check-in
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Danh sách vé để cache trên máy soát vé
+
+  /api/gate/checkins:
+    post:
+      summary: Quét và ghi nhận soát vé trực tiếp tại cổng
+      tags:
+        - Gate Check-in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - qr_data
+                - gate_name
+              properties:
+                qr_data:
+                  type: string
+                gate_name:
+                  type: string
+      responses:
+        '200':
+          description: Vé hợp lệ
+        '409':
+          description: Vé đã được sử dụng trước đó
+
+  /api/gate/sync:
+    post:
+      summary: Đồng bộ các lượt soát vé ngoại tuyến khi có mạng trở lại
+      tags:
+        - Gate Check-in
+      responses:
+        '200':
+          description: Đồng bộ hoàn tất
+
+  /api/dashboard/stream:
+    get:
+      summary: Luồng dữ liệu thống kê doanh thu realtime cho CEO
+      tags:
+        - CEO Dashboard
+      responses:
+        '200':
+          description: Stream SSE cập nhật doanh thu và tỷ lệ lấp đầy
+
+  /api/reports/sales.csv:
+    get:
+      summary: Xuất báo cáo tài chính bán vé định dạng CSV
+      tags:
+        - CEO Dashboard
+      responses:
+        '200':
+          description: File CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /api/reports/sales.xlsx:
+    get:
+      summary: Xuất báo cáo tài chính bán vé định dạng Excel
+      tags:
+        - CEO Dashboard
+      responses:
+        '200':
+          description: File Excel (XLSX)
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        phone:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [CUSTOMER, ORGANIZER, CEO, GATE_STAFF, ADMIN]
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        genre:
+          type: string
+        city:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+
+    EventDetail:
+      allOf:
+        - $ref: '#/components/schemas/Event'
+        - type: object
+          properties:
+            description:
+              type: string
+            image_url:
+              type: string
+            waiting_room_enabled:
+              type: boolean
+
+    SeatItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        zone_id:
+          type: string
+          format: uuid
+        zone_name:
+          type: string
+        row:
+          type: string
+        number:
+          type: integer
+        status:
+          type: string
+          enum: [AVAILABLE, HELD, SOLD]
+        price:
+          type: integer
+          description: Giá tiền bằng VNĐ
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_number:
+          type: string
+        total_amount:
+          type: integer
+        status:
+          type: string
+          enum: [PENDING, PAID, CANCELLED, REFUNDED]
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              seat_id:
+                type: string
+                format: uuid
+              price:
+                type: integer
+
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_code:
+          type: string
+        event_name:
+          type: string
+        zone_name:
+          type: string
+        seat_name:
+          type: string
+        status:
+          type: string
+          enum: [ISSUED, ACTIVE, USED, VOID]
