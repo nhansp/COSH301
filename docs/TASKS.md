@@ -1,6 +1,7 @@
 # Phân công công việc
 
-Nhánh làm việc chung: `rewrite`.
+Nhánh làm việc chung: `staging` (tên cũ: `rewrite`).
+`main` là bản ổn định, chỉ cập nhật từ `staging`.
 Thiết kế gốc: [`docs/design/README.md`](design/README.md). Đọc file này trước khi bắt tay vào việc.
 
 ## 1. Bảng phân công
@@ -22,7 +23,7 @@ Thiết kế gốc: [`docs/design/README.md`](design/README.md). Đọc file nà
 | T13 | Sequence: đăng nhập OTP (FR-04) | Nhân (`nhansp`) | `docs/sequences/otp-login.md` | — |
 | T14 | Kiến trúc và đặc tả API | Nhân (`nhansp`) | `docs/architecture.md`, `docs/api/openapi.yaml` | T12 |
 
-Việc có phụ thuộc T12 thì chờ backend lên nhánh `rewrite` rồi mới làm.
+Việc có phụ thuộc T12 thì chờ backend lên nhánh `staging` rồi mới làm.
 Các việc còn lại làm được ngay.
 
 ## 2. Yêu cầu từng việc
@@ -70,28 +71,30 @@ Mời 5–10 người dùng thật, tổng hợp kết quả và đề xuất s�
 
 ## 3. Quy trình gửi PR
 
-Nhánh `main` và `rewrite` đã khóa: không ai push thẳng được.
+Nhánh `main` và `staging` đã khóa: không ai push thẳng được.
 Mọi thay đổi phải qua Pull Request và được duyệt trước khi merge.
 
 ### Các bước
 
 ```bash
 git fetch origin
-git switch -c <github-user>/<mã-việc> origin/rewrite   # ví dụ: vdhwy/T03
+git switch -c <github-user>/<mã-việc> origin/staging   # ví dụ: vdhwy/T03
 # ... làm việc ...
 git add <các file của việc này>
 git commit --signoff
 git push -u origin HEAD
-gh pr create --base rewrite                             # hoặc tạo PR trên web, base là rewrite
+gh pr create --base staging                             # hoặc tạo PR trên web, base là staging
 ```
 
 ### Quy tắc
 
 - Một PR làm đúng một việc trong bảng phân công.
-- PR luôn nhắm vào `rewrite`, không nhắm vào `main`.
+- PR luôn nhắm vào `staging`, không nhắm vào `main`.
+- `main` chỉ nhận bản đã chạy ổn trên `staging` (fast-forward).
 - Chỉ sửa file thuộc việc của mình. Cần sửa file khác thì ghi lý do trong PR.
 - Commit theo [`AGENTS.md`](../AGENTS.md): tiêu đề dạng `docs: Add use case diagram`, tối đa 80 ký tự, luôn có `--signoff`.
-- Nhánh `rewrite` có thay đổi mới và PR bị xung đột thì `git rebase origin/rewrite` rồi push lại.
+- Nhánh `staging` có thay đổi mới và PR bị xung đột thì `git rebase origin/staging` rồi push lại.
+- Nhánh cũ tạo từ `rewrite` vẫn dùng được: GitHub đã đổi tên, chỉ cần `git fetch --prune` rồi rebase lên `origin/staging`.
 - Người duyệt yêu cầu sửa thì sửa trên chính nhánh đó, không mở PR mới.
 
 ### Không đưa lên repo
