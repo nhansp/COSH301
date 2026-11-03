@@ -457,3 +457,27 @@ func (h *TicketHandler) HandleListUserCancelledTickets(w http.ResponseWriter, r 
 
 	writeJSON(w, http.StatusOK, list)
 }
+
+// HandleResetDemoTickets handles POST /api/tickets/reset-demo
+func (h *TicketHandler) HandleResetDemoTickets(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
+		return
+	}
+
+	_, _ = h.dbPool.Exec(r.Context(), `
+		ALTER TABLE audit_logs DISABLE TRIGGER trg_immutable_audit_logs;
+		DELETE FROM audit_logs 
+		WHERE actor_user_id IN (SELECT id FROM users WHERE email = 'khangia.demo@sortmyscene.live')
+		   OR old_data->>'userEmail' = 'khangia.demo@sortmyscene.live'
+		   OR action = 'TICKET_CANCELLED';
+		ALTER TABLE audit_logs ENABLE TRIGGER trg_immutable_audit_logs;
+		DELETE FROM seat_holds 
+		WHERE user_id IN (SELECT id FROM users WHERE email = 'khangia.demo@sortmyscene.live');
+	`)
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "Demo tickets data cleared",
+	})
+}

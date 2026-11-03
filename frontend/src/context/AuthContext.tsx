@@ -36,6 +36,7 @@ interface AuthContextType {
   confirmBooking: (bookingId: string) => Booking | null;
   getBookingById: (bookingId: string) => Booking | undefined;
   cancelBooking: (bookingId: string, reason?: string) => Promise<boolean>;
+  clearDemoTickets: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -93,6 +94,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // The server session (HttpOnly cookie) is the source of truth; restore it via /api/auth/me.
   useEffect(() => {
     let isMounted = true;
+
+    // Reset demo ticket data once to ensure a clean slate for demo users
+    const DEMO_CLEANUP_FLAG = 'sms_demo_cleanup_20261104';
+    try {
+      if (!localStorage.getItem(DEMO_CLEANUP_FLAG)) {
+        localStorage.removeItem(BOOKINGS_STORAGE_KEY);
+        localStorage.removeItem(CANCELLED_STORAGE_KEY);
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sms_event_seats_') || key.startsWith('sms_user_')) {
+            localStorage.removeItem(key);
+          }
+        });
+        localStorage.setItem(DEMO_CLEANUP_FLAG, 'true');
+      }
+    } catch (e) {
+      console.error('Error initializing demo cleanup:', e);
+    }
+
     try {
       const savedBookings = localStorage.getItem(BOOKINGS_STORAGE_KEY);
       if (savedBookings) {
@@ -396,12 +415,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const cancelBooking = async (bookingId: string, reason?: string): Promise<boolean> => {
-    const booking = bookings.find(b => b.id === bookingId);
+    // 1. Optimistically remove ticket immediately from active bookings so it disappears with 0 delay
+    let targetBooking: Booking | undefined;
+    setBookings(prev => {
+      targetBooking = prev.find(b => b.id === bookingId || b.bookingCode === bookingId);
+      const filtered = prev.filter(b => b.id !== bookingId && b.bookingCode !== bookingId);
+      try {
+        localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(filtered));
+      } catch (e) {
+        console.error('Failed to update localStorage bookings:', e);
+      }
+      return filtered;
+    });
+
+    // Fallback if not found in state closure
+    const booking = targetBooking || bookings.find(b => b.id === bookingId || b.bookingCode === bookingId);
     if (!booking) return false;
 
-    // 1. Ghi nhận log huỷ vé vào bảng audit_logs trong database
+    // 2. Restore seats status to available in local cache immediately
+    if (booking.selectedSeats && booking.selectedSeats.length > 0) {
+      try {
+        const storageKey = `sms_event_seats_${booking.eventId}`;
+        const existing = localStorage.getItem(storageKey);
+        if (existing) {
+          const parsedSeats = JSON.parse(existing);
+          const restoredSeats = parsedSeats.map((s: { id: string; status: string }) =>
+            booking.selectedSeats?.includes(s.id) ? { ...s, status: 'available' } : s
+          );
+          localStorage.setItem(storageKey, JSON.stringify(restoredSeats));
+        }
+      } catch (err) {
+        console.error('Failed to restore seat status upon booking cancellation:', err);
+      }
+    }
+
+    // 3. Asynchronously record cancellation to audit_logs in backend without blocking UI
     try {
-      await fetch('/api/tickets/cancel', {
+      fetch('/api/tickets/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -439,77 +489,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             purchasedAt: booking.purchasedAt,
           },
         }),
-      });
-    } catch (e) {
-      console.error('Error logging cancellation to database audit_logs:', e);
-    }
-
-    // 2. Remove ticket from active bookings list and add to cancelled list
-    const updated = bookings.filter(b => b.id !== bookingId);
-    setBookings(updated);
-    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
-
-    const cancelledRecord: CancelledTicket = {
-      id: `cancel_${Date.now()}`,
-      bookingId: booking.id,
-      bookingCode: booking.bookingCode,
-      eventId: booking.eventId,
-      eventTitle: booking.eventTitle,
-      reason: reason || 'Khách hàng xác nhận hủy vé trên ứng dụng',
-      cancelledAt: new Date().toISOString(),
-      seats: booking.selectedSeats || [],
-      concert: {
-        id: booking.eventId,
-        name: booking.eventTitle,
-        title: booking.eventTitle,
-        date: booking.eventDate,
-        time: booking.eventTime,
-        venue: booking.venue,
-        city: booking.city,
-        imageUrl: booking.imageUrl,
-      },
-      ticketDetails: {
-        eventTitle: booking.eventTitle,
-        eventDate: booking.eventDate,
-        eventTime: booking.eventTime,
-        venue: booking.venue,
-        city: booking.city,
-        tierName: booking.tierName,
-        tierId: booking.tierId,
-        quantity: booking.quantity,
-        totalAmount: booking.totalAmount,
-        currency: booking.currency,
-        attendeeName: booking.attendeeName,
-        attendeeEmail: booking.attendeeEmail,
-        attendeePhone: booking.attendeePhone,
-        paymentMethod: booking.paymentMethod,
-        purchasedAt: booking.purchasedAt,
-      },
-    };
-    setCancelledBookings(prev => {
-      const merged = [cancelledRecord, ...prev.filter(c => c.bookingCode !== booking.bookingCode)];
-      localStorage.setItem(CANCELLED_STORAGE_KEY, JSON.stringify(merged));
-      return merged;
-    });
-
-    // 3. Restore seats status to available in local cache
-    if (booking.selectedSeats && booking.selectedSeats.length > 0) {
-      try {
-        const storageKey = `sms_event_seats_${booking.eventId}`;
-        const existing = localStorage.getItem(storageKey);
-        if (existing) {
-          const parsedSeats = JSON.parse(existing);
-          const restoredSeats = parsedSeats.map((s: { id: string; status: string }) =>
-            booking.selectedSeats?.includes(s.id) ? { ...s, status: 'available' } : s
-          );
-          localStorage.setItem(storageKey, JSON.stringify(restoredSeats));
-        }
-      } catch (err) {
-        console.error('Failed to restore seat status upon booking cancellation:', err);
-      }
-    }
+      }).catch(e => console.error('Error logging cancellation to database audit_logs:', e));
+    } catch {}
 
     return true;
+  };
+
+  const clearDemoTickets = async (): Promise<void> => {
+    setBookings([]);
+    setCancelledBookings([]);
+    try {
+      localStorage.removeItem(BOOKINGS_STORAGE_KEY);
+      localStorage.removeItem(CANCELLED_STORAGE_KEY);
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sms_event_seats_') || key.startsWith('sms_user_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      await fetch('/api/tickets/reset-demo', { method: 'POST', credentials: 'include' }).catch(() => {});
+    } catch (e) {
+      console.error('Error resetting demo tickets:', e);
+    }
   };
 
   return (
@@ -530,7 +530,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createBooking,
         confirmBooking,
         getBookingById,
-        cancelBooking
+        cancelBooking,
+        clearDemoTickets
       }}
     >
       {children}

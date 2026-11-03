@@ -65,6 +65,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 
 	// 7. Ticket Cancellation & Audit Logs
 	mux.HandleFunc("POST /api/tickets/cancel", ticketHandler.HandleCancelTicket)
+	mux.HandleFunc("POST /api/tickets/reset-demo", ticketHandler.HandleResetDemoTickets)
 	mux.HandleFunc("GET /api/tickets/audit-logs", ticketHandler.HandleListAuditLogs)
 	mux.HandleFunc("GET /api/tickets/cancelled", ticketHandler.HandleListUserCancelledTickets)
 
