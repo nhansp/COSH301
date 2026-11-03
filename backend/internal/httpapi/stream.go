@@ -7,14 +7,16 @@ import (
 	"time"
 
 	"eventticketing/internal/service"
+	"eventticketing/internal/store"
 )
 
 type StreamHandler struct {
-	hub *service.RealtimeHub
+	hub          *service.RealtimeHub
+	eventService *service.EventService
 }
 
-func NewStreamHandler(hub *service.RealtimeHub) *StreamHandler {
-	return &StreamHandler{hub: hub}
+func NewStreamHandler(hub *service.RealtimeHub, es *service.EventService) *StreamHandler {
+	return &StreamHandler{hub: hub, eventService: es}
 }
 
 // HandleEventStream handles GET /api/events/{id}/stream (SSE)
@@ -35,7 +37,11 @@ func (h *StreamHandler) HandleEventStream(w http.ResponseWriter, r *http.Request
 		http.Error(w, "invalid path", http.StatusBadRequest)
 		return
 	}
-	eventID := parts[2]
+	rawID := parts[2]
+	eventID := rawID
+	if uid, err := h.eventService.ResolveEventID(r.Context(), rawID); err == nil {
+		eventID = store.UUIDToString(uid)
+	}
 
 	// SSE Headers
 	w.Header().Set("Content-Type", "text/event-stream")

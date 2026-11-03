@@ -51,13 +51,20 @@ func (s *EventService) ListEvents(ctx context.Context) ([]store.ListPublishedEve
 	return s.queries.ListPublishedEvents(ctx)
 }
 
-func (s *EventService) GetEventDetailBySlug(ctx context.Context, slug string) (*EventDetailDTO, error) {
-	e, err := s.queries.GetEventBySlug(ctx, slug)
-	if err != nil {
-		return nil, fmt.Errorf("event not found: %w", err)
-	}
-
-	zones, err := s.queries.ListEventZonesWithPrices(ctx, e.ID)
+func (s *EventService) buildEventDetailDTO(
+	ctx context.Context,
+	id pgtype.UUID,
+	name, slug string,
+	desc, genre, img, city pgtype.Text,
+	venueName string,
+	venueAddress pgtype.Text,
+	venueTimezone string,
+	startsAt, endsAt pgtype.Timestamptz,
+	status string,
+	maxTickets int32,
+	waitingRoom bool,
+) (*EventDetailDTO, error) {
+	zones, err := s.queries.ListEventZonesWithPrices(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch event zones: %w", err)
 	}
@@ -82,25 +89,57 @@ func (s *EventService) GetEventDetailBySlug(ctx context.Context, slug string) (*
 	}
 
 	dto := &EventDetailDTO{
-		ID:                 store.UUIDToString(e.ID),
-		Name:               e.Name,
-		Slug:               e.Slug,
-		Description:        e.Description.String,
-		Genre:              e.Genre.String,
-		ImageURL:           e.ImageUrl.String,
-		City:               e.City.String,
-		VenueName:          e.VenueName,
-		VenueAddress:       e.VenueAddress.String,
-		VenueTimezone:      e.VenueTimezone,
-		StartsAt:           e.StartsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
-		EndsAt:             e.EndsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
-		Status:             string(e.Status),
-		MaxTicketsPerUser:  e.MaxTicketsPerUser,
-		WaitingRoomEnabled: e.WaitingRoomEnabled,
+		ID:                 store.UUIDToString(id),
+		Name:               name,
+		Slug:               slug,
+		Description:        desc.String,
+		Genre:              genre.String,
+		ImageURL:           img.String,
+		City:               city.String,
+		VenueName:          venueName,
+		VenueAddress:       venueAddress.String,
+		VenueTimezone:      venueTimezone,
+		StartsAt:           startsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
+		EndsAt:             endsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
+		Status:             status,
+		MaxTicketsPerUser:  maxTickets,
+		WaitingRoomEnabled: waitingRoom,
 		Zones:              zoneDTOs,
 	}
 
 	return dto, nil
+}
+
+// GetEventDetail retrieves event detail by either UUID or slug string.
+func (s *EventService) GetEventDetail(ctx context.Context, identifier string) (*EventDetailDTO, error) {
+	if uid, err := store.StringToUUID(identifier); err == nil {
+		e, err := s.queries.GetEventByID(ctx, uid)
+		if err == nil {
+			return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
+		}
+	}
+
+	e, err := s.queries.GetEventBySlug(ctx, identifier)
+	if err != nil {
+		return nil, fmt.Errorf("event not found: %w", err)
+	}
+	return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
+}
+
+// ResolveEventID resolves an identifier (UUID or slug) to a pgtype.UUID.
+func (s *EventService) ResolveEventID(ctx context.Context, identifier string) (pgtype.UUID, error) {
+	if uid, err := store.StringToUUID(identifier); err == nil {
+		return uid, nil
+	}
+	e, err := s.queries.GetEventBySlug(ctx, identifier)
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("event not found: %w", err)
+	}
+	return e.ID, nil
+}
+
+func (s *EventService) GetEventDetailBySlug(ctx context.Context, slug string) (*EventDetailDTO, error) {
+	return s.GetEventDetail(ctx, slug)
 }
 
 func (s *EventService) GetEventByID(ctx context.Context, id pgtype.UUID) (store.GetEventByIDRow, error) {

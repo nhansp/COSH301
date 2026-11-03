@@ -18,6 +18,7 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/event/:id" element={<EventDetailPage />} />
+            <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/login" element={<LoginPage />} />
 
             {/* Protected Routes requiring Authentication */}

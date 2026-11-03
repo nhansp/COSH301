@@ -26,8 +26,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	sysHandler := NewSystemHandler(fm)
 	authHandler := NewAuthHandler(deps.AuthService)
 	eventHandler := NewEventHandler(deps.EventService)
-	seatHandler := NewSeatHandler(deps.SeatService, deps.AuthService)
-	streamHandler := NewStreamHandler(deps.RealtimeHub)
+	seatHandler := NewSeatHandler(deps.SeatService, deps.AuthService, deps.EventService)
+	streamHandler := NewStreamHandler(deps.RealtimeHub, deps.EventService)
 
 	// 1. System Endpoints
 	mux.HandleFunc("GET /api/health", sysHandler.HandleHealth)
