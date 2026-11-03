@@ -38,7 +38,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, onSelectEvent }) =>
   return (
     <article
       onClick={handleViewDetail}
-      className="group relative flex flex-col cursor-pointer rounded-2xl p-2.5 -m-2.5 transition-all duration-200 hover:bg-kumo-base/80 active:scale-[0.99]"
+      className="group relative flex flex-col cursor-pointer rounded-2xl p-2.5 -m-2.5 transition-all duration-200 hover:bg-kumo-base/80"
     >
       <div className="relative aspect-[4/3] sm:aspect-square w-full rounded-xl overflow-hidden bg-kumo-recessed ring-1 ring-emerald-500/20 group-hover:ring-emerald-500/60 group-hover:shadow-lg group-hover:shadow-emerald-950/10 transition-all">
         <img

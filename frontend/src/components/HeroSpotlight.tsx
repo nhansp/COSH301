@@ -1,223 +1,355 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Calendar, MapPin, Ticket, ShieldCheck, Zap, Users, ArrowRight } from 'lucide-react';
+import {
+  Sparkles,
+  Calendar,
+  MapPin,
+  Ticket,
+  ArrowRight,
+  Play,
+  Pause,
+  Video,
+  VideoOff,
+  Flame,
+  CheckCircle2
+} from 'lucide-react';
 import { useEvents } from '../context/EventContext';
 import { formatPrice } from '../services/eventService';
+
+interface FeaturedItem {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string;
+  artist: string;
+  venue: string;
+  city: string;
+  date: string;
+  priceStart: number;
+  currency: string;
+  videoUrl: string;
+  posterUrl: string;
+  badge: string;
+}
+
+const FEATURED_CONCERTS: FeaturedItem[] = [
+  {
+    id: '9b57ef1c-2f86-4c39-9ead-0b05b9c5817c',
+    slug: 'my-tam-see-the-light-2025',
+    title: 'Mỹ Tâm Live Concert "See The Light"',
+    subtitle: 'Đêm diễn hơn 30 ca khúc đón 40.000 khán giả tại SVĐ Quốc gia Mỹ Đình',
+    artist: 'Mỹ Tâm & Khách Mời',
+    venue: 'Sân vận động Quốc gia Mỹ Đình',
+    city: 'Hà Nội',
+    date: '13 Th12, 2025',
+    priceStart: 1500000,
+    currency: '₫',
+    videoUrl: '/videos/concert-mytam.mp4',
+    posterUrl: '/events/my-tam-see-the-light-2025.jpg',
+    badge: 'Sự kiện tâm điểm',
+  },
+  {
+    id: '4831c41c-e56f-4b16-9228-fb463e504e6d',
+    slug: 'blackpink-born-pink-ha-noi-2023',
+    title: 'BLACKPINK WORLD TOUR [BORN PINK]',
+    subtitle: 'Chuyến lưu diễn thế giới bùng nổ thu hút hơn 67.000 khán giả thủ đô',
+    artist: 'BLACKPINK',
+    venue: 'Sân vận động Quốc gia Mỹ Đình',
+    city: 'Hà Nội',
+    date: '29 Th07, 2023',
+    priceStart: 1200000,
+    currency: '₫',
+    videoUrl: '/videos/concert-blackpink.mp4',
+    posterUrl: '/events/blackpink-born-pink-ha-noi-2023.jpg',
+    badge: 'Cháy vé toàn cầu',
+  },
+  {
+    id: '21e5d336-b3d7-4827-aaf5-d7114385f957',
+    slug: 'anh-trai-say-hi-ha-noi-2024',
+    title: 'Concert Anh Trai "Say Hi" - Hà Nội',
+    subtitle: 'Đại tiệc âm nhạc All-Star với 12 hạng vé quy tụ các nam thần tượng đỉnh cao',
+    artist: 'Dàn Nghệ Sĩ Anh Trai Say Hi',
+    venue: 'Sân vận động Quốc gia Mỹ Đình',
+    city: 'Hà Nội',
+    date: '07 Th12, 2024',
+    priceStart: 500000,
+    currency: '₫',
+    videoUrl: '/videos/concert-sayhi.mp4',
+    posterUrl: '/events/anh-trai-say-hi-ha-noi-2024.jpg',
+    badge: 'Top 1 Trending',
+  },
+  {
+    id: '09951fe1-d7c5-4a71-a60f-853c5f851fb6',
+    slug: 'g-dragon-k-star-spark-2025',
+    title: 'VPBank K-Star Spark in Vietnam 2025',
+    subtitle: 'G-Dragon (BIGBANG) và CL (2NE1) tái ngộ sân khấu Việt Nam cùng các idol trẻ',
+    artist: 'G-Dragon, CL, DPR IAN...',
+    venue: 'Sân vận động Quốc gia Mỹ Đình',
+    city: 'Hà Nội',
+    date: '21 Th06, 2025',
+    priceStart: 1000000,
+    currency: '₫',
+    videoUrl: '/videos/concert-gdragon.mp4',
+    posterUrl: '/events/g-dragon-k-star-spark-2025.jpg',
+    badge: 'K-pop Siêu Sao',
+  },
+];
 
 interface HeroSpotlightProps {
   onExploreClick?: () => void;
 }
 
 export const HeroSpotlight: React.FC<HeroSpotlightProps> = ({ onExploreClick }) => {
-  const { events, setSearchQuery } = useEvents();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
+  const { events } = useEvents();
 
-  // Find featured concert (prefer Mỹ Tâm or Blackpink or first trending event)
-  const featuredEvent =
-    events.find(e => e.title.includes('Mỹ Tâm') || e.title.includes('BLACKPINK')) ||
-    events[0];
+  const current = FEATURED_CONCERTS[currentIndex];
 
-  const handleFeaturedClick = () => {
-    if (featuredEvent) {
-      navigate(`/event/${featuredEvent.id}`);
+  // Match with real event id if loaded from backend
+  const matchedEvent = events.find(
+    e => e.id === current.id || e.slug === current.slug || e.title.includes(current.artist)
+  );
+  const eventTargetId = matchedEvent ? matchedEvent.id : current.id;
+
+  // Auto rotate featured concert every 8 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % FEATURED_CONCERTS.length);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Update video playback when slide changes
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+      if (isPlaying) {
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  }, [currentIndex]);
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
     }
   };
 
-  const handleQuickSearch = (keyword: string) => {
-    setSearchQuery(keyword);
-    onExploreClick?.();
+  const toggleVideo = () => {
+    setIsVideoEnabled(prev => !prev);
   };
 
   return (
-    <section className="relative overflow-hidden rounded-3xl mb-10 border border-emerald-500/20 bg-gradient-to-b from-emerald-500/10 via-emerald-500/[0.04] to-transparent p-6 sm:p-8 md:p-10">
-      {/* Background ambient radial glow */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-24 -right-24 size-96 rounded-full bg-emerald-500/15 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-24 -left-24 size-80 rounded-full bg-teal-500/10 blur-3xl"
-      />
+    <section className="relative overflow-hidden rounded-3xl mb-10 border border-emerald-500/25 bg-black text-white shadow-2xl shadow-emerald-950/20">
+      {/* Background Video Loop */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {isVideoEnabled ? (
+          <video
+            ref={videoRef}
+            src={current.videoUrl}
+            poster={current.posterUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            className="size-full object-cover object-center transition-opacity duration-700 opacity-60 scale-105"
+          />
+        ) : (
+          <img
+            src={current.posterUrl}
+            alt={current.title}
+            className="size-full object-cover object-center opacity-40 transition-all duration-700"
+          />
+        )}
 
-      <div className="relative grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-        {/* Left Column: Headlines & Trust stats */}
-        <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
-          {/* Live announcement badge */}
-          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-medium w-fit shadow-xs">
-            <span className="relative flex size-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
-            </span>
-            <span>Mở Bán Vé Concert &amp; Festival Âm Nhạc 2025 - 2026</span>
-          </div>
+        {/* Ambient Emerald & Dark Gradients for maximum text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/75 to-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
+        <div className="absolute -bottom-24 -left-24 size-96 rounded-full bg-emerald-600/20 blur-3xl pointer-events-none" />
+      </div>
 
-          {/* Main Hero Title */}
-          <div className="space-y-3">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-kumo-strong leading-[1.15]">
-              Sống trọn đam mê cùng những{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 dark:from-emerald-400 dark:via-teal-300 dark:to-green-300">
-                đêm nhạc đỉnh cao
+      {/* Main Container */}
+      <div className="relative z-10 p-6 sm:p-8 md:p-10 lg:p-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+          {/* Left Column: Spotlight Concert Information */}
+          <div className="lg:col-span-7 flex flex-col justify-center space-y-5">
+            {/* Live Status Badge & Video Controls */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-semibold tracking-wide shadow-xs">
+                <span className="relative flex size-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full size-2 bg-emerald-400" />
+                </span>
+                <span>{current.badge}</span>
               </span>
-            </h1>
-            <p className="text-base sm:text-lg text-kumo-subtle max-w-xl leading-relaxed">
-              Khám phá và đặt vé concert chính hãng từ các nghệ sĩ hàng đầu. Chọn chỗ trực quan theo sơ đồ thời gian thực, quét mã QR check-in siêu tốc không cần vé giấy.
-            </p>
-          </div>
 
-          {/* Quick Action buttons */}
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <button
-              onClick={onExploreClick}
-              className="h-11 sm:h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950 font-semibold text-sm sm:text-base flex items-center gap-2 shadow-md shadow-emerald-600/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Ticket className="size-4" />
-              <span>Khám phá sự kiện</span>
-              <ArrowRight className="size-4" />
-            </button>
-
-            {featuredEvent && (
-              <button
-                onClick={handleFeaturedClick}
-                className="h-11 sm:h-12 px-5 rounded-xl bg-kumo-base ring ring-kumo-line hover:ring-emerald-500/40 text-kumo-strong font-medium text-sm sm:text-base flex items-center gap-2 transition-colors hover:bg-kumo-tint"
-              >
-                <Sparkles className="size-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Spotlight: {featuredEvent.genre}</span>
-              </button>
-            )}
-          </div>
-
-          {/* Quick Filter Tags */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 text-xs sm:text-sm text-kumo-subtle">
-            <span className="font-medium text-kumo-default">Tìm kiếm hot:</span>
-            {['Anh Trai Say Hi', 'Mỹ Tâm', 'BLACKPINK', 'G-Dragon', 'Hà Nội', 'TP.HCM'].map(
-              tag => (
+              {/* Video Play/Pause & Toggle buttons */}
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs text-white/80">
                 <button
-                  key={tag}
-                  onClick={() => handleQuickSearch(tag)}
-                  className="px-2.5 py-1 rounded-lg bg-kumo-base border border-emerald-500/20 text-kumo-default hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-500/50 transition-colors"
+                  onClick={togglePlay}
+                  aria-label={isPlaying ? 'Tạm dừng video nền' : 'Phát video nền'}
+                  className="hover:text-emerald-300 transition-colors p-1"
+                  title={isPlaying ? 'Tạm dừng video' : 'Phát video'}
                 >
-                  {tag}
+                  {isPlaying ? <Pause className="size-3" /> : <Play className="size-3" />}
                 </button>
-              )
-            )}
+                <span className="text-white/30">•</span>
+                <button
+                  onClick={toggleVideo}
+                  aria-label="Bật tắt video nền"
+                  className="hover:text-emerald-300 transition-colors p-1"
+                  title={isVideoEnabled ? 'Tắt video nền' : 'Bật video nền'}
+                >
+                  {isVideoEnabled ? <Video className="size-3" /> : <VideoOff className="size-3" />}
+                </button>
+                <span className="hidden sm:inline text-[11px] text-emerald-300/80 pr-1">Live Video</span>
+              </div>
+            </div>
+
+            {/* Concert Title */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-emerald-400 font-semibold tracking-wider uppercase">
+                <Sparkles className="size-3.5" />
+                <span>{current.artist}</span>
+              </div>
+
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                {current.title}
+              </h1>
+
+              <p className="text-sm sm:text-base text-white/80 max-w-xl leading-relaxed">
+                {current.subtitle}
+              </p>
+            </div>
+
+            {/* Event Quick Meta (Date, Venue, Price) */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs sm:text-sm text-white/90 pt-1">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="size-4 text-emerald-400" />
+                <span>{current.date}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="size-4 text-emerald-400" />
+                <span>{current.venue}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-white/60">Giá từ:</span>
+                <span className="text-emerald-400 font-bold tabular-nums text-base">
+                  {formatPrice(current.priceStart, current.currency)}
+                </span>
+              </div>
+            </div>
+
+            {/* Action CTA Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                onClick={() => navigate(`/checkout/${eventTargetId}`)}
+                className="h-11 sm:h-12 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold text-sm sm:text-base flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Ticket className="size-4" />
+                <span>Đặt vé ngay</span>
+              </button>
+
+              <button
+                onClick={() => navigate(`/event/${eventTargetId}`)}
+                className="h-11 sm:h-12 px-5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium text-sm sm:text-base flex items-center gap-2 backdrop-blur-md transition-colors"
+              >
+                <span>Xem chi tiết show</span>
+                <ArrowRight className="size-4" />
+              </button>
+
+              {onExploreClick && (
+                <button
+                  onClick={onExploreClick}
+                  className="h-11 sm:h-12 px-4 text-white/70 hover:text-white text-sm font-medium transition-colors"
+                >
+                  Khám phá tất cả ↓
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Trust Metrics Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-emerald-500/15">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Users className="size-4" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-kumo-strong">67,000+</p>
-                <p className="text-xs text-kumo-subtle">Vé đã bán</p>
-              </div>
+          {/* Right Column: List các sự kiện nổi bật (Interactive Selector) */}
+          <div className="lg:col-span-5 flex flex-col space-y-3">
+            <div className="flex items-center justify-between pb-1">
+              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <Flame className="size-4" />
+                <span>Sự kiện nổi bật đang mở bán</span>
+              </h2>
+              <span className="text-xs text-white/60 tabular-nums">
+                {currentIndex + 1} / {FEATURED_CONCERTS.length}
+              </span>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <ShieldCheck className="size-4" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-kumo-strong">100%</p>
-                <p className="text-xs text-kumo-subtle">Vé chính hãng</p>
-              </div>
-            </div>
+            {/* List items */}
+            <div className="space-y-2.5">
+              {FEATURED_CONCERTS.map((item, idx) => {
+                const isActive = idx === currentIndex;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setCurrentIndex(idx)}
+                    className={`group cursor-pointer rounded-2xl p-3 sm:p-3.5 transition-all duration-200 border flex items-center gap-3.5 ${
+                      isActive
+                        ? 'bg-white/15 backdrop-blur-xl border-emerald-400/80 shadow-md shadow-emerald-950/30 ring-1 ring-emerald-400/50'
+                        : 'bg-black/40 hover:bg-white/10 backdrop-blur-md border-white/10 hover:border-white/25'
+                    }`}
+                  >
+                    {/* Thumbnail with active pulse */}
+                    <div className="relative size-14 sm:size-16 rounded-xl overflow-hidden flex-shrink-0 bg-white/5 ring-1 ring-white/15">
+                      <img
+                        src={item.posterUrl}
+                        alt={item.title}
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      {isActive && (
+                        <div className="absolute top-1 left-1 size-2 rounded-full bg-emerald-400 animate-pulse ring-2 ring-black" />
+                      )}
+                    </div>
 
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Zap className="size-4" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-kumo-strong">Check-in</p>
-                <p className="text-xs text-kumo-subtle">Mã QR 2 giây</p>
-              </div>
-            </div>
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <span className="text-[11px] font-semibold text-emerald-300 truncate">
+                          {item.artist}
+                        </span>
+                        <span className="text-[11px] text-white/60 tabular-nums flex-shrink-0">
+                          {item.date}
+                        </span>
+                      </div>
 
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Sparkles className="size-4" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-kumo-strong">4.9 / 5.0</p>
-                <p className="text-xs text-kumo-subtle">Hài lòng</p>
-              </div>
+                      <h3 className="text-sm font-bold text-white truncate group-hover:text-emerald-300 transition-colors">
+                        {item.title}
+                      </h3>
+
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <span className="text-xs text-white/70 truncate flex items-center gap-1">
+                          <MapPin className="size-3 text-emerald-400 flex-shrink-0" />
+                          <span className="truncate">{item.city}</span>
+                        </span>
+
+                        <span className="text-xs font-bold text-emerald-300 tabular-nums">
+                          {formatPrice(item.priceStart, item.currency)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
-
-        {/* Right Column: Featured Concert Spotlight Card */}
-        {featuredEvent && (
-          <div className="lg:col-span-5">
-            <div
-              onClick={handleFeaturedClick}
-              className="group relative cursor-pointer rounded-2xl overflow-hidden bg-kumo-base ring-1 ring-emerald-500/30 hover:ring-emerald-500 transition-all shadow-xl shadow-emerald-950/10 hover:shadow-emerald-900/20 hover:-translate-y-1"
-            >
-              {/* Image banner with genre badge */}
-              <div className="relative aspect-[16/10] w-full overflow-hidden bg-emerald-950/20">
-                <img
-                  src={featuredEvent.imageUrl}
-                  alt={featuredEvent.title}
-                  className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-                <div className="absolute top-3 left-3 flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1 shadow-xs">
-                    <Sparkles className="size-3" />
-                    Sự kiện nổi bật
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-medium">
-                    {featuredEvent.genre}
-                  </span>
-                </div>
-
-                <div className="absolute bottom-3 left-3 right-3 text-white">
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-300 font-medium mb-1">
-                    <Calendar className="size-3.5" />
-                    <span>{featuredEvent.date}</span>
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-bold leading-snug line-clamp-2">
-                    {featuredEvent.title}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Card Bottom Details */}
-              <div className="p-4 sm:p-5 flex flex-col gap-3">
-                <div className="flex items-center justify-between text-sm text-kumo-subtle">
-                  <span className="flex items-center gap-1.5 truncate">
-                    <MapPin className="size-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                    <span className="truncate">{featuredEvent.venue}</span>
-                  </span>
-                  <span className="font-medium text-emerald-700 dark:text-emerald-300 flex-shrink-0 ml-2">
-                    {featuredEvent.city}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-kumo-hairline">
-                  <div>
-                    <span className="text-xs text-kumo-subtle block">Giá vé từ</span>
-                    <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
-                      {formatPrice(featuredEvent.priceStart, featuredEvent.currency)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/checkout/${featuredEvent.id}`);
-                    }}
-                    className="h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950 text-sm font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
-                  >
-                    <Ticket className="size-4" />
-                    Đặt vé ngay
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </section>
   );
