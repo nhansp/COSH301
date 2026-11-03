@@ -52,7 +52,7 @@ export interface User {
   createdAt: string;
 }
 
-export type UserRole = 'CUSTOMER' | 'ORGANIZER' | 'ADMIN';
+export type UserRole = 'CUSTOMER' | 'ORGANIZER' | 'CEO' | 'GATE_STAFF' | 'ADMIN';
 
 export interface Booking {
   id: string;
