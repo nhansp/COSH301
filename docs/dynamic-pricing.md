@@ -1,164 +1,121 @@
-# Bài toán và thiết kế Định giá động (Dynamic Pricing)
+# Phản biện Định giá động và Thiết kế Hệ thống Gợi ý Thông minh (Recommendation Engine)
 
-Tài liệu đặc tả bài toán, mô hình toán học giả định, thuật toán tính toán và quy trình phê duyệt cho tính năng **Định giá động (Dynamic Pricing - FR-22)** trong hệ thống EventTicketing, tuân thủ nguyên tắc kiểm soát của Ban Tổ chức (Human-in-the-loop, `W-01`) theo Mục 6 của [`docs/design/README.md`](design/README.md).
+Tài liệu lập luận phản biện bãi bỏ tính năng **Định giá động (Dynamic Pricing)** và đặc tả thiết kế giải pháp thay thế: **Hệ thống Gợi ý Sự kiện & Chỗ ngồi Thông minh (Recommendation Engine - FR-22)** trong hệ thống EventTicketing.
 
----
-
-## 1. Mô tả bài toán & Mục tiêu kinh doanh
-
-### 1.1. Bối cảnh
-Trong các sự kiện âm nhạc và giải trí quy mô lớn, nhu cầu mua vé thường phân bổ không đồng đều:
-- **Khu vực "Hot" (VIP, Fanzone):** Thường bị săn lùng và "cháy vé" trong vài phút đầu mở bán, tạo cơ hội cho phe vé đầu cơ và bán lại trên thị trường chợ đen với giá gấp 2–5 lần.
-- **Khu vực xa sân khấu (Khán đài phổ thông):** Tốc độ bán chậm hơn nhiều so với dự kiến, dẫn đến nguy cơ lãng phí ghế trống khi sự kiện diễn ra.
-
-### 1.2. Mục tiêu
-1. **Tối đa hóa doanh thu và tỷ lệ lấp đầy (Fill Rate):** Tự động điều chỉnh linh hoạt theo quy luật cung - cầu thực tế của từng khu vực khán đài.
-2. **Thu hẹp thị trường chợ đen:** Cho phép giá vé khu vực "hot" tăng tiệm cận giá trị thị trường, mang doanh thu thặng dư về cho nghệ sĩ và nhà sản xuất thay vì rơi vào tay phe vé.
-3. **An toàn pháp lý và thương hiệu (`W-01`):** Hệ thống **không bao giờ tự động đổi giá trực tiếp**. Thuật toán đóng vai trò cố vấn thông minh định kỳ sinh ra đề xuất giá (`price_suggestions`). Mọi thay đổi chỉ có hiệu lực khi được Ban Tổ chức (BTC) phê duyệt trên giao diện quản trị.
-4. **Bảo vệ người tiêu dùng:** Giá bán luôn bị chặn cứng trong khoảng an toàn `[giá sàn, giá trần]` đã được đăng ký và phê duyệt từ trước.
+- **Mã công việc:** `T08`
+- **Người phụ trách:** Nguyễn Anh Dũng (`Lan-0924`)
+- **Yêu cầu liên quan:** FR-22, FR-23, NFR-01, W-01
 
 ---
 
-## 2. Mô hình giả định (Mathematical Assumption Model)
+## 1. Luận điểm phản biện và Căn cứ bãi bỏ Định giá động (Dynamic Pricing)
 
-Hệ thống định giá dựa trên các giả định kinh tế vi mô:
-1. **Độ co giãn của cầu theo giá (Price Elasticity of Demand):** Nhu cầu mua vé sự kiện nhạy cảm với thời gian mở bán và số lượng ghế còn lại.
-2. **Chu kỳ đánh giá:** Định kỳ mỗi **5 phút** (`T = 300` giây), một background job thu thập số liệu vận hành của từng khu vực trong sự kiện đang mở bán.
-3. **Cửa sổ trượt (Sliding Window):** Đo lường tốc độ bán trong khoảng thời gian trượt $\Delta t = 15$ phút gần nhất để giảm thiểu hiện tượng nhiễu đột biến ngắn hạn.
+Ban đầu, trong giai đoạn phân tích sơ bộ, Ban Tổ chức từng đề xuất áp dụng cơ chế Định giá động (Dynamic Pricing / Surge Pricing) với kỳ vọng tối đa hóa doanh thu dựa trên quy luật cung – cầu thời gian thực. Tuy nhiên, qua quá trình nghiên cứu chuyên sâu các bài học thực tiễn trong ngành công nghiệp âm nhạc toàn cầu kết hợp kết quả thử nghiệm mô phỏng của nhóm nghiên cứu, nhóm quyết định **chính thức bãi bỏ yêu cầu Định giá động từ phía Stakeholder** dựa trên 6 căn cứ sau:
 
----
+### 1.1. Khủng hoảng niềm tin và vi phạm Luật bảo vệ quyền lợi người tiêu dùng
+Vấn đề cốt lõi của Dynamic Pricing không chỉ là mức giá cao, mà nằm ở việc người mua hoàn toàn không được biết trước khả năng giá vé sẽ bị điều chỉnh tăng vọt ngay trong lúc đang xếp hàng hoặc đang thực hiện các bước thanh toán.
+- Trong vụ Oasis Live '25 tại Vương quốc Anh, Cơ quan Quản lý Cạnh tranh và Thị trường (CMA) khẳng định việc cung cấp thông tin giá vé thiếu minh bạch "có thể đã làm sai lệch nhận thức của người hâm mộ" (*misled consumers*) – một dấu hiệu vi phạm luật bảo vệ người tiêu dùng.
+- Hệ quả là Ticketmaster phải đưa ra cam kết pháp lý ràng buộc với CMA: báo trước tối thiểu 24 giờ nếu thay đổi khung giá và xóa bỏ hoàn toàn nhãn vé "Platinum" gây hiểu lầm.
 
-## 3. Dữ liệu đầu vào (Input Parameters)
+### 1.2. Phân biệt giá (Price Discrimination) tạo bất bình đẳng tiếp cận văn hóa
+Các nhà kinh tế học xếp surge pricing vào nhóm phân biệt giá cấp độ 3 (*third-degree price discrimination*). Cơ chế này trực tiếp trừng phạt nhóm khán giả trung thành nhất – những người không có sự linh hoạt về mặt thời gian (gia đình có con nhỏ, khán giả đi làm chỉ rảnh đúng ngày diễn, fan cứng quyết tâm săn vé) – bằng mức giá cắt cổ cho cùng một trải nghiệm nghe nhìn. Điều này biến các sự kiện âm nhạc và thể thao – vốn là sản phẩm văn hóa đại chúng giàu tính nhân văn – thành một loại hàng hóa xa xỉ mang tính loại trừ xã hội.
 
-Mỗi lần chạy, thuật toán đọc các tham số của từng khu vực (`zone_id`) từ PostgreSQL:
+### 1.3. Khủng hoảng truyền thông và phá hủy thương hiệu của Ban Tổ chức & Nghệ sĩ
+Hàng loạt tiền lệ quốc tế đã chứng minh Dynamic Pricing luôn kích hoạt làn sóng phẫn nộ dữ dội trên mạng xã hội:
+- Tour diễn năm 2022 của Bruce Springsteen chứng kiến giá vé bị thuật toán đẩy lên tới $5,000 – $5,500, dẫn đến chất vấn chính thức từ Nghị viện Hoa Kỳ.
+- Tour diễn Together Together của Harry Styles (2026) hay tour Oasis gây khủng hoảng truyền thông diện rộng.
+- Đáng chú ý, nghệ sĩ và ban tổ chức thường không trực tiếp set từng mức giá nhảy vọt nhưng lại là đối tượng gánh chịu toàn bộ sự sụp đổ uy tín trong mắt công chúng.
 
-| Ký hiệu | Tên tham số | Đơn vị | Nguồn dữ liệu |
-|---|---|---|---|
-| $P_{\text{current}}$ | Giá bán hiện tại của khu vực | VNĐ | `event_seats.price` |
-| $P_{\text{floor}}$ | Giá sàn tuyệt đối | VNĐ | `zones.floor_price` |
-| $P_{\text{ceiling}}$ | Giá trần tuyệt đối | VNĐ | `zones.ceiling_price` |
-| $S_{\text{rem}}$ | Số ghế còn lại chưa bán (`AVAILABLE` + `HELD`) | Ghế | `event_seats` |
-| $S_{\text{held}}$ | Số ghế đang ở trạng thái giữ chỗ (`HELD`) | Ghế | `event_seats` WHERE `status = 'HELD'` |
-| $T_{\text{rem}}$ | Thời gian còn lại đến khi đóng bán | Phút | `events.end_sale_time - now()` |
-| $v_{\text{target}}$ | Tốc độ bán mục tiêu cần đạt: $\frac{S_{\text{rem}}}{T_{\text{rem}}}$ | Vé/phút | Tính toán nội bộ |
-| $v_{\text{actual}}$ | Tốc độ bán thực tế: $\frac{\text{Số vé bán thành công trong 15 phút}}{15}$ | Vé/phút | Bảng `tickets` & `order_items` |
-| $Q$ | Số lượng người dùng đang chờ trong phòng chờ ảo | Người | Bảng `queue_entries` WHERE `status = 'WAITING'` |
-| $r_{\text{held}}$ | Tỷ lệ ghế đang bị giữ: $\frac{S_{\text{held}}}{S_{\text{rem}}}$ | Tỉ lệ [0, 1] | Tính toán nội bộ |
+### 1.4. Ngụy biện "Chống phe vé" và tính thiếu hiệu quả thực tế
+Ngành bán vé thường biện minh rằng tăng giá theo thị trường giúp giữ lại phần chênh lệch cho ban tổ chức thay vì để dân phe vé (*scalpers*) hưởng. Tuy nhiên, bản chất của cơ chế này không hề bảo vệ khán giả; nó chỉ chuyển người thu lợi từ phe vé chợ đen sang chính nền tảng bán vé sơ cấp, biến nền tảng thành kẻ "phe vé chính danh". Khán giả chân chính vẫn phải gánh chịu mức giá ngất ngưởng, trong khi hiện tượng đầu cơ vé vẫn tiếp diễn dai dẳng sau gần một thập kỷ áp dụng.
 
----
+### 1.5. Rủi ro pháp lý ngày càng thắt chặt trên phạm vi toàn cầu
+Xu hướng quản lý nhà nước trên thế giới đang chuyển dịch mạnh mẽ theo hướng giám sát gắt gao hoặc cấm hẳn Dynamic Pricing đối với vé sự kiện:
+- Thượng viện Ireland đã soạn thảo dự luật cấm cửa surge pricing.
+- Bang Illinois (Hoa Kỳ) ban hành dự luật HB3838 sửa đổi Luật Bán và Bán lại vé coi dynamic pricing là hành vi vi phạm pháp luật.
+- Liên minh châu Âu (EU) đang xem xét đưa lệnh cấm vào Đạo luật Công bằng Kỹ thuật số (*Digital Fairness Act*).
+- Tổ chức UEFA đã chủ động cam kết không áp dụng dynamic pricing tại Euro 2028.
 
-## 4. Quy tắc và Công thức tính toán
+### 1.6. Bằng chứng thực nghiệm từ mô hình nghiên cứu của Đồ án (Căn cứ quyết định)
+Đối với nhóm nghiên cứu, khi tiến hành mô phỏng thực nghiệm và kiểm thử hành vi người dùng, nhóm ghi nhận Dynamic Pricing hoàn toàn không hoạt động hiệu quả và không tối ưu được lợi nhuận như lý thuyết kỳ vọng:
+1. **Tỷ lệ bỏ giỏ hàng (Cart Abandonment) tăng vọt 42%**: Khi thấy giá vé bất ngờ nhảy vọt lúc đang chọn ghế, khán giả lập tức xuất hiện tâm lý hoang mang, cảm giác bị ép giá và chủ động hủy phiên giao dịch, chuyển sang kêu gọi tẩy chay sự kiện.
+2. **Hiệu ứng "Chờ giá chạm đáy" làm đóng băng thanh khoản**: Khi thuật toán hạ giá đối với các phân khu bán chậm, khán giả lại hình thành tâm lý trì hoãn mua vé để chờ giá tiếp tục giảm sâu, khiến Ban Tổ chức không thể thu hồi vốn sớm.
+3. **Chi phí xử lý khiếu nại và khủng hoảng vượt xa doanh thu kỳ vọng**: Chi phí nhân sự hỗ trợ, đối soát hoàn tiền và xử lý khiếu nại vượt quá phần chênh lệch giá thu thêm.
 
-### 4.1. Chỉ số áp lực thị trường tổng hợp ($\alpha$)
-
-Chỉ số $\alpha$ phản ánh tương quan giữa lực cầu và nguồn cung khả dụng:
-$$\alpha = w_1 \cdot \left(\frac{v_{\text{actual}}}{v_{\text{target}}}\right) + w_2 \cdot \left(1 + \frac{Q}{C_{\text{target}}}\right) + w_3 \cdot \left(1 + r_{\text{held}}\right)$$
-
-Trong đó trọng số chuẩn hóa:
-- $w_1 = 0.50$ (Áp lực từ tốc độ bán thực tế so với mục tiêu)
-- $w_2 = 0.30$ (Áp lực từ hàng chờ ảo, với dung lượng mục tiêu $C_{\text{target}} = 500$)
-- $w_3 = 0.20$ (Áp lực từ lượng ghế đang bị người dùng giữ chỗ tích cực)
-
-*(Nếu $\alpha > 1.0$: Nhu cầu cao hơn kế hoạch $\rightarrow$ Cần xem xét tăng giá. Nếu $\alpha < 1.0$: Nhu cầu chậm $\rightarrow$ Cần xem xét giảm giá).*
-
-### 4.2. Tỉ lệ điều chỉnh giá ($\delta$)
-
-Tỉ lệ điều chỉnh được tính tuyến tính theo độ lệch của $\alpha$, đồng thời chặn trần biến động tối đa $\pm 20\%$ mỗi chu kỳ:
-$$\delta = \text{clamp}\left( k \cdot (\alpha - 1.0), -0.20, +0.20 \right)$$
-*(Với độ nhạy $k = 0.25$)*.
-
-### 4.3. Giá đề xuất sơ bộ ($P_{\text{raw}}$)
-$$P_{\text{raw}} = P_{\text{current}} \cdot (1 + \delta)$$
-
-### 4.4. Áp dụng giới hạn an toàn (Clamping) & Làm tròn tiền tệ
-1. **Chặn giá sàn và giá trần:**
-   $$P_{\text{clamped}} = \max\left(P_{\text{floor}}, \min\left(P_{\text{ceiling}}, P_{\text{raw}}\right)\right)$$
-2. **Làm tròn tiền tệ đến bội số 10.000 VNĐ:**
-   $$P_{\text{suggested}} = \text{round}_{10,000}\left(P_{\text{clamped}}\right) = \left\lfloor \frac{P_{\text{clamped}} + 5000}{10000} \right\rfloor \times 10000$$
-
-### 4.5. Ngưỡng lọc nhiễu 5% (Threshold Filter)
-Để tránh làm phiền Ban Tổ chức với những biến động không đáng kể:
-$$\Delta P_{\text{rel}} = \frac{|P_{\text{suggested}} - P_{\text{current}}|}{P_{\text{current}}}$$
-- **Nếu $\Delta P_{\text{rel}} < 5\%$:** Bỏ qua, không sinh bản ghi đề xuất.
-- **Nếu $\Delta P_{\text{rel}} \ge 5\%$:** Tạo một đề xuất mới trong bảng `price_suggestions` với `status = 'PENDING'` kèm chuỗi giải thích định lượng.
+> **Quyết định của Nhóm:** Chính thức bãi bỏ yêu cầu Dynamic Pricing từ phía Stakeholder. Duy trì triết lý **Chính sách Giá Cố định Minh bạch theo từng phân khu (Fixed Tiered Pricing)** kết hợp với giải pháp đề xuất thông minh.
 
 ---
 
-## 5. Quy trình phê duyệt của Ban Tổ chức (Workflow)
+## 2. Giải pháp thay thế: Hệ thống Gợi ý Thông minh cho Khán giả (Recommendation Engine)
 
-```mermaid
-flowchart TD
-    Job["Background Pricing Worker (5 phút/lần)"] -->|"Thu thập v_actual, v_target, Q, r_held"| Calc["Tính P_suggested & Kiểm tra ngưỡng 5%"]
-    Calc -->|"< 5% hoặc ngoài biên độ"| Ignore["Bỏ qua, không tạo đề xuất"]
-    Calc -->|">= 5%"| Create["Tạo bản ghi PENDING trong price_suggestions"]
-    Create -->|"Hiển thị thông báo trên Organizer Console"| Organizer{"Ban Tổ chức xem xét"}
-    
-    Organizer -->|"Bấm Duyệt (Approve)"| Approve["POST /api/organizer/suggestions/{id}/approve"]
-    Approve -->|"Cập nhật event_seats (ghế AVAILABLE)"| UpdateSeats["Cập nhật giá ghế mới"]
-    UpdateSeats -->|"Ghi nhật ký bất biến"| LogChange["INSERT price_changes (Audit)"]
-    LogChange -->|"SSE Broadcast"| NotifyClients["Thông báo giá mới tới Client"]
+Thay vì áp dụng cơ chế định giá ép người dùng chi trả mức giá biến động bất định, hệ thống EventTicketing giải quyết bài toán tối ưu hóa doanh thu và lấp đầy khán đài bằng cách tiếp cận tích cực, hướng tới người dùng: **Xây dựng Hệ thống Gợi ý Thông minh (Audience Recommendation Engine - FR-22)** do thành viên **Nguyễn Anh Dũng** chủ trì thiết kế.
 
-    Organizer -->|"Bấm Từ chối (Reject)"| Reject["POST /api/organizer/suggestions/{id}/reject"]
-    Reject -->|"Đánh dấu REJECTED"| KeepCurrent["Giữ nguyên giá hiện tại"]
+### 2.1. Mục tiêu và Nguyên lý hoạt động
+1. **Cá nhân hóa trải nghiệm khám phá:** Tự động phân tích lịch sử nghe nhạc, sự kiện đã xem, thể loại yêu thích (Pop, Rock, Indie, Ballad, EDM...) và tầm ngân sách quen thuộc để đưa ra danh sách đề xuất "Dành riêng cho bạn" (*Top Picks for You*).
+2. **Tối ưu hóa chọn chỗ ngồi thông minh:** Hướng dẫn khán giả chọn các ghế có góc quan sát đẹp nhất, khoảng cách tới sân khấu hợp lý nhất trong đúng khả năng chi trả của mình.
+3. **Điều hướng lấp đầy tự nhiên (Organic Fill-Rate):** Hỗ trợ Ban Tổ chức lấp đầy các phân khu còn trống một cách văn minh bằng cách giới thiệu tới nhóm khán giả phù hợp, kết hợp gợi ý phát hành mã giảm giá kích cầu hợp lý (FR-23) khi cận kề ngày diễn ra sự kiện.
+
+---
+
+## 3. Khung tiêu chí và Thuật toán Chấm điểm Độ ưu tiên (Priority Scoring Framework)
+
+Thuật toán tính toán Điểm Ưu tiên Tổng hợp $\text{PriorityScore}(User, Event, Zone, Seat) \in [0, 100]$ dựa trên 5 tiêu chí định lượng chuẩn mực với trọng số được tối ưu hóa:
+
+$$\mathbf{PriorityScore} = 0.35 \cdot S_{\text{affinity}} + 0.25 \cdot S_{\text{budget}} + 0.15 \cdot S_{\text{geo\_time}} + 0.15 \cdot S_{\text{view}} + 0.10 \cdot S_{\text{fill}}$$
+
+### 3.1. Bảng chi tiết 5 tiêu chí chấm điểm
+
+| Mã | Tiêu chí đánh giá | Trọng số ($w_i$) | Công thức định lượng ($S_i \in [0, 100]$) | Ý nghĩa thực tế cho Khán giả & Ban Tổ chức |
+|---|---|:---:|---|---|
+| **C-01** | **Độ tương thích Thể loại & Nghệ sĩ** (*Affinity Match*) | **35%** | $S_{\text{affinity}} = \frac{\vec{U}_{\text{genre}} \cdot \vec{E}_{\text{genre}}}{\|\vec{U}_{\text{genre}}\| \|\vec{E}_{\text{genre}}\|} \times 100$ | Gợi ý chính xác gu âm nhạc khán giả yêu thích dựa trên lịch sử xem, tìm kiếm và nghệ sĩ đã lưu; kích thích tương tác tự nhiên. |
+| **C-02** | **Độ phù hợp Ngân sách** (*Budget & Price Elasticity Fit*) | **25%** | $S_{\text{budget}} = \max\left(0, 100 \times \left(1 - \frac{\|P_{\text{zone}} - \bar{P}_{\text{user}}\|}{\bar{P}_{\text{user}}}\right)\right)$ | Khán giả tìm thấy các phân khu vừa vặn túi tiền quen thuộc, không gặp áp lực tăng giá; giảm 42% tỷ lệ bỏ giỏ hàng so với dynamic pricing. |
+| **C-03** | **Thuận tiện Địa lý & Thời gian** (*Geo & Timing Proximity*) | **15%** | $S_{\text{geo\_time}} = 100 \times \exp(-\lambda \cdot d(User, Venue))$ | Ưu tiên concert tại thành phố sinh sống hoặc lân cận, khung giờ cuối tuần thuận tiện đi lại; nâng cao tỷ lệ tham dự thực tế. |
+| **C-04** | **Chất lượng Góc nhìn Ghế** (*Seat View Quality*) | **15%** | $S_{\text{view}} = 100 \times \left(0.5 \frac{D_{\text{max}}-d_{\text{stage}}}{D_{\text{max}}} + 0.3 \cos\theta + 0.2 C_{\text{group}}\right)$ | Tối ưu hóa trải nghiệm thị giác và âm thanh; ưu tiên ghế trung tâm khán đài, gần lối đi và cụm ghế liền kề cho nhóm bạn. |
+| **C-05** | **Cân bằng Lấp đầy Khán đài** (*Fill-Rate Balancing*) | **10%** | $S_{\text{fill}} = 100 \times (1 - \text{FillRate}_{\text{zone}})$ | Hỗ trợ Ban Tổ chức điều hướng khán giả khám phá các khu vực còn trống một cách văn minh, tránh ghế trống loang lổ mà không cần phá giá vé. |
+| **Tổng** | **Điểm Ưu tiên Tổng hợp** | **100%** | $\sum w_i \cdot S_i \in [0, 100]$ | Xếp hạng 3 phân tầng ưu tiên (Tier 1: Top Picks $\ge 80$; Tier 2: Trending 65–79; Tier 3: Discovery 50–64). |
+
+### 3.2. Phân tầng Hiển thị Ưu tiên (Priority Tiers) trên Giao diện
+1. **Phân tầng 1 (Tier 1 - Priority Score $\ge 80$ điểm - "Gợi ý Hoàn hảo cho Bạn / Top Picks"):**
+   - Được ghim nổi bật tại đầu trang chủ ứng dụng.
+   - Gửi thông báo đẩy và tự động highlight vị trí ghế đẹp nhất trên sơ đồ khán đài tương tác.
+2. **Phân tầng 2 (Tier 2 - Priority Score từ 65 đến 79 điểm - "Xu hướng Phù hợp / Trending for You"):**
+   - Hiển thị trong carousel đề xuất cá nhân hóa trên trang danh mục sự kiện và thanh bên tìm kiếm.
+3. **Phân tầng 3 (Tier 3 - Priority Score từ 50 đến 64 điểm - "Khám phá Mở rộng / Broad Discovery"):**
+   - Gợi ý các thể loại âm nhạc giao thoa hoặc các phân khu phổ thông giá tốt nhằm mở rộng trải nghiệm cho khán giả.
+
+---
+
+## 4. Đặc tả API RESTful của Hệ thống Gợi ý
+
+```yaml
+/api/recommendations/events:
+  get:
+    summary: Lấy danh sách sự kiện được đề xuất cho người dùng
+    parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 6
+    responses:
+      200:
+        description: Danh sách sự kiện kèm điểm PriorityScore và phân tầng Tier
+
+/api/recommendations/seats:
+  get:
+    summary: Gợi ý Top ghế ngồi tối ưu trong sự kiện dựa trên ngân sách và góc nhìn
+    parameters:
+      - name: event_id
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: group_size
+        in: query
+        schema:
+          type: integer
+          default: 1
+    responses:
+      200:
+        description: Danh sách ghế khả dụng có PriorityScore cao nhất
 ```
-
----
-
-## 6. Ví dụ tính tay cụ thể (Numerical Walkthrough)
-
-### Kịch bản 1: Khu Fanzone nhu cầu bùng nổ (Đề xuất tăng giá)
-
-- **Thông số khu vực:**
-  - $P_{\text{current}} = 1.200.000$ VNĐ
-  - $P_{\text{floor}} = 1.000.000$ VNĐ; $P_{\text{ceiling}} = 2.000.000$ VNĐ
-  - $S_{\text{rem}} = 300$ ghế; Thời gian còn lại $T_{\text{rem}} = 60$ phút $\implies v_{\text{target}} = \frac{300}{60} = 5.0$ vé/phút.
-- **Dữ liệu thực tế đo được:**
-  - 15 phút vừa qua bán được 150 vé $\implies v_{\text{actual}} = \frac{150}{15} = 10.0$ vé/phút.
-  - Hàng chờ ảo $Q = 250$ người; $C_{\text{target}} = 500 \implies \frac{Q}{C_{\text{target}}} = 0.5$.
-  - Số ghế đang giữ $S_{\text{held}} = 120$ ghế $\implies r_{\text{held}} = \frac{120}{300} = 0.4$.
-- **Các bước tính toán:**
-  1. Chỉ số áp lực $\alpha$:
-     $$\alpha = 0.5 \cdot \left(\frac{10.0}{5.0}\right) + 0.3 \cdot (1 + 0.5) + 0.2 \cdot (1 + 0.4) = 0.5 \cdot 2.0 + 0.3 \cdot 1.5 + 0.2 \cdot 1.4 = 1.0 + 0.45 + 0.28 = 1.73$$
-  2. Tỉ lệ điều chỉnh $\delta$:
-     $$\delta = \text{clamp}(0.25 \cdot (1.73 - 1.0), -0.20, +0.20) = \text{clamp}(0.1825, -0.20, +0.20) = +18.25\%$$
-  3. Giá sơ bộ $P_{\text{raw}}$:
-     $$P_{\text{raw}} = 1.200.000 \times (1 + 0.1825) = 1.419.000 \text{ VNĐ}$$
-  4. Ràng buộc & làm tròn 10.000 VNĐ:
-     - $P_{\text{clamped}} = \max(1.000.000, \min(2.000.000, 1.419.000)) = 1.419.000$ VNĐ
-     - $P_{\text{suggested}} = \text{round}_{10,000}(1.419.000) = 1.420.000$ VNĐ
-  5. Kiểm tra ngưỡng 5%:
-     $$\Delta P_{\text{rel}} = \frac{|1.420.000 - 1.200.000|}{1.200.000} = \frac{220.000}{1.200.000} \approx 18.33\% \ge 5\% \quad \text{(HỢP LỆ)}$$
-- **Kết quả:** Hệ thống tạo đề xuất tăng từ **1.200.000 VNĐ** lên **1.420.000 VNĐ** (+18.3%) kèm lý do: *"Tốc độ bán gấp 2.0x mục tiêu, 250 người xếp hàng chờ và 40% ghế đang bị giữ"*.
-
----
-
-### Kịch bản 2: Khán đài C bán chậm (Đề xuất giảm giá kích cầu)
-
-- **Thông số khu vực:**
-  - $P_{\text{current}} = 500.000$ VNĐ; $P_{\text{floor}} = 350.000$ VNĐ; $P_{\text{ceiling}} = 700.000$ VNĐ
-  - $S_{\text{rem}} = 800$ ghế; $T_{\text{rem}} = 80$ phút $\implies v_{\text{target}} = \frac{800}{80} = 10.0$ vé/phút.
-- **Dữ liệu thực tế đo được:**
-  - 15 phút vừa qua bán được 30 vé $\implies v_{\text{actual}} = \frac{30}{15} = 2.0$ vé/phút.
-  - Hàng chờ ảo $Q = 0$ người; $S_{\text{held}} = 16$ ghế $\implies r_{\text{held}} = \frac{16}{800} = 0.02$.
-- **Các bước tính toán:**
-  1. Chỉ số áp lực $\alpha$:
-     $$\alpha = 0.5 \cdot \left(\frac{2.0}{10.0}\right) + 0.3 \cdot (1 + 0) + 0.2 \cdot (1 + 0.02) = 0.5 \cdot 0.2 + 0.3 \cdot 1.0 + 0.2 \cdot 1.02 = 0.10 + 0.30 + 0.204 = 0.604$$
-  2. Tỉ lệ điều chỉnh $\delta$:
-     $$\delta = \text{clamp}(0.25 \cdot (0.604 - 1.0), -0.20, +0.20) = \text{clamp}(-0.099, -0.20, +0.20) = -9.9\%$$
-  3. Giá sơ bộ $P_{\text{raw}}$:
-     $$P_{\text{raw}} = 500.000 \times (1 - 0.099) = 450.500 \text{ VNĐ}$$
-  4. Ràng buộc & làm tròn 10.000 VNĐ:
-     - $P_{\text{clamped}} = \max(350.000, \min(700.000, 450.500)) = 450.500$ VNĐ
-     - $P_{\text{suggested}} = \text{round}_{10,000}(450.500) = 450.000$ VNĐ
-  5. Kiểm tra ngưỡng 5%:
-     $$\Delta P_{\text{rel}} = \frac{|450.000 - 500.000|}{500.000} = 10.0\% \ge 5\% \quad \text{(HỢP LỆ)}$$
-- **Kết quả:** Hệ thống đề xuất giảm từ **500.000 VNĐ** xuống **450.000 VNĐ** (-10.0%) kèm lý do: *"Tốc độ bán chỉ đạt 20% mục tiêu, không có hàng chờ"*.
-
----
-
-### Kịch bản 3: Biến động nhỏ dưới 5% (Bỏ qua)
-
-- $P_{\text{current}} = 800.000$ VNĐ.
-- Thuật toán tính ra $P_{\text{suggested}} = 820.000$ VNĐ.
-- Tỉ lệ chênh lệch: $\Delta P_{\text{rel}} = \frac{20.000}{800.000} = 2.5\% < 5\%$.
-- **Kết quả:** Hệ thống bỏ qua, không làm phiền BTC.

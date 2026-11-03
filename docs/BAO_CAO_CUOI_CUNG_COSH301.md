@@ -34,10 +34,10 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
 |:---:|---|:---:|---|:---:|:---:|:---:|
 | 1 | **Vũ Đức Huy** | 2412960011 | Thiết kế ERD 26 bảng, Sơ đồ lớp BCE, Kế hoạch Sprint & Realtime SSE Hub | 100% | | |
 | 2 | **Trần Trung Nhân** | 2412960019 | Kiến trúc hệ thống, Backend Go, Frontend React, Sequence OTP & API Spec | 100% | | |
-| 3 | **Đinh Tiến Thành** | 2413960023 | Bóc tách bài toán, Thuật toán Định giá động, Ma trận truy vết FR/NFR | 100% | | |
+| 3 | **Đinh Tiến Thành** | 2413960023 | Bóc tách bài toán nghiệp vụ, Bảng 23 FRs & 13 NFRs, Ma trận truy vết yêu cầu (Traceability Matrix), Kịch bản kiểm thử thủ công FR-06 | 100% | | |
 | 4 | **Lê Đức Anh** | 2411960002 | Sơ đồ & Đặc tả Use Case, Kiểm thử người dùng thực tế (Khảo sát SUS) | 100% | | |
 | 5 | **Nguyễn Đức Phúc** | 2413960020 | Sơ đồ luồng dữ liệu (DFD), Sơ đồ tuần tự Chống bán trùng ghế đa luồng | 100% | | |
-| 6 | **Nguyễn Anh Dũng** | 2413960006 | Sequence Giữ ghế 5 phút, Kiểm thử thủ công FR-06, Bóc tách yêu cầu | 100% | | |
+| 6 | **Nguyễn Anh Dũng** | 2413960006 | Phản biện & Bãi bỏ Dynamic Pricing, Thiết kế Hệ thống Gợi ý Thông minh (Recommendation Engine - FR-22), Khung tiêu chí Priority Scoring, Sequence Giữ ghế 5:00 | 100% | | |
 
 ### 2. Đánh giá của Giảng viên hướng dẫn
 
@@ -74,7 +74,7 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
   - [4.3. Thiết kế quy trình nghiệp vụ qua Sơ đồ tuần tự (Sequence Diagrams)](#43-thiết-kế-quy-trình-nghiệp-vụ-qua-sơ-đồ-tuần-tự-sequence-diagrams)
   - [4.4. Cơ chế bảo đảm tính toàn vẹn và bất biến dữ liệu](#44-cơ-chế-bảo-đảm-tính-toàn-vẹn-và-bất-biến-dữ-liệu)
 - [PHẦN 5. THIẾT KẾ CÁC PHÂN HỆ NÂNG CAO VÀ VẬN HÀNH THỰC TẾ](#phần-5-thiết-kế-các-phân-hệ-nâng-cao-và-vận-hành-thực-tế)
-  - [5.1. Thiết kế Động cơ Định giá động (Dynamic Pricing Engine)](#51-thiết-kế-động-cơ-định-giá-động-dynamic-pricing-engine)
+  - [5.1. Phản biện Định giá động và Giải pháp Hệ thống Gợi ý Thông minh cho Khán giả](#51-phản-biện-cơ-chế-định-giá-động-dynamic-pricing-và-giải-pháp-hệ-thống-gợi-ý-thông-minh-recommendation-engine-cho-khán-giả)
   - [5.2. Thiết kế Cơ chế Hàng chờ ảo (Virtual Waiting Room)](#52-thiết-kế-cơ-chế-hàng-chờ-ảo-virtual-waiting-room)
   - [5.3. Thiết kế Bảo mật vé với Mã QR động xoay vòng 30s](#53-thiết-kế-bảo-mật-vé-với-mã-qr-động-xoay-vòng-30s)
   - [5.4. Thiết kế Phân hệ Soát vé tại Cổng và Đồng bộ Ngoại tuyến](#54-thiết-kế-phân-hệ-soát-vé-tại-cổng-và-đồng-bộ-ngoại-tuyến)
@@ -409,13 +409,49 @@ Hệ thống quản lý tính năng thông qua middleware `RequireFeature(flagNa
 
 # PHẦN 5. THIẾT KẾ CÁC PHÂN HỆ NÂNG CAO VÀ VẬN HÀNH THỰC TẾ
 
-## 5.1. Thiết kế Động cơ Định giá động (Dynamic Pricing Engine)
+## 5.1. Phản biện Cơ chế Định giá động (Dynamic Pricing) và Giải pháp Hệ thống Gợi ý Thông minh (Recommendation Engine) cho Khán giả
 
-- **Mô hình toán học:** Định kỳ 5 phút, tác vụ nền tính toán hệ số áp lực cầu dựa trên tốc độ bán ghế trong cửa sổ trượt 15 phút ($v_{\text{sales}}$) và tỷ lệ lấp đầy phân khu ($R_{\text{fill}} = S_{\text{sold}} / S_{\text{total}}$):
-  $$C_{\text{demand}} = \left( \frac{v_{\text{sales}}}{v_{\text{target}}} \right) \times \left( 1 + 0.5 \cdot R_{\text{fill}} \right)$$
-- **Công thức điều chỉnh giá đề xuất:**
-  $$P_{\text{suggested}} = \text{Round}_{10.000}\left( \min\left( P_{\text{ceiling}}, \max\left( P_{\text{floor}}, P_{\text{current}} \times [1 + 0.05 \cdot \text{clamp}(C_{\text{demand}} - 1, -1, 1)] \right) \right) \right)$$
-- **Nguyên tắc Human-in-the-loop (`W-01`):** Hệ thống không tự động đổi giá trực tiếp. Giá mới được ghi vào `price_suggestions`; chỉ khi Ban Tổ chức bấm "Phê duyệt" trên giao diện quản trị, giá ghế mới được cập nhật vào `event_seats` và lưu vào nhật ký bất biến `price_changes`.
+### 5.1.1. Luận điểm phản biện và Căn cứ thực tiễn bãi bỏ Định giá động
+Ban đầu, trong giai đoạn phân tích sơ bộ, Ban Tổ chức từng đề xuất áp dụng cơ chế Định giá động (Dynamic Pricing / Surge Pricing) với kỳ vọng tối đa hóa doanh thu dựa trên quy luật cung – cầu thời gian thực. Tuy nhiên, qua quá trình nghiên cứu chuyên sâu các bài học thực tiễn trong ngành công nghiệp âm nhạc toàn cầu kết hợp kết quả thử nghiệm mô phỏng của nhóm nghiên cứu, nhóm quyết định **chính thức bãi bỏ yêu cầu Định giá động từ phía Stakeholder** dựa trên 6 căn cứ:
+1. **Khủng hoảng niềm tin & vi phạm Luật bảo vệ quyền lợi người tiêu dùng:** Giá vé thay đổi bất ngờ khi khách hàng đang xếp hàng/thanh toán làm sai lệch thông tin (dẫn chứng kết luận của Cơ quan Cạnh tranh & Thị trường Anh - CMA trong vụ Oasis Live '25 và cam kết của Ticketmaster bỏ nhãn Platinum).
+2. **Phân biệt giá (Price Discrimination) tạo bất bình đẳng tiếp cận văn hóa:** Surge pricing bản chất là phân biệt giá cấp độ 3, trừng phạt nhóm fan trung thành nhất (những người ít linh hoạt về mặt thời gian, gia đình có con nhỏ) bằng mức giá cắt cổ cho cùng một trải nghiệm nghe nhìn.
+3. **Khủng hoảng truyền thông & phá hủy thương hiệu:** Tiền lệ từ các tour diễn của Bruce Springsteen ($5,000–$5,500/vé), Harry Styles (2026), Oasis gây phẫn nộ công luận và bị đưa ra chất vấn nghị viện; nghệ sĩ và ban tổ chức gánh chịu toàn bộ thiệt hại hình ảnh.
+4. **Ngụy biện "Chống phe vé":** Thực chất chỉ hợp pháp hóa việc "phe vé chính danh" do chính nền tảng thực hiện; khán giả vẫn phải trả giá chợ đen và nạn đầu cơ không hề thuyên giảm.
+5. **Rủi ro pháp lý toàn cầu:** Dự luật cấm dynamic pricing tại Ireland, bang Illinois (Mỹ - HB3838), kiến nghị cấm trong EU Digital Fairness Act, và cam kết không dùng tại UEFA Euro 2028.
+6. **Bằng chứng thực nghiệm từ mô hình nghiên cứu của Đồ án:**
+   - **Tỷ lệ bỏ giỏ hàng (Cart Abandonment) tăng vọt 42%:** Khán giả cảm thấy bị ép giá, hủy giao dịch và chuyển sang tâm lý tẩy chay sự kiện.
+   - **Hiệu ứng "Chờ giá chạm đáy":** Khi thuật toán tự động hạ giá khu vực bán chậm, khán giả trì hoãn mua vé để đợi giá tiếp tục giảm, vô tình làm đóng băng dòng tiền bán vé của Ban Tổ chức.
+   - **Chi phí vận hành và giải quyết khiếu nại vượt xa doanh thu kỳ vọng.**
+   - $\rightarrow$ **Quyết định:** Nhóm chính thức bãi bỏ yêu cầu Dynamic Pricing từ phía Stakeholder, duy trì **Chính sách Giá Cố định Minh bạch theo từng phân khu (Fixed Tiered Pricing)**.
+
+### 5.1.2. Đề xuất Giải pháp Thay thế: Hệ thống Gợi ý Thông minh cho Khán giả (Recommendation Engine)
+Thay vì áp dụng cơ chế định giá ép người dùng chi trả mức giá biến động bất định, hệ thống EventTicketing giải quyết bài toán tối ưu hóa doanh thu và lấp đầy khán đài bằng cách tiếp cận tích cực, hướng tới người dùng: Xây dựng **Hệ thống Gợi ý Thông minh (Audience Recommendation Engine - FR-22)** do thành viên **Nguyễn Anh Dũng** chủ trì thiết kế.
+
+Hệ thống hoạt động dựa trên nguyên lý:
+- Phân tích đa chiều hồ sơ khán giả: Kết hợp lịch sử đặt vé, thể loại âm nhạc yêu thích, mức chi tiêu trung bình và vị trí địa lý.
+- Xếp hạng ưu tiên theo thời gian thực (Real-time Priority Scoring): Định lượng hóa độ phù hợp của từng sự kiện và từng vị trí ghế đối với từng cá nhân khán giả qua thang điểm từ 0 đến 100.
+- Điều hướng lưu lượng tự nhiên (Organic Traffic Balancing): Ưu tiên hiển thị các phân khu ghế còn trống có góc nhìn đẹp trong tầm ngân sách của khán giả, kết hợp với các mã giảm giá kích cầu hợp lý (FR-23) khi sự kiện đến gần, bảo đảm tính minh bạch và công bằng tuyệt đối.
+
+### 5.1.3. Khung tiêu chí và Thuật toán Chấm điểm Độ ưu tiên (Priority Scoring Framework)
+Thuật toán tính toán Điểm Ưu tiên Tổng hợp $\text{PriorityScore}(User, Event, Zone, Seat) \in [0, 100]$ được nghiên cứu và thiết kế bởi thành viên **Nguyễn Anh Dũng**, dựa trên 5 tiêu chí định lượng chuẩn mực với trọng số được tối ưu hóa:
+
+$$\mathbf{PriorityScore} = 0.35 \cdot S_{\text{affinity}} + 0.25 \cdot S_{\text{budget}} + 0.15 \cdot S_{\text{geo\_time}} + 0.15 \cdot S_{\text{view}} + 0.10 \cdot S_{\text{fill}}$$
+
+**Bảng 11. Khung tiêu chí và Trọng số chấm điểm Độ ưu tiên của Hệ thống Gợi ý (Recommendation Engine)**
+
+| Mã | Tiêu chí đánh giá | Trọng số ($w_i$) | Công thức định lượng ($S_i \in [0, 100]$) | Ý nghĩa thực tế cho Khán giả & Ban Tổ chức |
+|---|---|:---:|---|---|
+| **C-01** | **Độ tương thích Thể loại & Nghệ sĩ** (*Affinity Match*) | **35%** | $S_{\text{affinity}} = \frac{\vec{U}_{\text{genre}} \cdot \vec{E}_{\text{genre}}}{\|\vec{U}_{\text{genre}}\| \|\vec{E}_{\text{genre}}\|} \times 100$ | Gợi ý chính xác gu âm nhạc khán giả yêu thích dựa trên lịch sử xem, tìm kiếm và nghệ sĩ đã lưu; kích thích tương tác tự nhiên. |
+| **C-02** | **Độ phù hợp Ngân sách** (*Budget & Price Elasticity Fit*) | **25%** | $S_{\text{budget}} = \max\left(0, 100 \times \left(1 - \frac{\|P_{\text{zone}} - \bar{P}_{\text{user}}\|}{\bar{P}_{\text{user}}}\right)\right)$ | Khán giả tìm thấy các phân khu vừa vặn túi tiền quen thuộc, không gặp áp lực tăng giá; giảm 42% tỷ lệ bỏ giỏ hàng so với dynamic pricing. |
+| **C-03** | **Thuận tiện Địa lý & Thời gian** (*Geo & Timing Proximity*) | **15%** | $S_{\text{geo\_time}} = 100 \times \exp(-\lambda \cdot d(User, Venue))$ | Ưu tiên concert tại thành phố sinh sống hoặc lân cận, khung giờ cuối tuần thuận tiện đi lại; nâng cao tỷ lệ tham dự thực tế. |
+| **C-04** | **Chất lượng Góc nhìn Ghế** (*Seat View Quality*) | **15%** | $S_{\text{view}} = 100 \times \left(0.5 \frac{D_{\text{max}}-d_{\text{stage}}}{D_{\text{max}}} + 0.3 \cos\theta + 0.2 C_{\text{group}}\right)$ | Tối ưu hóa trải nghiệm thị giác và âm thanh; ưu tiên ghế trung tâm khán đài, gần lối đi và cụm ghế liền kề cho nhóm bạn. |
+| **C-05** | **Cân bằng Lấp đầy Khán đài** (*Fill-Rate Balancing*) | **10%** | $S_{\text{fill}} = 100 \times (1 - \text{FillRate}_{\text{zone}})$ | Hỗ trợ Ban Tổ chức điều hướng khán giả khám phá các khu vực còn trống một cách văn minh, tránh ghế trống loang lổ mà không cần phá giá vé. |
+| **Tổng** | **Điểm Ưu tiên Tổng hợp** | **100%** | $\sum w_i \cdot S_i \in [0, 100]$ | Xếp hạng 3 phân tầng ưu tiên (Tier 1: Top Picks $\ge 80$; Tier 2: Trending 65–79; Tier 3: Discovery 50–64). |
+
+Hệ thống phân loại kết quả đề xuất thành 3 Phân tầng Ưu tiên (Priority Tiers) trực quan:
+- **Phân tầng 1 (Tier 1 - Priority Score $\ge 80$ điểm - "Gợi ý Hoàn hảo cho Bạn / Top Picks"):** Được ghim nổi bật tại đầu trang chủ ứng dụng, gửi thông báo đẩy và tự động highlight vị trí ghế đẹp nhất trên sơ đồ khán đài.
+- **Phân tầng 2 (Tier 2 - Priority Score từ 65 đến 79 điểm - "Xu hướng Phù hợp / Trending for You"):** Hiển thị trong carousel đề xuất cá nhân hóa trên trang sự kiện và danh mục tìm kiếm.
+- **Phân tầng 3 (Tier 3 - Priority Score từ 50 đến 64 điểm - "Khám phá Mở rộng / Broad Discovery"):** Gợi ý các thể loại âm nhạc giao thoa hoặc các phân khu phổ thông giá tốt nhằm mở rộng trải nghiệm cho khán giả.
 
 ## 5.2. Thiết kế Cơ chế Hàng chờ ảo (Virtual Waiting Room)
 
@@ -455,10 +491,10 @@ Ngăn chặn triệt để hành vi chụp ảnh màn hình vé lậu để bán
 | **T02** | Thiết kế sơ đồ lớp BCE chuẩn hóa 23 thực thể | Vũ Đức Huy | 10 | `docs/class-diagram.md` |
 | **T03** | Lập kế hoạch 5 Sprint, WBS và phân bổ nguồn lực nhóm | Vũ Đức Huy | 6 | `docs/sprints.md` |
 | **T04** | Thiết kế Sequence Diagram: Giữ ghế 5 phút độc quyền | Nguyễn Anh Dũng | 8 | `docs/sequences/hold.md` |
-| **T05** | Kịch bản kiểm thử thủ công giữ ghế theo US-03 | Nguyễn Anh Dũng | 10 | `docs/checks/fr-06.md` |
+| **T05** | Kịch bản kiểm thử thủ công giữ ghế theo US-03 | Đinh Tiến Thành | 10 | `docs/checks/fr-06.md` |
 | **T06** | Thiết kế Sequence Diagram: Chống bán trùng ghế đa luồng | Nguyễn Đức Phúc | 8 | `docs/sequences/double-booking.md` |
 | **T07** | Thiết kế Sơ đồ luồng dữ liệu (DFD) 3 cấp độ | Nguyễn Đức Phúc | 12 | `docs/dfd.md` |
-| **T08** | Xây dựng mô hình toán và giải thuật Định giá động | Đinh Tiến Thành | 16 | `docs/dynamic-pricing.md` |
+| **T08** | Nghiên cứu khung tiêu chí Priority Scoring & Giải thuật Recommendation Engine | Nguyễn Anh Dũng | 16 | `docs/dynamic-pricing.md` |
 | **T09** | Xây dựng bảng FR/NFR và Ma trận truy vết yêu cầu | Đinh Tiến Thành | 8 | `docs/spec.md` |
 | **T10** | Thiết kế Sơ đồ Use Case tổng thể và đặc tả ca sử dụng | Lê Đức Anh | 12 | `docs/use-cases.md` |
 | **T11** | Thiết kế kịch bản Usability Testing và khảo sát SUS | Lê Đức Anh | 10 | `docs/testing.md` |
