@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
+import { TicketQr } from '../components/TicketQr';
 import { Footer } from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice } from '../services/eventService';
@@ -236,11 +237,7 @@ export const MyTicketsPage: React.FC = () => {
 
             {/* QR Code: white well in both themes so scanners read it reliably */}
             <div className="my-5 p-3 rounded-lg bg-white ring ring-kumo-line size-56 sm:size-48 mx-auto flex items-center justify-center">
-              <img
-                src={selectedTicket.qrCodeUrl}
-                alt="Ticket QR"
-                className="w-full h-full object-contain"
-              />
+              <TicketQr code={selectedTicket.bookingCode} className="w-full h-full object-contain" />
             </div>
 
             <dl className="rounded-lg bg-kumo-recessed p-3 text-sm text-left grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 sm:gap-y-1.5">

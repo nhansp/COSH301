@@ -72,7 +72,6 @@ export interface Booking {
   attendeePhone: string;
   attendeeEmail: string;
   bookingCode: string;
-  qrCodeUrl: string;
   purchasedAt: string;
   paymentMethod: string;
   status: 'confirmed' | 'cancelled';

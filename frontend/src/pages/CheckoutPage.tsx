@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
+import { TicketQr } from '../components/TicketQr';
 import { Footer } from '../components/Footer';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
@@ -369,7 +370,7 @@ export const CheckoutPage: React.FC = () => {
 
                   {/* QR stays on white in both modes so scanners can read it */}
                   <div className="flex flex-col items-center rounded-lg bg-white p-3 ring ring-kumo-line">
-                    <img src={confirmedBooking.qrCodeUrl} alt="Check-in QR" className="size-32" />
+                    <TicketQr code={confirmedBooking.bookingCode} className="size-32" />
                     <span className="mt-1 text-xs text-neutral-500">Quét tại cổng soát vé</span>
                   </div>
                 </div>
