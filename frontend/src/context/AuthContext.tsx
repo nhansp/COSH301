@@ -321,14 +321,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     selectedSeats?: string[];
   }): Booking => {
     const bookingCode = `SMS-${Math.floor(100000 + Math.random() * 900000)}`;
-    const qrData = encodeURIComponent(`https://sortmyscene.live/ticket/${bookingCode}`);
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${qrData}&bgcolor=1a0b2e&color=f3e8ff&margin=10`;
 
     const newBooking: Booking = {
       id: `bk_${Date.now()}`,
       ...bookingData,
       bookingCode,
-      qrCodeUrl,
       purchasedAt: new Date().toISOString(),
       status: 'confirmed'
     };

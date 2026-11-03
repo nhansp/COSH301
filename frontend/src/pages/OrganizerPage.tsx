@@ -77,16 +77,18 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
   };
 
   return (
-    <form onSubmit={handleSave} className="rounded-2xl bg-[#1d0e32]/70 border border-purple-800/40 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="font-bold text-white">{zone.zoneName}</h3>
-          <p className="text-xs text-purple-300/70">
-            {zone.zoneCode}{zone.floor ? ` • ${zone.floor}` : ''} • {zone.capacity} chỗ
+    <form onSubmit={handleSave} className="rounded-xl bg-kumo-base ring ring-kumo-line p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <h3 className="text-lg font-semibold tracking-tight text-kumo-strong truncate">{zone.zoneName}</h3>
+          <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-kumo-subtle">
+            <span>{zone.zoneCode}</span>
+            {zone.floor && <span>{zone.floor}</span>}
+            <span className="tabular-nums">{zone.capacity} chỗ</span>
           </p>
         </div>
         {zone.isDynamicPricingEnabled && (
-          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] border border-emerald-500/40 font-semibold">
+          <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium bg-kumo-success-tint text-kumo-success">
             Giá động
           </span>
         )}
@@ -94,7 +96,7 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {PRICE_FIELDS.map(({ key, label }) => (
-          <label key={key} className="block text-xs text-purple-300">
+          <label key={key} className="block text-sm font-medium text-kumo-default">
             {label}
             {editable ? (
               <input
@@ -102,39 +104,43 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
                 inputMode="numeric"
                 value={draft[key]}
                 onChange={e => setDraft({ ...draft, [key]: e.target.value })}
-                className="mt-1 w-full px-3 py-2 rounded-lg bg-purple-950/60 border border-purple-700/50 text-white text-sm focus:outline-none focus:border-purple-400"
+                className="mt-1.5 w-full h-11 sm:h-9 rounded-lg bg-kumo-control ring ring-kumo-line px-3 text-base font-normal text-kumo-default tabular-nums placeholder:text-kumo-placeholder focus:outline-none focus:ring-2 focus:ring-kumo-brand"
               />
             ) : (
-              <div className="mt-1 text-sm font-semibold text-white">{formatPrice(zone[key], '₫')}</div>
+              <div className="mt-1.5 rounded-lg bg-kumo-recessed px-3 py-2 text-base font-semibold text-kumo-strong tabular-nums">
+                {formatPrice(zone[key], '₫')}
+              </div>
             )}
             {editable && /^\d+$/.test(draft[key].trim()) && (
-              <span className="text-[11px] text-purple-400/80">{formatPrice(Number(draft[key]), '₫')}</span>
+              <span className="mt-1 block text-xs font-normal text-kumo-subtle tabular-nums">
+                {formatPrice(Number(draft[key]), '₫')}
+              </span>
             )}
           </label>
         ))}
       </div>
 
       {editable && (
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 pt-4 border-t border-kumo-hairline flex flex-col sm:flex-row sm:items-center gap-3">
           <button
             type="submit"
             disabled={isSaving}
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-white font-bold text-sm flex items-center gap-2 cursor-pointer"
+            className="h-11 sm:h-9 px-3.5 rounded-lg bg-kumo-brand hover:bg-kumo-brand-hover text-kumo-on-brand text-base font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
+            <Save className="size-4" />
             <span>{isSaving ? 'Đang lưu...' : 'Lưu giá'}</span>
           </button>
           {error && (
-            <span className="text-xs text-red-400 flex items-center gap-1">
-              <AlertCircle className="w-4 h-4" />
+            <p role="alert" className="rounded-lg px-3 py-2 text-sm bg-kumo-danger-tint text-kumo-danger flex items-start gap-2">
+              <AlertCircle className="size-4 flex-shrink-0 mt-px" />
               {error}
-            </span>
+            </p>
           )}
           {saved && !error && (
-            <span className="text-xs text-green-400 flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" />
+            <p role="status" className="rounded-lg px-3 py-2 text-sm bg-kumo-success-tint text-kumo-success flex items-center gap-2">
+              <CheckCircle2 className="size-4 flex-shrink-0" />
               Đã lưu giá
-            </span>
+            </p>
           )}
         </div>
       )}
@@ -176,66 +182,83 @@ export const OrganizerPage: React.FC = () => {
 
   if (featuresLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#12091c]">
-        <div className="w-10 h-10 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin" />
       </div>
     );
   }
   if (!consoleEnabled) return <Navigate to="/" replace />;
 
   return (
-    <div className="min-h-screen bg-[#12091c] text-white flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-black mb-6">Quản lý sự kiện</h1>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-kumo-strong mb-6">Quản lý sự kiện</h1>
 
         {error && (
-          <div className="mb-4 text-sm text-red-400 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
+          <p role="alert" className="mb-4 rounded-lg px-3 py-2 text-sm bg-kumo-danger-tint text-kumo-danger flex items-start gap-2">
+            <AlertCircle className="size-4 flex-shrink-0 mt-px" />
             {error}
-          </div>
+          </p>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-purple-300">Sự kiện của bạn</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 lg:items-start">
+          <section aria-labelledby="organizer-events" className="space-y-2">
+            <h2 id="organizer-events" className="text-sm font-medium text-kumo-subtle">Sự kiện của bạn</h2>
             {isLoading ? (
-              <p className="text-sm text-purple-300/70">Đang tải...</p>
+              <p className="text-base text-kumo-subtle">Đang tải...</p>
             ) : events.length === 0 ? (
-              <p className="text-sm text-purple-300/70">Bạn chưa có sự kiện nào.</p>
+              <p className="rounded-xl bg-kumo-elevated ring ring-kumo-line px-4 py-6 text-center text-base text-kumo-subtle">
+                Bạn chưa có sự kiện nào.
+              </p>
             ) : (
-              events.map(ev => (
-                <button
-                  key={ev.id}
-                  onClick={() => handleSelect(ev)}
-                  className={`w-full text-left rounded-2xl p-4 border transition-all cursor-pointer ${
-                    selected?.id === ev.id
-                      ? 'bg-purple-900/50 border-purple-400'
-                      : 'bg-[#1d0e32]/70 border-purple-800/40 hover:border-purple-600'
-                  }`}
-                >
-                  <p className="font-bold">{ev.name}</p>
-                  <p className="text-xs text-purple-300/70 flex items-center gap-1 mt-1">
-                    <CalendarDays className="w-3.5 h-3.5" />
-                    {new Date(ev.startsAt).toLocaleDateString('vi-VN')} • {ev.status}
-                  </p>
-                  {ev.venueName && (
-                    <p className="text-xs text-purple-300/70 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" />
-                      {ev.venueName}
-                    </p>
-                  )}
-                </button>
-              ))
+              <div className="flex flex-col gap-2">
+                {events.map(ev => {
+                  const active = selected?.id === ev.id;
+                  return (
+                    <button
+                      key={ev.id}
+                      onClick={() => handleSelect(ev)}
+                      aria-pressed={active}
+                      className={`w-full min-h-11 text-left rounded-xl p-4 transition-colors ${
+                        active
+                          ? 'bg-kumo-base ring-2 ring-kumo-brand'
+                          : 'bg-kumo-base ring ring-kumo-line hover:ring-kumo-interact'
+                      }`}
+                    >
+                      <p className="font-semibold text-kumo-strong">{ev.name}</p>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-kumo-subtle">
+                        <span className="flex items-center gap-1 tabular-nums">
+                          <CalendarDays className="size-3.5" />
+                          {new Date(ev.startsAt).toLocaleDateString('vi-VN')}
+                        </span>
+                        <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-kumo-tint ring ring-kumo-line text-kumo-default">
+                          {ev.status}
+                        </span>
+                      </p>
+                      {ev.venueName && (
+                        <p className="mt-1 flex items-center gap-1 text-sm text-kumo-subtle min-w-0">
+                          <MapPin className="size-3.5 flex-shrink-0" />
+                          <span className="truncate">{ev.venueName}</span>
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </section>
 
-          <section className="lg:col-span-2 space-y-4">
+          <section aria-labelledby="organizer-zones" className="lg:col-span-2 space-y-3">
             {!selected ? (
-              <p className="text-sm text-purple-300/70">Chọn một sự kiện để xem các khu vực và giá vé.</p>
+              <p className="rounded-xl bg-kumo-elevated ring ring-kumo-line px-4 py-10 text-center text-base text-kumo-subtle">
+                Chọn một sự kiện để xem các khu vực và giá vé.
+              </p>
             ) : (
               <>
-                <h2 className="text-sm font-semibold text-purple-300">Khu vực: {selected.name}</h2>
+                <h2 id="organizer-zones" className="text-sm font-medium text-kumo-subtle">
+                  Khu vực: <span className="text-kumo-default">{selected.name}</span>
+                </h2>
                 {zones.map(zone => (
                   <ZoneRow
                     key={`${selected.id}-${zone.zoneId}`}

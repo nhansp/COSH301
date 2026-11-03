@@ -133,11 +133,11 @@ Mọi image Docker đều ghim phiên bản cụ thể.
    - thấy "Bạn đang ở vị trí N, chờ khoảng X phút";
    - thông tin cập nhật tối đa 10 giây một lần;
    - đến lượt thì tự sang trang chọn ghế, có giới hạn thời gian mua.
-5. Sơ đồ ghế dùng 4 màu:
-   - xanh: còn trống;
-   - xám: đã bán;
-   - vàng: người khác đang giữ;
-   - tím: mình đang giữ.
+5. Sơ đồ ghế dùng 4 trạng thái, mỗi trạng thái có thêm dấu hiệu không phụ thuộc màu:
+   - xanh lá: còn trống;
+   - xám, số bị gạch ngang: đã bán;
+   - vàng cam, sọc chéo: người khác đang giữ;
+   - màu mực (đen, trắng ở giao diện tối) có viền: mình đang giữ.
 6. Bấm ghế trống thì ghế được giữ 5 phút.
    Đồng hồ đếm ngược theo giờ hết hạn của server.
 7. Bấm ghế không chọn được thì hiện thông báo, ghế không vào giỏ.

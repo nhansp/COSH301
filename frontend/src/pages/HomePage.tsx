@@ -10,7 +10,7 @@ export const HomePage: React.FC = () => {
   const { filteredEvents, isLoading, isFilterOpen, filterState } = useEvents();
 
   return (
-    <div className="min-h-screen purple-glow-bg flex flex-col selection:bg-purple-600 selection:text-white">
+    <div className="min-h-screen flex flex-col">
       {/* Top Navigation */}
       <Navbar />
 
@@ -19,29 +19,26 @@ export const HomePage: React.FC = () => {
         {/* Secondary Filter & Search Bar matching Picture.webp */}
         <FilterBar />
 
-        {/* Dynamic Section Header & Results count */}
-        <div className="mt-4 mb-6 flex items-center justify-between text-xs sm:text-sm text-purple-300/80 px-1">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-400" />
-            <span className="font-semibold text-white">
-              {filterState.city === 'All Cities' ? 'Tất cả địa điểm' : filterState.city}
+        <div className="mt-2 mb-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-kumo-strong">
+            {filterState.city === 'All Cities' ? 'Tất cả địa điểm' : filterState.city}
+            <span className="block sm:inline sm:ml-2 mt-0.5 sm:mt-0 text-base font-normal text-kumo-subtle tabular-nums">
+              {filteredEvents.length} sự kiện đang mở bán
             </span>
-            <span>•</span>
-            <span>{filteredEvents.length} concert &amp; sự kiện đang mở bán vé</span>
-          </div>
+          </h1>
 
           {filterState.selectedGenres.length > 0 && (
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-purple-300">
-              <span>Đang lọc:</span>
-              <span className="text-white font-medium">
+            <p className="hidden sm:block text-sm text-kumo-subtle">
+              Đang lọc:{' '}
+              <span className="text-kumo-default font-medium">
                 {filterState.selectedGenres.join(', ')}
               </span>
-            </div>
+            </p>
           )}
         </div>
 
         {/* Layout: Events Grid with Side Filter Drawer when opened */}
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
           {/* Main Events Grid */}
           <div className="flex-1 w-full">
             <EventList events={filteredEvents} isLoading={isLoading} />

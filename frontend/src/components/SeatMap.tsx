@@ -10,9 +10,7 @@ import {
   CheckCircle2,
   Radio,
   X,
-  ArrowRight,
-  ShieldCheck,
-  RotateCcw
+  ShieldCheck
 } from 'lucide-react';
 
 interface SeatMapProps {
@@ -22,6 +20,8 @@ interface SeatMapProps {
   onSeatsChange: (seats: SeatItem[]) => void;
   onProceedToCheckout?: (selectedSeats: SeatItem[]) => void;
   maxSeats?: number;
+  /** `modal`: flat full-bleed on mobile with a sticky selection bar. */
+  layout?: 'inline' | 'modal';
 }
 
 export const SeatMap: React.FC<SeatMapProps> = ({
@@ -30,8 +30,10 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   selectedSeatIds,
   onSeatsChange,
   onProceedToCheckout,
-  maxSeats = 4
+  maxSeats = 4,
+  layout = 'inline'
 }) => {
+  const isModal = layout === 'modal';
   const { isEnabled } = useFeatures();
   const { loginDemo } = useAuth();
   const holdEnabled = isEnabled('seat_hold');
@@ -246,103 +248,104 @@ export const SeatMap: React.FC<SeatMapProps> = ({
     return `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
   };
 
+  const liveBadge = {
+    connected: { label: 'Đang cập nhật trực tiếp', tone: 'bg-kumo-success-tint text-kumo-success', dot: 'bg-kumo-success animate-pulse' },
+    connecting: { label: 'Đang kết nối...', tone: 'bg-kumo-warning-tint text-kumo-warning', dot: 'bg-kumo-warning' },
+    disconnected: { label: 'Mất kết nối trực tiếp', tone: 'bg-kumo-danger-tint text-kumo-danger', dot: 'bg-kumo-danger' }
+  }[liveState];
+
   return (
-    <div className="w-full bg-[#12091c] border border-purple-900/60 rounded-3xl p-4 sm:p-7 shadow-2xl relative overflow-hidden">
+    <div
+      className={`relative w-full bg-kumo-base p-4 sm:p-6 ${
+        isModal ? 'sm:rounded-xl sm:shadow-xs sm:ring sm:ring-kumo-line' : 'rounded-xl shadow-xs ring ring-kumo-line'
+      }`}
+    >
       {/* Toast Notification Bar */}
       {toastMessage && (
         <div
-          className={`absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-xs sm:text-sm font-medium shadow-2xl flex items-center gap-2 border transition-all animate-bounce ${
+          role="status"
+          className={`fixed inset-x-4 top-4 z-[60] mx-auto flex w-fit max-w-md items-start gap-2 rounded-lg px-3.5 py-2 text-sm font-medium shadow-lg ring ring-kumo-line backdrop-blur ${
             toastMessage.type === 'error'
-              ? 'bg-rose-950/95 border-rose-500 text-rose-200'
+              ? 'bg-kumo-danger-tint text-kumo-danger'
               : toastMessage.type === 'success'
-              ? 'bg-emerald-950/95 border-emerald-500 text-emerald-200'
-              : 'bg-purple-950/95 border-purple-500 text-purple-200'
+              ? 'bg-kumo-success-tint text-kumo-success'
+              : 'bg-kumo-info-tint text-kumo-info'
           }`}
         >
           {toastMessage.type === 'error' ? (
-            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+            <AlertCircle className="mt-0.5 size-4 flex-shrink-0" />
           ) : toastMessage.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            <CheckCircle2 className="mt-0.5 size-4 flex-shrink-0" />
           ) : (
-            <Radio className="w-4 h-4 text-purple-400 flex-shrink-0" />
+            <Radio className="mt-0.5 size-4 flex-shrink-0" />
           )}
           <span>{toastMessage.text}</span>
         </div>
       )}
 
       {/* Header Bar: Status & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-purple-900/50">
-        <div>
-          <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-            <Armchair className="w-5 h-5 text-purple-400" />
+      <div className="flex flex-col gap-3 border-b border-kumo-hairline pb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="flex items-start gap-2 text-lg font-semibold tracking-tight text-kumo-strong">
+            <Armchair className="mt-1 size-4.5 flex-shrink-0 text-kumo-subtle" />
             <span>Sơ đồ ghế trực quan (Interactive Seat Map)</span>
           </h3>
-          <p className="text-xs text-purple-300/80 mt-0.5">
-            Chọn ghế theo thời gian thực{limitEnabled && ` • Tối đa ${maxSeats} vé/tài khoản`}
+          <p className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-kumo-subtle">
+            <span>Chọn ghế theo thời gian thực</span>
+            {limitEnabled && <span>Tối đa {maxSeats} vé/tài khoản</span>}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* 5-minute hold timer display (US-03) */}
           {timeLeft !== null && (
             <div
-              className={`px-3 py-1.5 rounded-full border flex items-center gap-1.5 text-xs font-semibold ${
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium tabular-nums ring ring-kumo-line ${
                 timeLeft < 60
-                  ? 'bg-rose-950/80 border-rose-500 text-rose-300 animate-pulse'
-                  : 'bg-amber-950/80 border-amber-500 text-amber-300'
+                  ? 'bg-kumo-danger-tint text-kumo-danger animate-pulse'
+                  : 'bg-kumo-warning-tint text-kumo-warning'
               }`}
             >
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="size-3.5" />
               <span>Giữ chỗ: {formatTimer(timeLeft)}</span>
             </div>
           )}
 
           {/* Live connection indicator (reflects the real SSE state) */}
           <div
-            className={`px-3 py-1.5 rounded-full border text-xs flex items-center gap-1.5 ${
-              liveState === 'connected'
-                ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300'
-                : liveState === 'connecting'
-                ? 'bg-amber-950/60 border-amber-500/60 text-amber-300'
-                : 'bg-zinc-900/60 border-zinc-700 text-zinc-400'
-            }`}
+            role="status"
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium ring ring-kumo-line ${liveBadge.tone}`}
           >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                liveState === 'connected' ? 'bg-emerald-400 animate-pulse' : liveState === 'connecting' ? 'bg-amber-400' : 'bg-zinc-500'
-              }`}
-            />
-            <span>
-              {liveState === 'connected' ? 'Đang cập nhật trực tiếp' : liveState === 'connecting' ? 'Đang kết nối...' : 'Mất kết nối trực tiếp'}
-            </span>
+            <span className={`size-1.5 rounded-full ${liveBadge.dot}`} />
+            <span>{liveBadge.label}</span>
           </div>
         </div>
       </div>
 
       {/* Sân khấu (Stage) visual projection */}
-      <div className="py-6 flex flex-col items-center justify-center">
-        <div className="w-full max-w-xl h-9 rounded-t-full bg-gradient-to-b from-purple-500/40 via-purple-700/20 to-transparent border-t-2 border-purple-400 shadow-[0_-10px_30px_rgba(168,85,247,0.3)] flex items-center justify-center">
-          <span className="text-[11px] sm:text-xs font-black tracking-widest text-purple-200 uppercase">
-            SÂN KHẤU CHÍNH (MAIN STAGE)
-          </span>
+      <div className="flex justify-center py-6">
+        <div className="grid h-9 w-full max-w-xl place-items-center rounded-t-[999px] rounded-b-md bg-kumo-contrast text-xs font-medium text-kumo-inverse">
+          Sân khấu chính (Main stage)
         </div>
-        <div className="w-full max-w-md h-0.5 bg-gradient-to-r from-transparent via-purple-500/60 to-transparent mt-1" />
       </div>
 
       {loadState !== 'ready' && (
-        <div className="py-12 flex flex-col items-center gap-3 text-sm text-purple-200">
+        <div className="flex flex-col items-center gap-3 py-12 text-center text-sm">
           {loadState === 'loading' ? (
-            <span>Đang tải sơ đồ ghế...</span>
+            <>
+              <div className="size-8 animate-spin rounded-full border-2 border-kumo-interact border-t-kumo-brand" />
+              <span className="text-kumo-subtle">Đang tải sơ đồ ghế...</span>
+            </>
           ) : (
             <>
-              <span className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400" />
+              <span role="alert" className="flex items-start gap-2 rounded-lg bg-kumo-danger-tint px-3.5 py-2 text-kumo-danger">
+                <AlertCircle className="mt-0.5 size-4 flex-shrink-0" />
                 Không tải được sơ đồ ghế hoặc sự kiện chưa có ghế.
               </span>
               <button
                 type="button"
                 onClick={() => { setLoadState('loading'); loadSeats(); }}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold cursor-pointer"
+                className="h-11 rounded-lg bg-kumo-base px-4 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint sm:h-9"
               >
                 Thử lại
               </button>
@@ -352,26 +355,23 @@ export const SeatMap: React.FC<SeatMapProps> = ({
       )}
 
       {/* Visual Seat Grid */}
-      <div className="space-y-6 overflow-x-auto py-2">
+      <div className="-mx-4 space-y-5 overflow-x-auto overscroll-x-contain px-4 py-1 sm:mx-0 sm:px-0">
         {zones.map(zone => (
-          <div key={zone.id} className="space-y-2 min-w-[540px]">
-            <div className="flex items-center justify-between text-xs text-purple-300 font-semibold px-2">
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                {zone.name}
-              </span>
-              <span className="text-[11px] text-purple-400">
+          <div key={zone.id} className="min-w-max space-y-2">
+            <div className="flex items-baseline justify-between gap-4 px-1 text-sm">
+              <span className="font-medium text-kumo-strong">{zone.name}</span>
+              <span className="text-xs text-kumo-subtle tabular-nums">
                 {formatPrice(zone.seats[0]?.price || 0, currency)} / ghế
               </span>
             </div>
 
-            <div className="bg-[#170a24]/80 border border-purple-900/30 rounded-2xl p-3 sm:p-4 space-y-2.5">
+            <div className="space-y-2 rounded-lg bg-kumo-recessed p-3 sm:p-4">
               {zone.rows.map(rowLetter => {
                 const rowSeats = zone.seats.filter(s => s.row === rowLetter);
                 return (
                   <div key={rowLetter} className="flex items-center justify-center gap-2">
                     {/* Left Row Label */}
-                    <span className="w-5 text-center text-xs font-bold text-purple-400 flex-shrink-0">
+                    <span className="w-5 flex-shrink-0 text-center text-xs font-medium text-kumo-subtle">
                       {rowLetter}
                     </span>
 
@@ -381,23 +381,23 @@ export const SeatMap: React.FC<SeatMapProps> = ({
                         const isSelected = selectedSeatIds.includes(seat.id);
 
                         // Strict color scheme according to SRS US-02:
-                        // - Ghế trống: xanh lá (emerald/green)
-                        // - Ghế đã bán: xám (gray/zinc)
+                        // - Ghế trống: xanh lá (green)
+                        // - Ghế đã bán: xám (gray)
                         // - Ghế đang được giữ: vàng cam (amber)
-                        // - Ghế bạn chọn: tím / viền nổi bật (purple)
-                        let seatBgClass = 'bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer';
+                        // - Ghế bạn chọn: màu mực (ink) + viền nổi bật
+                        // Each state also has a non-colour cue: ring, stripes, strike-through.
+                        let seatBgClass = 'bg-kumo-badge-green text-white hover:brightness-110';
                         let label = 'Trống';
 
                         if (isSelected) {
                           seatBgClass =
-                            'bg-purple-600 text-white ring-2 ring-purple-300 shadow-lg shadow-purple-600/50 scale-105 cursor-pointer';
+                            'bg-kumo-brand text-kumo-on-brand ring-2 ring-kumo-focus ring-offset-1 ring-offset-kumo-recessed';
                           label = 'Bạn chọn';
                         } else if (seat.status === 'sold') {
-                          seatBgClass = 'bg-zinc-700 border border-zinc-600 text-zinc-400 cursor-not-allowed';
+                          seatBgClass = 'bg-kumo-fill text-kumo-inactive line-through cursor-not-allowed';
                           label = 'Đã bán';
                         } else if (seat.status === 'held') {
-                          seatBgClass =
-                            'bg-amber-500/90 border border-amber-400 text-amber-950 cursor-not-allowed';
+                          seatBgClass = 'bg-kumo-badge-orange seat-held text-black/75 cursor-not-allowed';
                           label = 'Đang giữ 5p';
                         }
 
@@ -406,11 +406,10 @@ export const SeatMap: React.FC<SeatMapProps> = ({
                             key={seat.id}
                             type="button"
                             onClick={() => handleSeatClick(seat)}
-                            title={`Ghế ${seat.id} • ${zone.name} • ${label} • ${formatPrice(
-                              seat.price,
-                              currency
-                            )}`}
-                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-[10px] sm:text-xs font-bold flex items-center justify-center transition-all select-none ${seatBgClass}`}
+                            aria-pressed={isSelected}
+                            aria-label={`Ghế ${seat.id}, ${zone.name}, ${label}, ${formatPrice(seat.price, currency)}`}
+                            title={`Ghế ${seat.id} – ${zone.name} – ${label} – ${formatPrice(seat.price, currency)}`}
+                            className={`flex size-8 select-none items-center justify-center rounded-md text-xs font-medium tabular-nums transition sm:size-9 ${seatBgClass}`}
                           >
                             {seat.number}
                           </button>
@@ -419,7 +418,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
                     </div>
 
                     {/* Right Row Label */}
-                    <span className="w-5 text-center text-xs font-bold text-purple-400 flex-shrink-0">
+                    <span className="w-5 flex-shrink-0 text-center text-xs font-medium text-kumo-subtle">
                       {rowLetter}
                     </span>
                   </div>
@@ -431,59 +430,85 @@ export const SeatMap: React.FC<SeatMapProps> = ({
       </div>
 
       {/* Legend / Quy ước màu sắc (SRS Acceptance Criteria US-02) */}
-      <div className="mt-6 pt-4 border-t border-purple-900/50 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-purple-200">
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-md bg-emerald-500 shadow-sm" />
+      <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-kumo-hairline pt-4 text-sm text-kumo-default sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-5">
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 size-3.5 flex-shrink-0 rounded bg-kumo-badge-green" />
           <span>Ghế trống (Xanh lá)</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-md bg-purple-600 ring-2 ring-purple-300" />
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 size-3.5 flex-shrink-0 rounded bg-kumo-brand ring-2 ring-kumo-focus ring-offset-1 ring-offset-kumo-base" />
           <span>Ghế bạn đang chọn</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-md bg-amber-500" />
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 size-3.5 flex-shrink-0 rounded bg-kumo-badge-orange seat-held" />
           <span>Đang được giữ (Vàng cam)</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-md bg-zinc-700 border border-zinc-600" />
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 size-3.5 flex-shrink-0 rounded bg-kumo-fill ring ring-kumo-line grid place-items-center text-[9px] leading-none text-kumo-inactive">✕</span>
           <span>Đã bán (Xám)</span>
         </div>
       </div>
 
-      {/* Selection Summary & Action Bar */}
+      {/* Selection Summary & Action Bar — a sticky bottom bar when shown in a modal */}
       {selectedSeatsList.length > 0 && (
-        <div className="mt-6 p-4 rounded-2xl bg-[#1b0d2d] border border-purple-700/80 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
-          <div className="space-y-1 text-center md:text-left w-full md:w-auto">
-            <div className="flex flex-wrap items-center gap-2 justify-center md:justify-start">
-              <span className="text-xs text-purple-300 font-semibold">
+        <div
+          className={`mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ${
+            isModal
+              ? 'sticky bottom-0 z-20 -mx-4 -mb-4 border-t border-kumo-hairline bg-kumo-raised/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:mx-0 sm:mb-0 sm:rounded-lg sm:border-t-0 sm:bg-kumo-recessed sm:p-4 sm:ring sm:ring-kumo-line'
+              : 'rounded-lg bg-kumo-recessed p-4 ring ring-kumo-line'
+          }`}
+        >
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm font-medium text-kumo-default tabular-nums">
                 Đã chọn ({selectedSeatsList.length}{limitEnabled && `/${maxSeats}`} vé):
               </span>
               {selectedSeatsList.map(s => (
                 <span
                   key={s.id}
-                  className="px-2.5 py-0.5 rounded-full bg-purple-900/80 border border-purple-500 text-white text-xs font-bold inline-flex items-center gap-1"
+                  className="inline-flex items-center gap-0.5 rounded-full bg-kumo-base py-0.5 pl-2 pr-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line"
                 >
                   <span>{s.id}</span>
                   <button
                     type="button"
                     onClick={() => handleSeatClick(s)}
-                    className="hover:text-rose-300 cursor-pointer"
+                    aria-label={`Bỏ chọn ghế ${s.id}`}
+                    className="grid size-6 place-items-center rounded-full text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-danger sm:size-4"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="size-3" />
                   </button>
                 </span>
               ))}
             </div>
-            <div className="text-xs text-purple-400 flex items-center gap-1.5 justify-center md:justify-start">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Khóa giữ độc quyền 5 phút • Chống bán trùng (Zero Double-Booking)</span>
+            <div
+              className={`flex-wrap items-center gap-x-3 gap-y-1 text-xs text-kumo-subtle ${
+                isModal ? 'hidden sm:flex' : 'flex'
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="size-3.5 text-kumo-success" />
+                Khóa giữ độc quyền 5 phút
+              </span>
+              <span>Chống bán trùng (Zero Double-Booking)</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-            <div className="text-right">
-              <div className="text-[11px] text-purple-400 font-medium">Tổng tiền vé</div>
-              <div className="text-lg sm:text-xl font-black text-white">
+          <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-4">
+            <div className="min-w-0 sm:text-right">
+              <div className="flex items-center gap-2 text-xs text-kumo-subtle sm:justify-end">
+                <span>Tổng tiền vé</span>
+                {isModal && timeLeft !== null && (
+                  <span
+                    className={`inline-flex items-center gap-1 font-medium tabular-nums sm:hidden ${
+                      timeLeft < 60 ? 'text-kumo-danger' : 'text-kumo-warning'
+                    }`}
+                  >
+                    <Clock className="size-3" />
+                    {formatTimer(timeLeft)}
+                  </span>
+                )}
+              </div>
+              <div className="text-xl font-semibold tracking-tight text-kumo-strong tabular-nums">
                 {formatPrice(totalPrice, currency)}
               </div>
             </div>
@@ -492,10 +517,9 @@ export const SeatMap: React.FC<SeatMapProps> = ({
               <button
                 type="button"
                 onClick={() => onProceedToCheckout(selectedSeatsList)}
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-900/50 flex items-center gap-2 transition-all cursor-pointer active:scale-98"
+                className="h-11 flex-shrink-0 rounded-lg bg-kumo-brand px-4 font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover sm:h-10"
               >
-                <span>Xác nhận &amp; Thanh toán</span>
-                <ArrowRight className="w-4 h-4" />
+                Xác nhận &amp; Thanh toán
               </button>
             )}
           </div>

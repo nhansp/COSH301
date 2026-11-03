@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
+import { TicketQr } from '../components/TicketQr';
 import { Footer } from '../components/Footer';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +25,7 @@ import {
   X
 } from 'lucide-react';
 import { SeatMap } from '../components/SeatMap';
+import { LogoMark } from '../components/Logo';
 import { SeatItem } from '../types';
 
 export const CheckoutPage: React.FC = () => {
@@ -31,10 +33,21 @@ export const CheckoutPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialTierId = searchParams.get('tier');
   const navigate = useNavigate();
-  const { getEventById } = useEvents();
+  const { getEventById, loadEventDetail, isLoading } = useEvents();
   const { user, createBooking } = useAuth();
 
   const event = eventId ? getEventById(eventId) : undefined;
+  const needsDetail = !event || event.ticketTiers.length === 0;
+  const [isFetchingDetail, setIsFetchingDetail] = useState<boolean>(needsDetail);
+
+  useEffect(() => {
+    if (!eventId || !needsDetail) {
+      setIsFetchingDetail(false);
+      return;
+    }
+    setIsFetchingDetail(true);
+    loadEventDetail(eventId).finally(() => setIsFetchingDetail(false));
+  }, [eventId, needsDetail, loadEventDetail]);
 
   const seatsParam = searchParams.get('seats');
   const initialSeatIds = seatsParam ? decodeURIComponent(seatsParam).split(',').filter(Boolean) : [];
@@ -80,15 +93,28 @@ export const CheckoutPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [holdTimeLeft, event?.id, navigate]);
 
-  if (!event) {
+  if (isLoading || (isFetchingDetail && needsDetail)) {
     return (
-      <div className="min-h-screen purple-glow-bg flex flex-col justify-between">
+      <div className="min-h-screen flex flex-col justify-between">
         <Navbar />
         <div className="max-w-md mx-auto my-auto text-center py-20 px-4">
-          <h2 className="text-2xl font-bold text-white mb-2">Không tìm thấy sự kiện</h2>
+          <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-kumo-strong">Đang tải thông tin sự kiện...</h2>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen flex flex-col justify-between">
+        <Navbar />
+        <div className="max-w-md mx-auto my-auto text-center py-20 px-4">
+          <h2 className="mb-4 text-2xl font-semibold tracking-tight text-kumo-strong">Không tìm thấy sự kiện</h2>
           <Link
             to="/"
-            className="px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold text-sm hover:bg-purple-500"
+            className="inline-flex h-10 items-center rounded-lg bg-kumo-brand px-3.5 font-medium sm:h-9 text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover"
           >
             Quay lại trang chủ
           </Link>
@@ -134,43 +160,102 @@ export const CheckoutPage: React.FC = () => {
     setConfirmedBooking(booking);
   };
 
+  const panel = 'rounded-xl bg-kumo-base ring ring-kumo-line shadow-xs';
+  const sectionTitle =
+    'flex items-center gap-2 border-b border-kumo-hairline pb-3 text-lg font-semibold tracking-tight text-kumo-strong';
+  const fieldLabel = 'mb-1.5 block text-sm font-medium text-kumo-default';
+  const input =
+    'h-10 w-full rounded-lg bg-kumo-control px-3 text-lg text-kumo-default ring ring-kumo-line placeholder:text-kumo-placeholder focus:outline-none focus:ring-2 focus:ring-kumo-brand sm:h-9 sm:text-base';
+  const option = (active: boolean) =>
+    `flex cursor-pointer items-center gap-3 rounded-lg p-3 ring transition-colors ${
+      active ? 'bg-kumo-info-tint ring-2 ring-kumo-brand' : 'bg-kumo-base ring-kumo-line hover:bg-kumo-tint'
+    }`;
+  const stepper =
+    'grid size-10 place-items-center rounded-lg bg-kumo-base text-lg font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint disabled:cursor-not-allowed disabled:opacity-50 sm:size-8';
+  const isHolding = selectedSeatIds.length > 0 && holdTimeLeft !== null;
+  const holdClock =
+    holdTimeLeft !== null ? `${Math.floor(holdTimeLeft / 60)}:${String(holdTimeLeft % 60).padStart(2, '0')}` : '';
+
+  const confirmButtonContent = isProcessing ? (
+    <div className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+  ) : (
+    <>
+      <QrCode className="size-4" />
+      <span>Xác nhận &amp; Nhận vé điện tử</span>
+    </>
+  );
+  const confirmButtonClass =
+    'flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-kumo-brand font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover disabled:cursor-not-allowed disabled:opacity-50';
+
+  const orderSummary = (
+    <dl className="space-y-2.5">
+      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
+        <dt className="text-kumo-subtle">Hạng vé</dt>
+        <dd className="text-right font-medium text-kumo-strong">{selectedTier?.name}</dd>
+      </div>
+
+      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
+        <dt className="text-kumo-subtle">Đơn giá</dt>
+        <dd className="text-kumo-default tabular-nums">{formatPrice(ticketPrice, event.currency)}</dd>
+      </div>
+
+      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
+        <dt className="text-kumo-subtle">Số lượng</dt>
+        <dd className="font-medium text-kumo-strong tabular-nums">{quantity} vé</dd>
+      </div>
+
+      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
+        <dt className="text-kumo-subtle">Phí dịch vụ &amp; Bảo hiểm vé</dt>
+        <dd className="text-kumo-default tabular-nums">
+          {bookingFee === 0 ? 'Miễn phí' : formatPrice(bookingFee, event.currency)}
+        </dd>
+      </div>
+
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t border-kumo-hairline pt-3">
+        <dt className="text-lg font-medium text-kumo-strong">Tổng thanh toán</dt>
+        <dd className="text-2xl font-bold tracking-tight text-kumo-strong tabular-nums">
+          {formatPrice(totalAmount, event.currency)}
+        </dd>
+      </div>
+    </dl>
+  );
+
   return (
-    <div className="min-h-screen purple-glow-bg flex flex-col selection:bg-purple-600 selection:text-white">
+    <div className={`min-h-screen flex flex-col ${confirmedBooking ? '' : 'pb-36 lg:pb-0'}`}>
       <Navbar />
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {/* Navigation back */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <button
+            type="button"
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 text-xs sm:text-sm text-purple-300 hover:text-white transition-colors cursor-pointer"
+            className="-ml-2 inline-flex h-10 items-center sm:h-8 gap-1.5 rounded-md px-2 text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-default"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="size-4" />
             <span>Quay lại trang sự kiện</span>
           </button>
         </div>
 
         {/* 5-minute hold timer banner (US-03) */}
-        {selectedSeatIds.length > 0 && holdTimeLeft !== null && (
+        {isHolding && holdTimeLeft !== null && (
           <div
-            className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-4 ${
-              holdTimeLeft < 60
-                ? 'bg-rose-950/80 border-rose-500 text-rose-200 animate-pulse'
-                : 'bg-[#1b0d2d] border-purple-600/60 text-purple-200'
+            className={`mb-6 flex flex-col gap-3 rounded-xl p-4 ring ring-kumo-line sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
+              holdTimeLeft < 60 ? 'bg-kumo-danger-tint animate-pulse' : 'bg-kumo-warning-tint'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
+            <div className="flex min-w-0 items-start gap-3">
+              <Clock
+                className={`mt-0.5 size-5 flex-shrink-0 ${holdTimeLeft < 60 ? 'text-kumo-danger' : 'text-kumo-warning'}`}
+              />
               <div>
-                <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                  <span>
-                    Khóa giữ chỗ: {Math.floor(holdTimeLeft / 60)}:{String(holdTimeLeft % 60).padStart(2, '0')}
-                  </span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                <div className="flex flex-wrap items-center gap-2 font-semibold text-kumo-strong">
+                  <span className="tabular-nums">Khóa giữ chỗ: {holdClock}</span>
+                  <span className="rounded-full bg-kumo-success-tint px-2 py-0.5 text-xs font-medium text-kumo-success ring ring-kumo-line">
                     Độc quyền (US-03)
                   </span>
                 </div>
-                <div className="text-xs text-purple-300/80">
+                <div className="break-words text-sm text-kumo-default">
                   Ghế của bạn ({selectedSeatIds.join(', ')}) đang được bảo vệ chống bán trùng (Zero Double-Booking).
                 </div>
               </div>
@@ -179,7 +264,7 @@ export const CheckoutPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowSeatMapModal(true)}
-              className="px-3 py-1.5 rounded-xl bg-purple-900/60 hover:bg-purple-800 border border-purple-700 text-xs font-semibold text-white transition-colors cursor-pointer flex-shrink-0"
+              className="h-10 w-full flex-shrink-0 rounded-lg bg-kumo-base px-3 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint sm:h-8 sm:w-auto"
             >
               Đổi vị trí ghế
             </button>
@@ -188,69 +273,67 @@ export const CheckoutPage: React.FC = () => {
 
         {/* E-Ticket Confirmation Screen if order is finalized */}
         {confirmedBooking ? (
-          <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300">
-            {/* Success Celebration Header */}
-            <div className="text-center max-w-lg mx-auto">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-400 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-emerald-950">
-                <CheckCircle2 className="w-8 h-8" />
+          <div className="space-y-8">
+            {/* Success Header */}
+            <div className="mx-auto max-w-lg text-center">
+              <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-kumo-success-tint text-kumo-success ring ring-kumo-line">
+                <CheckCircle2 className="size-6" />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white">
-                Đặt vé thành công!
-              </h1>
-              <p className="text-xs sm:text-sm text-purple-300/80 mt-1">
+              <h1 className="text-2xl font-semibold tracking-tight text-kumo-strong sm:text-3xl">Đặt vé thành công!</h1>
+              <p className="mt-1.5 text-kumo-subtle">
                 Vé điện tử chính hãng của bạn đã được xuất bản và lưu trữ trong tài khoản.
               </p>
             </div>
 
             {/* Digital E-Ticket Card */}
-            <div className="max-w-xl mx-auto rounded-3xl overflow-hidden bg-gradient-to-b from-[#23123d] to-[#160a26] border-2 border-purple-600/50 shadow-2xl relative">
+            <div className="relative mx-auto max-w-xl overflow-hidden rounded-xl bg-kumo-base shadow-md ring ring-kumo-line">
               {/* Top Ticket Header */}
-              <div className="p-6 bg-purple-950/40 border-b border-purple-800/60 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-xs">
-                    SMS
-                  </div>
+              <div className="flex items-center justify-between gap-3 border-b border-kumo-hairline bg-kumo-elevated px-4 py-4 sm:px-6">
+                <div className="flex items-center gap-2.5">
+                  <LogoMark className="size-8" />
                   <div>
-                    <div className="text-xs font-bold text-white tracking-widest font-mono">
-                      SORT MY SCENE
-                    </div>
-                    <div className="text-[10px] text-purple-300">OFFICIAL E-TICKET</div>
+                    <div className="font-semibold tracking-tight text-kumo-strong">SortMyScene</div>
+                    <div className="text-xs text-kumo-subtle">Official e-ticket</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold">
-                    CONFIRMED
-                  </span>
-                </div>
+                <span className="rounded-full bg-kumo-success-tint px-2 py-0.5 text-xs font-medium text-kumo-success ring ring-kumo-line">
+                  Confirmed
+                </span>
               </div>
 
               {/* Event Main Banner in Ticket */}
-              <div className="p-6">
-                <div className="flex gap-4 items-start">
+              <div className="p-4 sm:p-6">
+                <div className="flex items-start gap-3 sm:gap-4">
                   <img
                     src={confirmedBooking.imageUrl}
                     alt={confirmedBooking.eventTitle}
-                    className="w-24 h-24 rounded-2xl object-cover border border-purple-500/40 shadow-md flex-shrink-0"
+                    className="size-20 flex-shrink-0 sm:size-24 rounded-lg object-cover ring ring-kumo-line"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-bold text-white leading-snug truncate">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h2 className="truncate text-lg font-semibold leading-snug tracking-tight text-kumo-strong">
                       {confirmedBooking.eventTitle}
                     </h2>
-                    <div className="text-xs text-purple-300 mt-1 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-purple-400" />
-                      <span>{confirmedBooking.eventDate} • {confirmedBooking.eventTime}</span>
+                    <div className="flex flex-wrap items-center gap-x-1.5 text-sm text-kumo-subtle">
+                      <Calendar className="size-3.5 flex-shrink-0" />
+                      <span>{confirmedBooking.eventDate}</span>
+                      <span>{confirmedBooking.eventTime}</span>
                     </div>
-                    <div className="text-xs text-purple-300/80 mt-1 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-purple-400" />
+                    <div className="flex items-center gap-1.5 text-sm text-kumo-subtle">
+                      <MapPin className="size-3.5 flex-shrink-0" />
                       <span className="truncate">{confirmedBooking.venue}</span>
                     </div>
-                    <div className="mt-2 inline-block px-2.5 py-0.5 rounded-lg bg-purple-900/60 text-purple-200 text-xs font-semibold">
-                      {confirmedBooking.tierName} • Số lượng: {confirmedBooking.quantity} vé
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="rounded-full bg-kumo-tint px-2 py-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line">
+                        {confirmedBooking.tierName}
+                      </span>
+                      <span className="rounded-full bg-kumo-tint px-2 py-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line tabular-nums">
+                        Số lượng: {confirmedBooking.quantity} vé
+                      </span>
                     </div>
                     {confirmedBooking.selectedSeats && confirmedBooking.selectedSeats.length > 0 && (
-                      <div className="mt-1.5 text-xs text-emerald-300 font-semibold flex items-center gap-1.5">
-                        <Armchair className="w-3.5 h-3.5 text-emerald-400" />
+                      <div className="flex items-start gap-1.5 pt-0.5 text-sm font-medium text-kumo-success">
+                        <Armchair className="mt-0.5 size-3.5 flex-shrink-0" />
                         <span>Vị trí ghế: {confirmedBooking.selectedSeats.join(', ')}</span>
                       </div>
                     )}
@@ -259,54 +342,54 @@ export const CheckoutPage: React.FC = () => {
 
                 {/* Perforated Divider Ticket Notch */}
                 <div className="relative my-6">
-                  <div className="border-b-2 border-dashed border-purple-800/60" />
-                  <div className="absolute -left-9 -top-3 w-6 h-6 rounded-full bg-[#12091c]" />
-                  <div className="absolute -right-9 -top-3 w-6 h-6 rounded-full bg-[#12091c]" />
+                  <div className="border-b-2 border-dashed border-kumo-hairline" />
+                  <div className="absolute -left-7 -top-3 size-6 sm:-left-9 rounded-full bg-kumo-canvas ring ring-kumo-line" />
+                  <div className="absolute -right-7 -top-3 size-6 sm:-right-9 rounded-full bg-kumo-canvas ring ring-kumo-line" />
                 </div>
 
                 {/* QR Code and Attendee details */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                  <div className="space-y-2 text-xs text-center sm:text-left">
+                <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
+                  <dl className="space-y-2.5 text-center sm:text-left">
                     <div>
-                      <span className="text-purple-400 block text-[11px]">Người nhận vé:</span>
-                      <strong className="text-white text-sm">{confirmedBooking.attendeeName}</strong>
+                      <dt className="text-xs text-kumo-subtle">Người nhận vé:</dt>
+                      <dd className="font-medium text-kumo-strong">{confirmedBooking.attendeeName}</dd>
                     </div>
                     <div>
-                      <span className="text-purple-400 block text-[11px]">Liên hệ:</span>
-                      <span className="text-purple-200">{confirmedBooking.attendeePhone || confirmedBooking.attendeeEmail}</span>
+                      <dt className="text-xs text-kumo-subtle">Liên hệ:</dt>
+                      <dd className="break-all text-kumo-default">
+                        {confirmedBooking.attendeePhone || confirmedBooking.attendeeEmail}
+                      </dd>
                     </div>
                     <div>
-                      <span className="text-purple-400 block text-[11px]">Mã tra cứu vé:</span>
-                      <strong className="text-pink-400 font-mono text-sm tracking-wider">
+                      <dt className="text-xs text-kumo-subtle">Mã tra cứu vé:</dt>
+                      <dd className="text-lg font-semibold tracking-wide text-kumo-strong tabular-nums">
                         {confirmedBooking.bookingCode}
-                      </strong>
+                      </dd>
                     </div>
-                  </div>
+                  </dl>
 
-                  <div className="flex flex-col items-center bg-[#130822] p-3 rounded-2xl border border-purple-800/60 shadow-inner">
-                    <img
-                      src={confirmedBooking.qrCodeUrl}
-                      alt="Check-in QR"
-                      className="w-32 h-32 rounded-lg"
-                    />
-                    <span className="text-[10px] text-purple-400 mt-1 font-mono">Quét tại cổng soát vé</span>
+                  {/* QR stays on white in both modes so scanners can read it */}
+                  <div className="flex flex-col items-center rounded-lg bg-white p-3 ring ring-kumo-line">
+                    <TicketQr code={confirmedBooking.bookingCode} className="size-32" />
+                    <span className="mt-1 text-xs text-neutral-500">Quét tại cổng soát vé</span>
                   </div>
                 </div>
               </div>
 
               {/* Bottom Actions */}
-              <div className="p-4 bg-purple-950/60 border-t border-purple-900/80 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col gap-2 border-t border-kumo-hairline bg-kumo-elevated px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
                 <Link
                   to="/my-tickets"
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md"
+                  className="inline-flex h-10 items-center justify-center rounded-lg sm:h-9 bg-kumo-brand px-3.5 font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover"
                 >
                   Xem danh sách vé của tôi
                 </Link>
                 <button
+                  type="button"
                   onClick={() => window.print()}
-                  className="px-4 py-2 rounded-xl bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-kumo-base px-3 font-medium sm:h-9 text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint"
                 >
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="size-4" />
                   <span>In / Tải vé PDF</span>
                 </button>
               </div>
@@ -314,59 +397,56 @@ export const CheckoutPage: React.FC = () => {
           </div>
         ) : (
           /* Checkout Booking Form */
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
             {/* Left 2 Cols: Tier selection, Attendee info, Payment options */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-5 lg:col-span-2">
               {/* Event Brief Header */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-[#1d0e32]/80 border border-purple-800/50 flex items-center gap-4">
+              <div className={`${panel} flex items-center gap-4 p-4`}>
                 <img
                   src={event.imageUrl}
                   alt={event.title}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-purple-600/40 flex-shrink-0"
+                  className="size-16 flex-shrink-0 rounded-lg object-cover ring ring-kumo-line sm:size-20"
                   referrerPolicy="no-referrer"
                 />
-                <div className="min-w-0">
-                  <div className="text-xs text-purple-400 font-semibold">{event.genre}</div>
-                  <h2 className="text-base sm:text-lg font-bold text-white truncate">{event.title}</h2>
-                  <p className="text-xs text-purple-300/80 mt-0.5">{event.date} • {event.venue}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-kumo-subtle">{event.genre}</div>
+                  <h2 className="truncate text-lg font-semibold tracking-tight text-kumo-strong">{event.title}</h2>
+                  <p className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-kumo-subtle">
+                    <span>{event.date}</span>
+                    <span>{event.venue}</span>
+                  </p>
                 </div>
               </div>
 
               {/* Step 1: Select Tier & Quantity */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-[#1d0e32]/80 border border-purple-800/50 space-y-4">
-                <div className="flex items-center gap-2 text-white font-bold text-sm sm:text-base border-b border-purple-900/60 pb-3">
-                  <Ticket className="w-4 h-4 text-purple-400" />
+              <section className={`${panel} space-y-4 p-4 sm:p-6`}>
+                <h3 className={sectionTitle}>
+                  <Ticket className="size-4 text-kumo-subtle" />
                   <span>1. Chọn loại vé &amp; Số lượng</span>
-                </div>
+                </h3>
 
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {event.ticketTiers.map(tier => (
                     <label
                       key={tier.id}
                       onClick={() => setSelectedTier(tier)}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
-                        selectedTier?.id === tier.id
-                          ? 'bg-purple-900/40 border-purple-400'
-                          : 'bg-[#140a24] border-purple-900/70 hover:border-purple-700'
-                      }`}
+                      className={`${option(selectedTier?.id === tier.id)} justify-between`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
                         <input
                           type="radio"
                           name="ticketTier"
                           checked={selectedTier?.id === tier.id}
                           onChange={() => setSelectedTier(tier)}
-                          className="text-purple-600 focus:ring-purple-500"
+                          className="size-4 flex-shrink-0 accent-kumo-brand"
                         />
-                        <div>
-                          <div className="text-sm font-bold text-white">{tier.name}</div>
-                          <div className="text-xs text-purple-300/70">{tier.description}</div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-kumo-strong">{tier.name}</div>
+                          <div className="text-sm text-kumo-subtle">{tier.description}</div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-extrabold text-white">
-                          {formatPrice(tier.price, event.currency)}
-                        </div>
+                      <div className="flex-shrink-0 text-right font-semibold text-kumo-strong tabular-nums">
+                        {formatPrice(tier.price, event.currency)}
                       </div>
                     </label>
                   ))}
@@ -374,25 +454,25 @@ export const CheckoutPage: React.FC = () => {
 
                 {/* Selected Seats Display or Quantity selector */}
                 {selectedSeatIds.length > 0 ? (
-                  <div className="pt-3 border-t border-purple-900/60 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-semibold text-purple-200 flex items-center gap-1.5">
-                        <Armchair className="w-4 h-4 text-emerald-400" />
+                  <div className="space-y-2 border-t border-kumo-hairline pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                      <span className="flex items-center gap-1.5 font-medium text-kumo-default">
+                        <Armchair className="size-4 text-kumo-success" />
                         <span>Vị trí ghế đã chọn ({selectedSeatIds.length} vé):</span>
                       </span>
                       <button
                         type="button"
                         onClick={() => setShowSeatMapModal(true)}
-                        className="text-xs text-purple-400 hover:text-white underline cursor-pointer"
+                        className="-my-2 py-2 text-sm font-medium text-kumo-link underline decoration-kumo-interact hover:decoration-current"
                       >
                         Đổi vị trí ghế
                       </button>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {selectedSeatIds.map(seatId => (
                         <span
                           key={seatId}
-                          className="px-2.5 py-1 rounded-lg bg-purple-900/80 border border-purple-500/80 text-white font-mono font-bold text-xs shadow-sm"
+                          className="rounded-full bg-kumo-tint px-2 py-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line"
                         >
                           {seatId}
                         </span>
@@ -400,37 +480,37 @@ export const CheckoutPage: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="pt-2 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs sm:text-sm font-medium text-purple-200 block">
-                        Số lượng vé muốn mua:
-                      </span>
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-kumo-hairline pt-3">
+                    <div className="min-w-0">
+                      <span className="block font-medium text-kumo-default">Số lượng vé muốn mua:</span>
                       <button
                         type="button"
                         onClick={() => setShowSeatMapModal(true)}
-                        className="text-[11px] text-purple-400 hover:text-white underline inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                        className="inline-flex min-h-10 items-center gap-1 text-left text-sm text-kumo-link underline decoration-kumo-interact hover:decoration-current sm:mt-0.5 sm:min-h-0"
                       >
-                        <Armchair className="w-3 h-3 text-purple-400" />
+                        <Armchair className="size-3.5" />
                         <span>Chọn vị trí ghế trực quan</span>
                       </button>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                         disabled={quantity <= 1}
-                        className="w-8 h-8 rounded-lg bg-purple-900/70 hover:bg-purple-800 disabled:opacity-40 text-white font-bold text-base flex items-center justify-center transition-colors"
+                        aria-label="Giảm số lượng"
+                        className={stepper}
                       >
-                        -
+                        −
                       </button>
-                      <span className="w-8 text-center text-base font-bold text-white font-mono">
+                      <span className="w-8 text-center text-lg font-semibold text-kumo-strong tabular-nums">
                         {quantity}
                       </span>
                       <button
                         type="button"
                         onClick={() => setQuantity(Math.min(4, quantity + 1))}
                         disabled={quantity >= 4}
-                        className="w-8 h-8 rounded-lg bg-purple-900/70 hover:bg-purple-800 disabled:opacity-40 text-white font-bold text-base flex items-center justify-center transition-colors"
+                        aria-label="Tăng số lượng"
+                        className={stepper}
                         title="Tối đa 4 vé theo quy định chống đầu cơ"
                       >
                         +
@@ -438,68 +518,71 @@ export const CheckoutPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-              </div>
+              </section>
 
               {/* Step 2: Attendee Information */}
-              <form id="checkout-form" onSubmit={handleConfirmBooking} className="p-5 sm:p-6 rounded-2xl bg-[#1d0e32]/80 border border-purple-800/50 space-y-4">
-                <div className="flex items-center gap-2 text-white font-bold text-sm sm:text-base border-b border-purple-900/60 pb-3">
-                  <ShieldCheck className="w-4 h-4 text-purple-400" />
+              <form id="checkout-form" onSubmit={handleConfirmBooking} className={`${panel} space-y-4 p-4 sm:p-6`}>
+                <h3 className={sectionTitle}>
+                  <ShieldCheck className="size-4 text-kumo-subtle" />
                   <span>2. Thông tin người nhận vé (Xác thực)</span>
-                </div>
+                </h3>
 
                 <div>
-                  <label className="block text-xs font-medium text-purple-200 mb-1">
+                  <label htmlFor="attendee-name" className={fieldLabel}>
                     Họ và tên người nhận vé *
                   </label>
                   <input
+                    id="attendee-name"
                     type="text"
                     required
                     placeholder="Nguyễn Văn A"
                     value={attendeeName}
                     onChange={e => setAttendeeName(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#140a24] border border-purple-900/80 text-sm text-white focus:outline-none focus:border-purple-500"
+                    className={input}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-medium text-purple-200 mb-1">
+                    <label htmlFor="attendee-phone" className={fieldLabel}>
                       Số điện thoại nhận vé *
                     </label>
                     <input
+                      id="attendee-phone"
                       type="tel"
                       required
                       placeholder="0987654321"
                       value={attendeePhone}
                       onChange={e => setAttendeePhone(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#140a24] border border-purple-900/80 text-sm text-white focus:outline-none focus:border-purple-500"
+                      className={input}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-purple-200 mb-1">
+                    <label htmlFor="attendee-email" className={fieldLabel}>
                       Email nhận mã QR vé *
                     </label>
                     <input
+                      id="attendee-email"
                       type="email"
                       required
                       placeholder="email@example.com"
                       value={attendeeEmail}
                       onChange={e => setAttendeeEmail(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-[#140a24] border border-purple-900/80 text-sm text-white focus:outline-none focus:border-purple-500"
+                      className={input}
                     />
                   </div>
                 </div>
               </form>
 
               {/* Step 3: Payment Method Selection */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-[#1d0e32]/80 border border-purple-800/50 space-y-4">
-                <div className="flex items-center gap-2 text-white font-bold text-sm sm:text-base border-b border-purple-900/60 pb-3">
-                  <CreditCard className="w-4 h-4 text-purple-400" />
+              <section className={`${panel} space-y-4 p-4 sm:p-6`}>
+                <h3 className={sectionTitle}>
+                  <CreditCard className="size-4 text-kumo-subtle" />
                   <span>3. Phương thức thanh toán</span>
-                </div>
+                </h3>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {[
                     { id: 'momo_qr', name: 'Ví MoMo / Quét QR', desc: 'Thanh toán tức thì 24/7' },
                     { id: 'vnpay', name: 'VNPAY / Thẻ ATM Nội Địa', desc: 'Hơn 40 ngân hàng liên kết' },
@@ -509,104 +592,119 @@ export const CheckoutPage: React.FC = () => {
                     <label
                       key={method.id}
                       onClick={() => setPaymentMethod(method.id)}
-                      className={`p-3 rounded-xl border flex items-center gap-3 cursor-pointer transition-all ${
-                        paymentMethod === method.id
-                          ? 'bg-purple-900/40 border-purple-400'
-                          : 'bg-[#140a24] border-purple-900/70 hover:border-purple-700'
-                      }`}
+                      className={option(paymentMethod === method.id)}
                     >
                       <input
                         type="radio"
                         name="paymentMethod"
                         checked={paymentMethod === method.id}
                         onChange={() => setPaymentMethod(method.id)}
-                        className="text-purple-600 focus:ring-purple-500"
+                        className="size-4 flex-shrink-0 accent-kumo-brand"
                       />
-                      <div>
-                        <div className="text-xs sm:text-sm font-bold text-white">{method.name}</div>
-                        <div className="text-[11px] text-purple-300/70">{method.desc}</div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-kumo-strong">{method.name}</div>
+                        <div className="text-xs text-kumo-subtle">{method.desc}</div>
                       </div>
                     </label>
                   ))}
                 </div>
-              </div>
+              </section>
+
+              {/* Order breakdown below lg; the total + CTA live in the sticky bottom bar */}
+              <section className={`${panel} p-4 sm:p-6 lg:hidden`}>
+                <h3 className={`${sectionTitle} mb-4`}>Tóm tắt đơn đặt vé</h3>
+                {orderSummary}
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-kumo-subtle">
+                  <ShieldCheck className="size-3.5 flex-shrink-0 text-kumo-success" />
+                  <span>Cam kết hoàn tiền 100% nếu sự kiện bị hủy</span>
+                </div>
+              </section>
             </div>
 
             {/* Right Col: Order Summary & Checkout CTA */}
-            <div className="space-y-4">
-              <div className="rounded-2xl bg-[#1d0e32]/95 border border-purple-700/60 p-5 shadow-xl sticky top-28">
-                <h3 className="text-base font-bold text-white border-b border-purple-900/60 pb-3 mb-4">
+            <aside className="hidden lg:block">
+              <div className={`${panel} sticky top-24 p-5`}>
+                <h3 className="mb-4 border-b border-kumo-hairline pb-3 text-lg font-semibold tracking-tight text-kumo-strong">
                   Tóm tắt đơn đặt vé
                 </h3>
 
-                <div className="space-y-3 text-xs sm:text-sm">
-                  <div className="flex justify-between text-purple-300/90">
-                    <span>Hạng vé</span>
-                    <span className="font-semibold text-white">{selectedTier?.name}</span>
-                  </div>
+                {orderSummary}
 
-                  <div className="flex justify-between text-purple-300/90">
-                    <span>Đơn giá</span>
-                    <span>{formatPrice(ticketPrice, event.currency)}</span>
-                  </div>
+                <button type="submit" form="checkout-form" disabled={isProcessing} className={`mt-5 ${confirmButtonClass}`}>
+                  {confirmButtonContent}
+                </button>
 
-                  <div className="flex justify-between text-purple-300/90">
-                    <span>Số lượng</span>
-                    <span className="font-semibold text-white">{quantity} vé</span>
-                  </div>
-
-                  <div className="flex justify-between text-purple-300/90">
-                    <span>Phí dịch vụ &amp; Bảo hiểm vé</span>
-                    <span>{bookingFee === 0 ? 'Miễn phí' : formatPrice(bookingFee, event.currency)}</span>
-                  </div>
-
-                  <div className="pt-3 border-t border-purple-900/60 flex justify-between items-baseline">
-                    <span className="font-bold text-white text-base">Tổng thanh toán</span>
-                    <span className="font-black text-xl text-pink-400">
-                      {formatPrice(totalAmount, event.currency)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <button
-                    type="submit"
-                    form="checkout-form"
-                    disabled={isProcessing}
-                    className="w-full py-3.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold text-sm shadow-xl shadow-purple-900/50 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                  >
-                    {isProcessing ? (
-                      <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    ) : (
-                      <>
-                        <QrCode className="w-4 h-4" />
-                        <span>Xác nhận &amp; Nhận vé điện tử</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="mt-3 text-center text-[11px] text-purple-400/80 flex items-center justify-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-green-400" />
+                <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-kumo-subtle">
+                  <ShieldCheck className="size-3.5 text-kumo-success" />
                   <span>Cam kết hoàn tiền 100% nếu sự kiện bị hủy</span>
                 </div>
               </div>
-            </div>
+            </aside>
           </div>
         )}
       </main>
 
+      {/* Mobile checkout bar: total, hold timer, confirm CTA */}
+      {!confirmedBooking && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-raised/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+          <div className="mx-auto max-w-5xl space-y-2.5">
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs text-kumo-subtle">Tổng thanh toán</div>
+                <div className="truncate text-xl font-semibold tracking-tight text-kumo-strong tabular-nums">
+                  {formatPrice(totalAmount, event.currency)}
+                </div>
+              </div>
+              {isHolding && holdTimeLeft !== null && (
+                <span
+                  className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium tabular-nums ring ring-kumo-line ${
+                    holdTimeLeft < 60 ? 'bg-kumo-danger-tint text-kumo-danger' : 'bg-kumo-warning-tint text-kumo-warning'
+                  }`}
+                  aria-label={`Thời gian giữ chỗ còn lại ${holdClock}`}
+                >
+                  <Clock className="size-3.5" />
+                  {holdClock}
+                </span>
+              )}
+            </div>
+            <button type="submit" form="checkout-form" disabled={isProcessing} className={confirmButtonClass}>
+              {confirmButtonContent}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Modal for Selecting / Changing Seats */}
       {showSeatMapModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
-          <div className="relative w-full max-w-4xl my-auto">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chọn vị trí ghế"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-6"
+        >
+          <div className="relative h-full w-full overflow-y-auto overscroll-contain bg-kumo-raised sm:h-auto sm:max-h-[90dvh] sm:max-w-4xl sm:rounded-xl sm:bg-transparent">
+            {/* Mobile header with close control */}
+            <div className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-kumo-hairline bg-kumo-raised/95 px-4 backdrop-blur sm:hidden">
+              <span className="font-semibold text-kumo-strong">Chọn vị trí ghế</span>
+              <button
+                type="button"
+                onClick={() => setShowSeatMapModal(false)}
+                aria-label="Đóng sơ đồ ghế"
+                className="grid size-10 place-items-center rounded-lg text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-default"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
             <button
+              type="button"
               onClick={() => setShowSeatMapModal(false)}
-              className="absolute top-4 right-4 z-50 p-2 rounded-full bg-purple-950/80 hover:bg-purple-900 text-purple-300 hover:text-white border border-purple-800 transition-colors cursor-pointer"
+              aria-label="Đóng sơ đồ ghế"
+              className="absolute top-4 right-4 z-30 hidden size-8 place-items-center rounded-lg bg-kumo-base text-kumo-subtle ring ring-kumo-line transition-colors hover:bg-kumo-tint hover:text-kumo-default sm:grid"
             >
-              <X className="w-5 h-5" />
+              <X className="size-4" />
             </button>
             <SeatMap
+              layout="modal"
               eventId={event.id}
               currency={event.currency}
               selectedSeatIds={selectedSeatIds}

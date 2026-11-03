@@ -1,38 +1,185 @@
 @import "tailwindcss";
 
+/*
+ * Semantic tokens ported from Cloudflare Kumo (kumo-ui.com).
+ * Every token resolves through light-dark(), so the active palette follows
+ * `color-scheme`, which is driven by the `data-mode` attribute on <html>.
+ */
+
+@custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
+
+@theme {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * Mobile-first type scale in rem, so browser font-size settings apply.
+   * Phones get a 16px body (Apple HIG: 17pt default, 11pt minimum on iOS);
+   * from md up it steps down to Kumo's desktop scale (12/13/14/16).
+   */
+  --text-xs: var(--fs-xs);
+  --text-xs--line-height: 1.35;
+  --text-sm: var(--fs-sm);
+  --text-sm--line-height: 1.4;
+  --text-base: var(--fs-base);
+  --text-base--line-height: 1.5;
+  --text-lg: var(--fs-lg);
+  --text-lg--line-height: 1.5;
+
+  --default-transition-duration: 100ms;
+
+  /* Neutral primitives */
+  --color-kumo-neutral-25: oklch(98.75% 0 0);
+  --color-kumo-neutral-75: oklch(98% 0 0);
+  --color-kumo-neutral-125: oklch(96.5% 0 0);
+  --color-kumo-neutral-150: oklch(93.5% 0 0);
+  --color-kumo-neutral-750: oklch(32% 0 0);
+  --color-kumo-neutral-925: oklch(17% 0 0);
+  --color-kumo-neutral-950: oklch(15% 0 0);
+  --color-kumo-neutral-975: oklch(12% 0 0);
+  --color-kumo-neutral-1000: oklch(10% 0 0);
+}
+
+@theme {
+  /* Surfaces */
+  --color-kumo-canvas: light-dark(oklch(98.75% 0 0), oklch(10% 0 0));
+  --color-kumo-elevated: light-dark(oklch(98% 0 0), oklch(12% 0 0));
+  --color-kumo-recessed: light-dark(oklch(96% 0 0), oklch(15% 0 0));
+  --color-kumo-base: light-dark(#fff, oklch(17% 0 0));
+  --color-kumo-tint: light-dark(oklch(97% 0 0), oklch(26.9% 0 0));
+  --color-kumo-contrast: light-dark(oklch(8.5% 0 0), oklch(98.5% 0 0));
+  --color-kumo-overlay: light-dark(oklch(97.5% 0 0), oklch(26.9% 0 0));
+  --color-kumo-control: light-dark(#fff, oklch(21% 0.006 285.885));
+  --color-kumo-interact: light-dark(oklch(87% 0 0), oklch(37.1% 0 0));
+  --color-kumo-fill: light-dark(oklch(92.2% 0 0), oklch(26.9% 0 0));
+  --color-kumo-fill-hover: light-dark(oklch(96.5% 0 0), oklch(37.1% 0 0));
+
+  /*
+   * Brand is ink: event posters supply the colour, so chrome stays
+   * monochrome (Apple HIG: prefer monochrome controls over rich content).
+   * Pair every brand fill with `text-kumo-on-brand`.
+   */
+  --color-kumo-brand: light-dark(oklch(21% 0 0), oklch(93% 0 0));
+  --color-kumo-brand-hover: light-dark(oklch(34% 0 0), oklch(100% 0 0));
+
+  /* Menus, sheets and dialogs: brighter than the page in dark mode (HIG base vs elevated). */
+  --color-kumo-raised: light-dark(#fff, oklch(23% 0 0));
+
+  /* Structure */
+  --color-kumo-line: light-dark(oklch(14.5% 0 0 / 0.1), oklch(32% 0 0));
+  --color-kumo-hairline: light-dark(oklch(93.5% 0 0), oklch(26.9% 0 0));
+  --color-kumo-focus: light-dark(oklch(15% 0 0), oklch(93.5% 0 0));
+
+  /* Status */
+  --color-kumo-info: oklch(68.5% 0.169 237.323);
+  --color-kumo-info-tint: light-dark(oklch(93.2% 0.032 255.6 / 0.45), oklch(38% 0.145 265.5 / 0.22));
+  --color-kumo-success: light-dark(oklch(59.6% 0.145 163.225), oklch(76.5% 0.177 163.223));
+  --color-kumo-success-tint: light-dark(oklch(96.2% 0.043 156.7 / 0.57), oklch(39.3% 0.096 152.3 / 0.2));
+  --color-kumo-warning: light-dark(oklch(73.9% 0.177 58.2), oklch(64.5% 0.168 50));
+  --color-kumo-warning-tint: light-dark(oklch(93.1% 0.107 94.6 / 0.2), oklch(35.3% 0.079 65 / 0.37));
+  --color-kumo-danger: light-dark(oklch(63.7% 0.237 25.331), oklch(57.7% 0.245 27.325));
+  --color-kumo-danger-tint: light-dark(oklch(93.6% 0.032 17.7 / 0.42), oklch(42.9% 0.176 28.7 / 0.17));
+
+  /* Categorical fills (seat tiers, genres) */
+  --color-kumo-badge-red: light-dark(oklch(57.7% 0.245 27.325), oklch(50.5% 0.213 27.518));
+  --color-kumo-badge-green: light-dark(oklch(59.6% 0.145 163.225), oklch(50.8% 0.118 165.612));
+  --color-kumo-badge-orange: oklch(81.5% 0.197 76);
+  --color-kumo-badge-purple: light-dark(oklch(55.8% 0.288 302.321), oklch(49.6% 0.265 301.924));
+  --color-kumo-badge-teal: light-dark(oklch(54.9% 0.096 184.565), oklch(51.1% 0.096 186.391));
+  --color-kumo-badge-blue: light-dark(oklch(54.6% 0.245 262.881), oklch(48.8% 0.243 264.376));
+  --color-kumo-badge-neutral: oklch(55.6% 0 0);
+}
+
+@theme {
+  /* Text-only tokens: `text-kumo-*` */
+  --text-color-kumo-default: light-dark(oklch(21% 0.006 285.885), oklch(97% 0 0));
+  --text-color-kumo-strong: light-dark(oklch(14.5% 0 0), oklch(98.5% 0 0));
+  --text-color-kumo-subtle: light-dark(oklch(50% 0 0), oklch(72% 0 0));
+  --text-color-kumo-on-brand: light-dark(#fff, oklch(17% 0 0));
+  --text-color-kumo-inactive: light-dark(oklch(87% 0 0), oklch(43.9% 0 0));
+  --text-color-kumo-placeholder: light-dark(oklch(70.8% 0 0), oklch(55.6% 0 0));
+  --text-color-kumo-inverse: light-dark(oklch(97% 0 0), oklch(20.5% 0 0));
+  /* Links are ink and always underlined: colour alone never signals interactivity. */
+  --text-color-kumo-link: light-dark(oklch(14.5% 0 0), oklch(98.5% 0 0));
+  --text-color-kumo-info: light-dark(oklch(42.4% 0.199 265.638), oklch(70.7% 0.165 254.624));
+  --text-color-kumo-success: light-dark(oklch(43.2% 0.095 166.913), oklch(90.5% 0.093 164.15));
+  --text-color-kumo-danger: light-dark(oklch(50.5% 0.213 27.518), oklch(70.4% 0.191 22.216));
+  --text-color-kumo-warning: light-dark(oklch(59.7% 0.144 57.5), oklch(75% 0.183 55.934));
+}
+
 @layer base {
+  :root {
+    --fs-xs: 0.75rem;
+    --fs-sm: 0.875rem;
+    --fs-base: 1rem;
+    --fs-lg: 1.125rem;
+  }
+  @media (width >= 48rem) {
+    :root {
+      --fs-sm: 0.8125rem;
+      --fs-base: 0.875rem;
+      --fs-lg: 1rem;
+    }
+  }
+
+  /* No stored choice and no script: follow the OS. */
+  :root {
+    color-scheme: light dark;
+  }
+  [data-mode="light"] {
+    color-scheme: light;
+  }
+  [data-mode="dark"] {
+    color-scheme: dark;
+  }
+
+  html {
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    background-color: #12091c;
-    color: #f3e8ff;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    @apply bg-kumo-canvas text-kumo-default font-sans text-base;
     overflow-x: hidden;
+  }
+
+  ::selection {
+    @apply bg-kumo-brand text-kumo-on-brand;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-kumo-focus;
+  }
+
+  input[type="date"] {
+    color-scheme: inherit;
   }
 }
 
-/* Custom radial glows matching SortMyScene dark purple atmosphere */
-.purple-glow-bg {
-  background-color: #12091c;
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(147, 51, 234, 0.18) 0%, transparent 60%),
-    radial-gradient(circle at 85% 30%, rgba(192, 38, 211, 0.12) 0%, transparent 50%),
-    radial-gradient(circle at 15% 70%, rgba(126, 34, 206, 0.14) 0%, transparent 50%);
+@layer utilities {
+  /* Held seats: diagonal hatch so the state reads without colour. */
+  .seat-held {
+    background-image: repeating-linear-gradient(
+      135deg,
+      oklch(0% 0 0 / 0.16) 0 2px,
+      transparent 2px 6px
+    );
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
-.card-dark-glass {
-  background: rgba(30, 16, 48, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(147, 51, 234, 0.2);
-}
-
-.card-dark-glass:hover {
-  border-color: rgba(168, 85, 247, 0.45);
-}
-
-/* Hide scrollbar for clean category rows */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

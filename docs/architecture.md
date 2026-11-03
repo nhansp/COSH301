@@ -63,6 +63,17 @@ nginx của `frontend`:
 - đặt `X-Real-IP` để api biết IP thật của khách;
 - tắt `proxy_buffering` và để `proxy_read_timeout 24h` cho luồng SSE.
 
+### Bản chạy trên `vdhwy-legion`
+
+Máy `vdhwy-legion` khởi động từ ramdisk, không có ổ cứng, nên không dùng Docker:
+- `/opt/cosh301/api`: binary Go, chạy bằng systemd `cosh301-api` với user `cosh301`, cổng 18080, chỉ nhận kết nối từ localhost;
+- `/opt/cosh301/dist`: bản build của `frontend/`, nginx của máy (`127.0.0.1:80`) trả SPA và chuyển `/api/` sang cổng 18080;
+- PostgreSQL 18 cài trên máy, cổng 5432 chỉ mở cho localhost;
+- `cosh301-tunnel`: cloudflared với `--protocol http2`, vì mạng FTU bóp UDP.
+
+Mọi thứ nằm trong RAM: khởi động lại máy là mất dữ liệu, cấu hình mạng và bản đã triển khai.
+Cập nhật frontend: build `frontend/` trên nhánh `staging`, thay `dist/` và giữ bản cũ ở `dist.bak-<thời-gian>`.
+
 ## 3. Bên trong api
 
 ```mermaid
@@ -208,3 +219,5 @@ Chưa làm, theo mục 7 của thiết kế:
   Cờ `bot_check` có trong profile `sprint3` nhưng api chưa kiểm tra token.
 - **Frontend.**
   Thiết kế có TanStack Query, nhưng `frontend/package.json` chưa dùng.
+  Danh sách sự kiện chỉ lấy từ `GET /api/events`; không còn dữ liệu mẫu phía client.
+  Giá "từ" lấy từ `priceFrom`, hạng vé lấy từ `zones` của `GET /api/events/{id}`, số vé còn lại đếm từ sơ đồ ghế.
