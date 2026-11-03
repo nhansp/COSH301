@@ -46,6 +46,7 @@ type CancelTicketRequest struct {
 	EventID       string         `json:"eventId"`
 	Reason        string         `json:"reason"`
 	Seats         []string       `json:"seats"`
+	Concert       map[string]any `json:"concert"`
 	TicketDetails map[string]any `json:"ticketDetails"`
 }
 
@@ -130,12 +131,79 @@ func (h *TicketHandler) HandleCancelTicket(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	// 4. Construct old and new data JSON for audit log
+	// 4. Build concert details from request and database
+	concertInfo := make(map[string]any)
+	if len(req.Concert) > 0 {
+		for k, v := range req.Concert {
+			concertInfo[k] = v
+		}
+	} else if req.TicketDetails != nil {
+		if t, ok := req.TicketDetails["eventTitle"]; ok {
+			concertInfo["title"] = t
+			concertInfo["name"] = t
+		}
+		if v, ok := req.TicketDetails["venue"]; ok {
+			concertInfo["venue"] = v
+		}
+		if d, ok := req.TicketDetails["eventDate"]; ok {
+			concertInfo["date"] = d
+		}
+		if tm, ok := req.TicketDetails["eventTime"]; ok {
+			concertInfo["time"] = tm
+		}
+		if c, ok := req.TicketDetails["city"]; ok {
+			concertInfo["city"] = c
+		}
+	}
+
+	if resolvedEventID.Valid {
+		var (
+			eName, eSlug, eCity, eGenre, vName, vAddress string
+			startsAt, endsAt                             time.Time
+		)
+		err := h.dbPool.QueryRow(r.Context(), `
+			SELECT 
+				e.name, 
+				e.slug, 
+				COALESCE(e.city, ''), 
+				COALESCE(e.genre, ''), 
+				e.starts_at, 
+				e.ends_at,
+				COALESCE(v.name, ''), 
+				COALESCE(v.address, '')
+			FROM events e
+			LEFT JOIN venues v ON e.venue_id = v.id
+			WHERE e.id = $1
+		`, resolvedEventID).Scan(&eName, &eSlug, &eCity, &eGenre, &startsAt, &endsAt, &vName, &vAddress)
+		if err == nil {
+			concertInfo["id"] = store.UUIDToString(resolvedEventID)
+			concertInfo["name"] = eName
+			concertInfo["title"] = eName
+			concertInfo["slug"] = eSlug
+			if eCity != "" {
+				concertInfo["city"] = eCity
+			}
+			if eGenre != "" {
+				concertInfo["genre"] = eGenre
+			}
+			if vName != "" {
+				concertInfo["venue"] = vName
+			}
+			if vAddress != "" {
+				concertInfo["venueAddress"] = vAddress
+			}
+			concertInfo["startsAt"] = startsAt.Format(time.RFC3339)
+			concertInfo["endsAt"] = endsAt.Format(time.RFC3339)
+		}
+	}
+
+	// 5. Construct old and new data JSON for audit log
 	oldDataJSON, _ := json.Marshal(map[string]any{
 		"bookingId":     req.BookingID,
 		"bookingCode":   req.BookingCode,
 		"eventId":       req.EventID,
 		"seats":         req.Seats,
+		"concert":       concertInfo,
 		"ticketDetails": req.TicketDetails,
 		"userEmail":     userEmail,
 	})
@@ -150,7 +218,7 @@ func (h *TicketHandler) HandleCancelTicket(w http.ResponseWriter, r *http.Reques
 	}
 	reqID := fmt.Sprintf("req_cancel_%d", time.Now().UnixNano())
 
-	// 5. Insert immutable audit log into database
+	// 6. Insert immutable audit log into database
 	auditLog, err := h.store.CreateAuditLog(r.Context(), store.CreateAuditLogParams{
 		ActorUserID: actorUserID,
 		EventID:     resolvedEventID,
@@ -172,6 +240,7 @@ func (h *TicketHandler) HandleCancelTicket(w http.ResponseWriter, r *http.Reques
 		"status":      "cancelled",
 		"auditLogId":  auditLog.ID,
 		"bookingCode": req.BookingCode,
+		"concert":     concertInfo,
 		"cancelledAt": auditLog.CreatedAt.Time.Format(time.RFC3339),
 		"message":     "Hủy vé thành công và đã ghi nhận vào nhật ký hệ thống (audit_logs)",
 	})
@@ -192,7 +261,7 @@ func (h *TicketHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.Reque
 			COALESCE(a.reason, '') AS reason,
 			a.created_at,
 			COALESCE(u.email, 'guest') AS actor_email,
-			COALESCE(e.name, 'N/A') AS event_name,
+			COALESCE(e.name, a.old_data->'concert'->>'name', a.old_data->'concert'->>'title', a.old_data->'ticketDetails'->>'eventTitle', 'N/A') AS event_name,
 			a.old_data,
 			a.new_data
 		FROM audit_logs a
@@ -215,6 +284,7 @@ func (h *TicketHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.Reque
 		CreatedAt  string         `json:"createdAt"`
 		ActorEmail string         `json:"actorEmail"`
 		EventName  string         `json:"eventName"`
+		Concert    map[string]any `json:"concert,omitempty"`
 		OldData    map[string]any `json:"oldData,omitempty"`
 		NewData    map[string]any `json:"newData,omitempty"`
 	}
@@ -241,6 +311,9 @@ func (h *TicketHandler) HandleListAuditLogs(w http.ResponseWriter, r *http.Reque
 		item.CreatedAt = t.Format(time.RFC3339)
 		if len(oldBytes) > 0 {
 			_ = json.Unmarshal(oldBytes, &item.OldData)
+			if c, ok := item.OldData["concert"].(map[string]any); ok {
+				item.Concert = c
+			}
 		}
 		if len(newBytes) > 0 {
 			_ = json.Unmarshal(newBytes, &item.NewData)
