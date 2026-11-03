@@ -88,7 +88,7 @@ export interface SeatItem {
   row: string;
   number: number;
   price: number;
-  status: 'available' | 'sold' | 'held';
+  status: 'available' | 'sold' | 'held' | 'selected';
   tierId: string;
 }
 

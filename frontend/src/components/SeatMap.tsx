@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { SeatItem, TicketTier } from '../types';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { SeatItem } from '../types';
 import { useFeatures } from '../context/FeatureContext';
-import { getInitialSeatsForEvent, saveSeatsForEvent, formatPrice, apiFetchSeats, apiHoldSeat, apiReleaseSeat } from '../services/eventService';
+import { formatPrice, apiFetchSeats, apiHoldSeat, apiReleaseSeat } from '../services/eventService';
 import {
   Armchair,
   Clock,
@@ -17,7 +17,6 @@ import {
 interface SeatMapProps {
   eventId: string;
   currency: string;
-  ticketTiers: TicketTier[];
   selectedSeatIds: string[];
   onSeatsChange: (seats: SeatItem[]) => void;
   onProceedToCheckout?: (selectedSeats: SeatItem[]) => void;
@@ -27,7 +26,6 @@ interface SeatMapProps {
 export const SeatMap: React.FC<SeatMapProps> = ({
   eventId,
   currency,
-  ticketTiers,
   selectedSeatIds,
   onSeatsChange,
   onProceedToCheckout,
@@ -37,48 +35,42 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   const holdEnabled = isEnabled('seat_hold');
   const [seats, setSeats] = useState<SeatItem[]>([]);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'error' | 'info' | 'success' } | null>(null);
-  const [realtimeSync, setRealtimeSync] = useState(true);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [liveState, setLiveState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [timeLeft, setTimeLeft] = useState<number | null>(null); // seconds
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load seats from API or deterministic generator, plus SSE connection
+  const loadSeats = useCallback(async () => {
+    const apiSeats = await apiFetchSeats(eventId);
+    if (!apiSeats || apiSeats.length === 0) {
+      setLoadState('error');
+      return;
+    }
+    setSeats(apiSeats);
+    setLoadState('ready');
+  }, [eventId]);
+
   useEffect(() => {
-    let sse: EventSource | null = null;
-    let isMounted = true;
+    setLoadState('loading');
+    loadSeats();
+  }, [loadSeats]);
 
-    apiFetchSeats(eventId).then(apiSeats => {
-      if (!isMounted) return;
-      if (apiSeats && apiSeats.length > 0) {
-        setSeats(apiSeats);
-      } else {
-        const loaded = getInitialSeatsForEvent(eventId, ticketTiers);
-        setSeats(loaded);
-      }
+  // Live updates over SSE; the server is the only source of seat state
+  useEffect(() => {
+    const sse = new EventSource(`/api/events/${eventId}/stream`);
+    sse.addEventListener('connected', () => setLiveState('connected'));
+    sse.onopen = () => setLiveState('connected');
+    sse.onerror = () => setLiveState('disconnected');
+    sse.addEventListener('update', (e: MessageEvent) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (!payload.seatId || !payload.status) return;
+        const nextSt = payload.status === 'AVAILABLE' ? 'available' : (payload.status === 'SOLD' ? 'sold' : 'held');
+        setSeats(prev => prev.map(s => (s.id === payload.seatId ? { ...s, status: nextSt } : s)));
+      } catch {}
     });
-
-    try {
-      sse = new EventSource(`/api/events/${eventId}/stream`);
-      sse.addEventListener('update', (e: MessageEvent) => {
-        try {
-          const payload = JSON.parse(e.data);
-          if (payload.seatId && payload.status) {
-            setSeats(prev => prev.map(s => {
-              if (s.id === payload.seatId) {
-                const nextSt = payload.status === 'AVAILABLE' ? 'available' : (payload.status === 'SOLD' ? 'sold' : 'held');
-                return { ...s, status: nextSt };
-              }
-              return s;
-            }));
-          }
-        } catch {}
-      });
-    } catch {}
-
-    return () => {
-      isMounted = false;
-      if (sse) sse.close();
-    };
-  }, [eventId, ticketTiers]);
+    return () => sse.close();
+  }, [eventId]);
 
   // Show temporary toast message for user feedback
   const showToast = (text: string, type: 'error' | 'info' | 'success' = 'info') => {
@@ -117,38 +109,6 @@ export const SeatMap: React.FC<SeatMapProps> = ({
 
     return () => clearInterval(timer);
   }, [timeLeft, onSeatsChange]);
-
-  // Real-time synchronization simulation (<= 3 seconds requirement from SRS NFR-10)
-  useEffect(() => {
-    if (!realtimeSync || seats.length === 0) return;
-
-    const interval = setInterval(() => {
-      setSeats(currentSeats => {
-        // Pick a random seat that is not currently selected by the active user
-        const unselectedSeats = currentSeats.filter(s => !selectedSeatIds.includes(s.id));
-        if (unselectedSeats.length === 0) return currentSeats;
-
-        const randomIndex = Math.floor(Math.random() * unselectedSeats.length);
-        const targetSeat = unselectedSeats[randomIndex];
-
-        // Randomly toggle between available, held, or sold
-        let nextStatus: 'available' | 'sold' | 'held' = targetSeat.status;
-        if (targetSeat.status === 'available') {
-          nextStatus = Math.random() > 0.4 ? 'held' : 'sold';
-        } else if (targetSeat.status === 'held') {
-          nextStatus = Math.random() > 0.5 ? 'sold' : 'available';
-        }
-
-        if (nextStatus === targetSeat.status) return currentSeats;
-
-        const updated = currentSeats.map(s => (s.id === targetSeat.id ? { ...s, status: nextStatus } : s));
-        saveSeatsForEvent(eventId, updated);
-        return updated;
-      });
-    }, 3500);
-
-    return () => clearInterval(interval);
-  }, [realtimeSync, seats.length, selectedSeatIds, eventId]);
 
   // Seat click handler adhering to US-02 and US-03 acceptance criteria
   const handleSeatClick = async (seat: SeatItem) => {
@@ -279,23 +239,25 @@ export const SeatMap: React.FC<SeatMapProps> = ({
             </div>
           )}
 
-          {/* Real-time sync badge */}
-          <button
-            onClick={() => setRealtimeSync(!realtimeSync)}
-            className={`px-3 py-1.5 rounded-full border text-xs flex items-center gap-1.5 cursor-pointer transition-colors ${
-              realtimeSync
+          {/* Live connection indicator (reflects the real SSE state) */}
+          <div
+            className={`px-3 py-1.5 rounded-full border text-xs flex items-center gap-1.5 ${
+              liveState === 'connected'
                 ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300'
+                : liveState === 'connecting'
+                ? 'bg-amber-950/60 border-amber-500/60 text-amber-300'
                 : 'bg-zinc-900/60 border-zinc-700 text-zinc-400'
             }`}
-            title="Mô phỏng đồng bộ trạng thái thời gian thực theo NFR-10 (<= 3s)"
           >
             <span
               className={`w-2 h-2 rounded-full ${
-                realtimeSync ? 'bg-emerald-400 animate-ping' : 'bg-zinc-500'
+                liveState === 'connected' ? 'bg-emerald-400 animate-pulse' : liveState === 'connecting' ? 'bg-amber-400' : 'bg-zinc-500'
               }`}
             />
-            <span>{realtimeSync ? 'Real-time Live (≤3s)' : 'Tắt Live Sync'}</span>
-          </button>
+            <span>
+              {liveState === 'connected' ? 'Đang cập nhật trực tiếp' : liveState === 'connecting' ? 'Đang kết nối...' : 'Mất kết nối trực tiếp'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -308,6 +270,28 @@ export const SeatMap: React.FC<SeatMapProps> = ({
         </div>
         <div className="w-full max-w-md h-0.5 bg-gradient-to-r from-transparent via-purple-500/60 to-transparent mt-1" />
       </div>
+
+      {loadState !== 'ready' && (
+        <div className="py-12 flex flex-col items-center gap-3 text-sm text-purple-200">
+          {loadState === 'loading' ? (
+            <span>Đang tải sơ đồ ghế...</span>
+          ) : (
+            <>
+              <span className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400" />
+                Không tải được sơ đồ ghế hoặc sự kiện chưa có ghế.
+              </span>
+              <button
+                type="button"
+                onClick={() => { setLoadState('loading'); loadSeats(); }}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold cursor-pointer"
+              >
+                Thử lại
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Visual Seat Grid */}
       <div className="space-y-6 overflow-x-auto py-2">

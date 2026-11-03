@@ -283,7 +283,6 @@ export const EventDetailPage: React.FC = () => {
               <SeatMap
                 eventId={event.id}
                 currency={event.currency}
-                ticketTiers={event.ticketTiers}
                 selectedSeatIds={selectedSeats.map(s => s.id)}
                 onSeatsChange={setSelectedSeats}
                 onProceedToCheckout={handleProceedWithSeats}
