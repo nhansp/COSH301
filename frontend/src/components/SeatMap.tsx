@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SeatItem, TicketTier } from '../types';
-import { getInitialSeatsForEvent, saveSeatsForEvent, formatPrice } from '../services/eventService';
+import { getInitialSeatsForEvent, saveSeatsForEvent, formatPrice, apiFetchSeats, apiHoldSeat, apiReleaseSeat } from '../services/eventService';
 import {
   Armchair,
   Clock,
@@ -38,10 +38,43 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   const [timeLeft, setTimeLeft] = useState<number | null>(null); // seconds
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load seats from storage or deterministic generator
+  // Load seats from API or deterministic generator, plus SSE connection
   useEffect(() => {
-    const loaded = getInitialSeatsForEvent(eventId, ticketTiers);
-    setSeats(loaded);
+    let sse: EventSource | null = null;
+    let isMounted = true;
+
+    apiFetchSeats(eventId).then(apiSeats => {
+      if (!isMounted) return;
+      if (apiSeats && apiSeats.length > 0) {
+        setSeats(apiSeats);
+      } else {
+        const loaded = getInitialSeatsForEvent(eventId, ticketTiers);
+        setSeats(loaded);
+      }
+    });
+
+    try {
+      sse = new EventSource(`/api/events/${eventId}/stream`);
+      sse.addEventListener('update', (e: MessageEvent) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.seatId && payload.status) {
+            setSeats(prev => prev.map(s => {
+              if (s.id === payload.seatId) {
+                const nextSt = payload.status === 'AVAILABLE' ? 'available' : (payload.status === 'SOLD' ? 'sold' : 'held');
+                return { ...s, status: nextSt };
+              }
+              return s;
+            }));
+          }
+        } catch {}
+      });
+    } catch {}
+
+    return () => {
+      isMounted = false;
+      if (sse) sse.close();
+    };
   }, [eventId, ticketTiers]);
 
   // Show temporary toast message for user feedback
@@ -115,7 +148,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   }, [realtimeSync, seats.length, selectedSeatIds, eventId]);
 
   // Seat click handler adhering to US-02 and US-03 acceptance criteria
-  const handleSeatClick = (seat: SeatItem) => {
+  const handleSeatClick = async (seat: SeatItem) => {
     // 1. Given bấm vào ghế màu xám (đã bán) -> thông báo ghế không khả dụng
     if (seat.status === 'sold') {
       showToast(`Ghế ${seat.id} (${seat.zoneName}) đã bán, không thể chọn!`, 'error');
@@ -131,21 +164,37 @@ export const SeatMap: React.FC<SeatMapProps> = ({
     const isAlreadySelected = selectedSeatIds.includes(seat.id);
 
     if (isAlreadySelected) {
-      // Deselect seat
+      // Deselect seat & release hold on server
+      apiReleaseSeat(eventId, seat.id).catch(() => {});
       const nextSeats = seats.filter(s => selectedSeatIds.includes(s.id) && s.id !== seat.id);
       onSeatsChange(nextSeats);
       showToast(`Đã bỏ chọn ghế ${seat.id}`, 'info');
     } else {
-      // 3. Check max tickets limit (FR-08 / US-07: Giới hạn tối đa 4 vé / người)
+      // 3. Check max tickets limit (FR-11 / US-07: Giới hạn tối đa 4 vé / người)
       if (selectedSeatIds.length >= maxSeats) {
-        showToast(`Mỗi tài khoản chỉ được chọn tối đa ${maxSeats} vé (Quy định chống đầu cơ FR-08)!`, 'error');
+        showToast(`Mỗi tài khoản chỉ được chọn tối đa ${maxSeats} vé (Quy định chống đầu cơ FR-11)!`, 'error');
         return;
       }
 
-      // Add seat to selection
+      // Call backend atomic hold API
+      const holdRes = await apiHoldSeat(eventId, seat.id);
+      if (!holdRes.success) {
+        if (holdRes.error === 'seat_not_available') {
+          showToast(`Ghế ${seat.id} vừa được người khác giữ chỗ! Vui lòng chọn ghế khác.`, 'error');
+          setSeats(prev => prev.map(s => s.id === seat.id ? { ...s, status: 'held' } : s));
+          return;
+        }
+        if (holdRes.error === 'ticket_limit_reached') {
+          showToast(`Đã đạt giới hạn tối đa ${maxSeats} vé cho tài khoản này!`, 'error');
+          return;
+        }
+      }
+
+      // Add seat to selection and set 5-minute timer
       const currentlySelected = seats.filter(s => selectedSeatIds.includes(s.id));
       const nextSeats = [...currentlySelected, seat];
       onSeatsChange(nextSeats);
+      setTimeLeft(300); // 5 minutes countdown
       showToast(`Đã khóa giữ chỗ ghế ${seat.id} (${formatPrice(seat.price, currency)}) trong 5 phút`, 'success');
     }
   };
