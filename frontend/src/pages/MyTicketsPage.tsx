@@ -15,24 +15,61 @@ import {
   X,
   ShieldCheck,
   CheckCircle2,
-  Armchair
+  Armchair,
+  HelpCircle,
+  AlertTriangle,
+  MessageSquare
 } from 'lucide-react';
+
+const CANCELLATION_REASONS = [
+  'Bận lịch trình cá nhân / công việc đột xuất',
+  'Mua nhầm thông tin (sự kiện / hạng vé / vị trí ghế)',
+  'Giá vé hoặc kế hoạch tài chính thay đổi',
+  'Địa điểm hoặc thời gian tổ chức không còn phù hợp',
+  'Vấn đề sức khỏe hoặc di chuyển',
+  'Lý do khác',
+];
 
 export const MyTicketsPage: React.FC = () => {
   const { bookings, cancelBooking, user } = useAuth();
   const [selectedTicket, setSelectedTicket] = useState<Booking | null>(null);
   const [ticketToCancel, setTicketToCancel] = useState<Booking | null>(null);
+  const [selectedReason, setSelectedReason] = useState<string>(CANCELLATION_REASONS[0]);
+  const [otherReason, setOtherReason] = useState<string>('');
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const [cancelToast, setCancelToast] = useState<string | null>(null);
+
+  const handleOpenCancelSurvey = (booking: Booking) => {
+    setTicketToCancel(booking);
+    setSelectedReason(CANCELLATION_REASONS[0]);
+    setOtherReason('');
+  };
+
+  const handleCloseCancelSurvey = () => {
+    if (isCancelling) return;
+    setTicketToCancel(null);
+    setSelectedReason(CANCELLATION_REASONS[0]);
+    setOtherReason('');
+  };
 
   const handleConfirmCancel = async () => {
     if (!ticketToCancel) return;
     setIsCancelling(true);
     const code = ticketToCancel.bookingCode;
-    await cancelBooking(ticketToCancel.id);
+
+    let fullReason = selectedReason;
+    if (selectedReason === 'Lý do khác') {
+      fullReason = otherReason.trim() ? `Lý do khác: ${otherReason.trim()}` : 'Lý do khác';
+    } else if (otherReason.trim()) {
+      fullReason = `${selectedReason} - Góp ý: ${otherReason.trim()}`;
+    }
+
+    await cancelBooking(ticketToCancel.id, fullReason);
     setIsCancelling(false);
     setTicketToCancel(null);
-    setCancelToast(`Đã hủy vé ${code} thành công và ghi nhận nhật ký vào database!`);
+    setSelectedReason(CANCELLATION_REASONS[0]);
+    setOtherReason('');
+    setCancelToast(`Đã hủy vé ${code} thành công và ghi nhận khảo sát vào hệ thống!`);
     setTimeout(() => setCancelToast(null), 4000);
   };
 
@@ -152,7 +189,7 @@ export const MyTicketsPage: React.FC = () => {
                   </button>
 
                   <button
-                    onClick={() => setTicketToCancel(booking)}
+                    onClick={() => handleOpenCancelSurvey(booking)}
                     disabled={booking.status === 'cancelled'}
                     className="px-3 py-2 rounded-xl bg-purple-950/60 hover:bg-red-950/40 border border-purple-900/60 hover:border-red-800/60 text-xs text-purple-300 hover:text-red-300 transition-colors disabled:opacity-40 cursor-pointer"
                   >
@@ -165,30 +202,128 @@ export const MyTicketsPage: React.FC = () => {
         )}
       </main>
 
-      {/* Cancel Confirmation Modal */}
+      {/* Cancellation Survey & Confirmation Modal */}
       {ticketToCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-sm rounded-3xl bg-[#1d0e32] border border-purple-700/60 p-6 shadow-2xl text-center">
-            <h3 className="text-lg font-bold text-white mb-2">Xác nhận hủy đặt vé?</h3>
-            <p className="text-xs text-purple-300/80 mb-6">
-              Bạn có chắc chắn muốn hủy vé <strong className="text-white">{ticketToCancel.eventTitle}</strong> (Mã: {ticketToCancel.bookingCode})? Thao tác này không thể hoàn tác.
-            </p>
+          <div className="relative w-full max-w-lg rounded-3xl bg-gradient-to-b from-[#210f3b] to-[#140826] border border-purple-600/50 p-6 shadow-2xl text-left max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 flex-shrink-0">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Khảo sát lý do hủy vé</h3>
+                  <p className="text-xs text-purple-300">Vui lòng chọn lý do để chúng tôi cải thiện chất lượng dịch vụ</p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseCancelSurvey}
+                disabled={isCancelling}
+                className="text-purple-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Target Ticket Details */}
+            <div className="mb-4 p-3 rounded-2xl bg-purple-950/60 border border-purple-800/60 flex items-center justify-between text-xs">
+              <div className="min-w-0 pr-3">
+                <p className="text-white font-semibold truncate">{ticketToCancel.eventTitle}</p>
+                <p className="text-purple-300/80 mt-0.5">
+                  Mã vé: <span className="text-pink-400 font-mono font-bold">{ticketToCancel.bookingCode}</span> • Hạng: {ticketToCancel.tierName}
+                  {ticketToCancel.selectedSeats && ticketToCancel.selectedSeats.length > 0 && (
+                    <span> • Ghế: {ticketToCancel.selectedSeats.join(', ')}</span>
+                  )}
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-semibold flex-shrink-0">
+                Sắp hủy
+              </span>
+            </div>
+
+            {/* Survey Reasons Selection */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-purple-200 mb-2">
+                Tại sao bạn muốn hủy vé này? <span className="text-red-400">*</span>
+              </label>
+              <div className="space-y-2">
+                {CANCELLATION_REASONS.map((reason) => {
+                  const isSelected = selectedReason === reason;
+                  return (
+                    <label
+                      key={reason}
+                      onClick={() => setSelectedReason(reason)}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-purple-600/30 border-purple-400 text-white font-medium shadow-sm'
+                          : 'bg-purple-950/40 border-purple-900/50 text-purple-300 hover:border-purple-700/60 hover:bg-purple-900/30'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="cancelReason"
+                        value={reason}
+                        checked={isSelected}
+                        onChange={() => setSelectedReason(reason)}
+                        className="text-purple-600 focus:ring-purple-500 h-4 w-4 border-purple-700 bg-purple-900 cursor-pointer"
+                      />
+                      <span className="flex-1">{reason}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Feedback / Other reason description */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-purple-200 mb-1.5 flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
+                <span>
+                  {selectedReason === 'Lý do khác'
+                    ? 'Vui lòng ghi rõ lý do của bạn *'
+                    : 'Góp ý thêm cho Ban tổ chức (không bắt buộc)'}
+                </span>
+              </label>
+              <textarea
+                value={otherReason}
+                onChange={(e) => setOtherReason(e.target.value)}
+                placeholder={
+                  selectedReason === 'Lý do khác'
+                    ? 'Nhập lý do cụ thể bạn muốn hủy vé...'
+                    : 'Chia sẻ thêm trải nghiệm hoặc ý kiến của bạn...'
+                }
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-800/60 text-xs text-white placeholder-purple-400/60 focus:outline-none focus:border-purple-400 resize-none transition-colors"
+              />
+            </div>
+
+            {/* Notice */}
+            <div className="mb-5 p-3 rounded-xl bg-red-950/30 border border-red-500/30 flex items-start gap-2.5 text-[11px] text-red-200">
+              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <span>
+                Lưu ý: Sau khi xác nhận, vé sẽ <strong>biến mất hoàn toàn</strong> khỏi danh sách vé của bạn và ghế đã giữ sẽ được giải phóng cho khán giả khác. Thao tác này không thể hoàn tác.
+              </span>
+            </div>
+
+            {/* Modal Actions */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setTicketToCancel(null)}
-                className="flex-1 py-2.5 rounded-xl bg-purple-950 text-purple-200 hover:text-white text-xs font-semibold border border-purple-800 transition-colors"
+                onClick={handleCloseCancelSurvey}
+                disabled={isCancelling}
+                className="flex-1 py-2.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 text-xs font-semibold border border-purple-800/80 transition-colors cursor-pointer disabled:opacity-50"
               >
-                Không, giữ lại
+                Không, giữ lại vé
               </button>
               <button
                 onClick={handleConfirmCancel}
-                disabled={isCancelling}
+                disabled={isCancelling || (selectedReason === 'Lý do khác' && !otherReason.trim())}
                 className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {isCancelling ? (
                   <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                 ) : (
-                  <span>Xác nhận hủy</span>
+                  <span>Gửi khảo sát & Hủy vé</span>
                 )}
               </button>
             </div>
