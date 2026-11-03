@@ -32,7 +32,9 @@ interface AuthContextType {
     attendeeEmail: string;
     paymentMethod: string;
     selectedSeats?: string[];
-  }) => Booking;
+  }, initialStatus?: 'confirmed' | 'pending') => Booking;
+  confirmBooking: (bookingId: string) => Booking | null;
+  getBookingById: (bookingId: string) => Booking | undefined;
   cancelBooking: (bookingId: string, reason?: string) => Promise<boolean>;
 }
 
@@ -319,7 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     attendeeEmail: string;
     paymentMethod: string;
     selectedSeats?: string[];
-  }): Booking => {
+  }, initialStatus: 'confirmed' | 'pending' = 'pending'): Booking => {
     const bookingCode = `SMS-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const newBooking: Booking = {
@@ -327,7 +329,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...bookingData,
       bookingCode,
       purchasedAt: new Date().toISOString(),
-      status: 'confirmed'
+      status: initialStatus
     };
 
     const updatedBookings = [newBooking, ...bookings];
@@ -335,7 +337,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updatedBookings));
 
     // Update seat map status to permanently 'sold' for confirmed seats
-    if (bookingData.selectedSeats && bookingData.selectedSeats.length > 0) {
+    if (initialStatus === 'confirmed' && bookingData.selectedSeats && bookingData.selectedSeats.length > 0) {
       try {
         const storageKey = `sms_event_seats_${bookingData.eventId}`;
         const existing = localStorage.getItem(storageKey);
@@ -352,6 +354,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return newBooking;
+  };
+
+  const getBookingById = (bookingId: string): Booking | undefined => {
+    return bookings.find(b => b.id === bookingId || b.bookingCode === bookingId);
+  };
+
+  const confirmBooking = (bookingId: string): Booking | null => {
+    let updatedTarget: Booking | null = null;
+    const updatedBookings = bookings.map(b => {
+      if (b.id === bookingId || b.bookingCode === bookingId) {
+        updatedTarget = { ...b, status: 'confirmed' as const };
+        return updatedTarget;
+      }
+      return b;
+    });
+
+    if (updatedTarget) {
+      setBookings(updatedBookings);
+      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updatedBookings));
+
+      const target = updatedTarget as Booking;
+      if (target.selectedSeats && target.selectedSeats.length > 0) {
+        try {
+          const storageKey = `sms_event_seats_${target.eventId}`;
+          const existing = localStorage.getItem(storageKey);
+          if (existing) {
+            const parsedSeats = JSON.parse(existing);
+            const updatedSeats = parsedSeats.map((s: { id: string; status: string }) =>
+              target.selectedSeats?.includes(s.id) ? { ...s, status: 'sold' } : s
+            );
+            localStorage.setItem(storageKey, JSON.stringify(updatedSeats));
+          }
+        } catch (err) {
+          console.error('Failed to update seat status upon booking confirmation:', err);
+        }
+      }
+    }
+
+    return updatedTarget;
   };
 
   const cancelBooking = async (bookingId: string, reason?: string): Promise<boolean> => {
@@ -487,6 +528,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyEmailOtp,
         logout,
         createBooking,
+        confirmBooking,
+        getBookingById,
         cancelBooking
       }}
     >

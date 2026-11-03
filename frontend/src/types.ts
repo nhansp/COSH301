@@ -74,7 +74,7 @@ export interface Booking {
   bookingCode: string;
   purchasedAt: string;
   paymentMethod: string;
-  status: 'confirmed' | 'cancelled';
+  status: 'confirmed' | 'cancelled' | 'pending';
   selectedSeats?: string[];
 }
 

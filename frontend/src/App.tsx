@@ -10,6 +10,7 @@ import { HomePage } from './pages/HomePage';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { CheckoutPage } from './pages/CheckoutPage';
+import { PaymentPage } from './pages/PaymentPage';
 import { MyTicketsPage } from './pages/MyTicketsPage';
 import { OrganizerPage } from './pages/OrganizerPage';
 
@@ -36,6 +37,22 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <CheckoutPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/payment/:bookingId"
+                  element={
+                    <ProtectedRoute>
+                      <PaymentPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/checkout/payment/:bookingId"
+                  element={
+                    <ProtectedRoute>
+                      <PaymentPage />
                     </ProtectedRoute>
                   }
                 />
