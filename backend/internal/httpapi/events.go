@@ -73,8 +73,8 @@ func (h *EventHandler) HandleEvents(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(dtos)
 }
 
-func (h *EventHandler) handleEventDetail(w http.ResponseWriter, r *http.Request, slug string) {
-	detail, err := h.eventService.GetEventDetailBySlug(r.Context(), slug)
+func (h *EventHandler) handleEventDetail(w http.ResponseWriter, r *http.Request, identifier string) {
+	detail, err := h.eventService.GetEventDetail(r.Context(), identifier)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)

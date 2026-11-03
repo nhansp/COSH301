@@ -12,14 +12,16 @@ import (
 )
 
 type SeatHandler struct {
-	seatService *service.SeatService
-	authService *service.AuthService
+	seatService  *service.SeatService
+	authService  *service.AuthService
+	eventService *service.EventService
 }
 
-func NewSeatHandler(ss *service.SeatService, as *service.AuthService) *SeatHandler {
+func NewSeatHandler(ss *service.SeatService, as *service.AuthService, es *service.EventService) *SeatHandler {
 	return &SeatHandler{
-		seatService: ss,
-		authService: as,
+		seatService:  ss,
+		authService:  as,
+		eventService: es,
 	}
 }
 
@@ -37,9 +39,11 @@ func (h *SeatHandler) HandleEventSeats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eventID, err := store.StringToUUID(parts[2])
+	eventID, err := h.eventService.ResolveEventID(r.Context(), parts[2])
 	if err != nil {
-		http.Error(w, `{"error":"invalid_event_uuid"}`, http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "event_not_found"})
 		return
 	}
 
@@ -89,7 +93,7 @@ func (h *SeatHandler) HandleHolds(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		eventID, err := store.StringToUUID(payload.EventID)
+		eventID, err := h.eventService.ResolveEventID(r.Context(), payload.EventID)
 		if err != nil {
 			http.Error(w, `{"error":"invalid_event_id"}`, http.StatusBadRequest)
 			return
@@ -144,7 +148,7 @@ func (h *SeatHandler) HandleHolds(w http.ResponseWriter, r *http.Request) {
 		}
 
 		eventIDStr := r.URL.Query().Get("eventId")
-		eventID, err := store.StringToUUID(eventIDStr)
+		eventID, err := h.eventService.ResolveEventID(r.Context(), eventIDStr)
 		if err != nil {
 			http.Error(w, `{"error":"missing_or_invalid_event_id"}`, http.StatusBadRequest)
 			return

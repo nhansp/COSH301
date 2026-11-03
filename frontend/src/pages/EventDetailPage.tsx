@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
-import { formatPrice, DEFAULT_BANNER_IMAGE, DEFAULT_EVENT_IMAGE } from '../services/eventService';
+import { formatPrice, DEFAULT_BANNER_IMAGE, DEFAULT_EVENT_IMAGE, apiFetchEventDetail } from '../services/eventService';
 import {
   Calendar,
   Clock,
@@ -26,14 +26,41 @@ import { SeatItem } from '../types';
 export const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getEventById } = useEvents();
+  const { getEventById, isLoading } = useEvents();
   const { isAuthenticated } = useAuth();
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'seatmap'>('seatmap');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [directEvent, setDirectEvent] = useState<any>(null);
+  const [isFetchingDirect, setIsFetchingDirect] = useState<boolean>(false);
 
-  const event = id ? getEventById(id) : undefined;
+  const contextEvent = id ? getEventById(id) : undefined;
+  const event = contextEvent || directEvent;
+
+  useEffect(() => {
+    if (!contextEvent && id) {
+      setIsFetchingDirect(true);
+      apiFetchEventDetail(id).then(res => {
+        if (res) setDirectEvent(res);
+      }).finally(() => {
+        setIsFetchingDirect(false);
+      });
+    }
+  }, [contextEvent, id]);
+
+  if (isLoading || isFetchingDirect) {
+    return (
+      <div className="min-h-screen purple-glow-bg flex flex-col justify-between">
+        <Navbar />
+        <div className="max-w-md mx-auto my-auto text-center py-20 px-4">
+          <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Đang tải thông tin sự kiện...</h2>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!event) {
     return (

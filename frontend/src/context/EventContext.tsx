@@ -161,7 +161,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [events, filterState, activeViewTab]);
 
   const getEventById = (id: string) => {
-    return events.find(e => e.id === id);
+    return events.find(e => e.id === id || e.slug === id);
   };
 
   return (

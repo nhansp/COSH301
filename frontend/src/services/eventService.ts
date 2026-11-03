@@ -456,6 +456,7 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
           const d = ev.date ? new Date(ev.date) : new Date();
           return {
             id: ev.id,
+            slug: ev.slug,
             title: ev.title || ev.name,
             subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
             imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
@@ -618,6 +619,77 @@ export async function apiFetchEvents(): Promise<EventItem[] | null> {
     const res = await fetch('/api/events');
     if (!res.ok) return null;
     return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function apiFetchEventDetail(identifier: string): Promise<EventItem | null> {
+  try {
+    const res = await fetch(`/api/events/${identifier}`);
+    if (!res.ok) return null;
+    const ev = await res.json();
+    const d = ev.startsAt ? new Date(ev.startsAt) : new Date();
+    return {
+      id: ev.id,
+      slug: ev.slug,
+      title: ev.name || ev.title,
+      subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
+      imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
+      bannerUrl: ev.imageUrl || DEFAULT_BANNER_IMAGE,
+      date: d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+      time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      rawDate: ev.startsAt || d.toISOString(),
+      venue: ev.venueName || 'Trung tâm Hội nghị Quốc gia',
+      city: ev.city || 'Hà Nội',
+      address: ev.venueAddress || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
+      priceStart: (ev.zones && ev.zones.length > 0) ? Math.min(...ev.zones.map((z: any) => z.basePrice)) : 500000,
+      currency: '₫',
+      genre: ev.genre || 'Classical & Symphony',
+      isTrending: true,
+      isPopular: true,
+      description: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
+      ageRestriction: '16+',
+      organizer: {
+        name: 'Ban Tổ Chức Mẫu',
+        verified: true,
+        contact: 'organizer@eventticketing.vn'
+      },
+      artists: [
+        {
+          name: 'Dàn nhạc Giao hưởng Quốc gia',
+          role: 'Dàn nhạc chính',
+          avatar: ev.imageUrl || DEFAULT_EVENT_IMAGE
+        }
+      ],
+      ticketTiers: ev.zones && ev.zones.length > 0
+        ? ev.zones.map((z: any) => ({
+            id: z.zoneId,
+            name: z.zoneName,
+            description: `Khu vực ${z.zoneName} (${z.zoneCode}) - ${z.floor || 'Tầng 1'}`,
+            price: z.basePrice,
+            available: z.capacity,
+            perks: ['Vị trí tiêu chuẩn', 'Hỗ trợ check-in nhanh']
+          }))
+        : [
+            {
+              id: '33333333-3333-3333-3333-333333333331',
+              name: 'Khu VIP',
+              description: 'Khu vực VIP tầm nhìn sân khấu trực diện',
+              price: 1500000,
+              available: 20,
+              perks: ['Ghế VIP trung tâm', 'Lối vào ưu tiên', 'Nước uống miễn phí']
+            },
+            {
+              id: '33333333-3333-3333-3333-333333333332',
+              name: 'Khu Phổ Thông (GA)',
+              description: 'Khu vực khán đài tiêu chuẩn',
+              price: 500000,
+              available: 30,
+              perks: ['Khán đài tiêu chuẩn', 'Trải nghiệm âm thanh vòm']
+            }
+          ]
+    };
   } catch {
     return null;
   }

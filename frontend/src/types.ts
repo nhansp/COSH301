@@ -9,6 +9,7 @@ export interface TicketTier {
 
 export interface EventItem {
   id: string;
+  slug?: string;
   title: string;
   subTitle?: string;
   imageUrl: string;
