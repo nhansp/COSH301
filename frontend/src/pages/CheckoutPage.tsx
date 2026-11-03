@@ -32,10 +32,21 @@ export const CheckoutPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialTierId = searchParams.get('tier');
   const navigate = useNavigate();
-  const { getEventById } = useEvents();
+  const { getEventById, loadEventDetail, isLoading } = useEvents();
   const { user, createBooking } = useAuth();
 
   const event = eventId ? getEventById(eventId) : undefined;
+  const needsDetail = !event || event.ticketTiers.length === 0;
+  const [isFetchingDetail, setIsFetchingDetail] = useState<boolean>(needsDetail);
+
+  useEffect(() => {
+    if (!eventId || !needsDetail) {
+      setIsFetchingDetail(false);
+      return;
+    }
+    setIsFetchingDetail(true);
+    loadEventDetail(eventId).finally(() => setIsFetchingDetail(false));
+  }, [eventId, needsDetail, loadEventDetail]);
 
   const seatsParam = searchParams.get('seats');
   const initialSeatIds = seatsParam ? decodeURIComponent(seatsParam).split(',').filter(Boolean) : [];
@@ -80,6 +91,19 @@ export const CheckoutPage: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, [holdTimeLeft, event?.id, navigate]);
+
+  if (isLoading || (isFetchingDetail && needsDetail)) {
+    return (
+      <div className="min-h-screen flex flex-col justify-between">
+        <Navbar />
+        <div className="max-w-md mx-auto my-auto text-center py-20 px-4">
+          <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-kumo-strong">Đang tải thông tin sự kiện...</h2>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!event) {
     return (

@@ -27,7 +27,7 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
       venue: ev.venue || 'Trung tâm Hội nghị Quốc gia',
       city: ev.city || 'Hà Nội',
       address: ev.address || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
-      priceStart: 500000,
+      priceStart: typeof ev.priceFrom === 'number' ? ev.priceFrom : 0,
       currency: '₫',
       genre: ev.genre || 'Classical & Symphony',
       isTrending: true,
@@ -46,24 +46,8 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
           avatar: ev.imageUrl || DEFAULT_EVENT_IMAGE
         }
       ],
-      ticketTiers: [
-        {
-          id: '33333333-3333-3333-3333-333333333331',
-          name: 'Khu VIP',
-          description: 'Khu vực VIP tầm nhìn sân khấu trực diện',
-          price: 1500000,
-          available: 20,
-          perks: ['Ghế VIP trung tâm', 'Lối vào ưu tiên', 'Nước uống miễn phí']
-        },
-        {
-          id: '33333333-3333-3333-3333-333333333332',
-          name: 'Khu Phổ Thông (GA)',
-          description: 'Khu vực khán đài tiêu chuẩn',
-          price: 500000,
-          available: 30,
-          perks: ['Khán đài tiêu chuẩn', 'Trải nghiệm âm thanh vòm']
-        }
-      ]
+      // Zones (tiers) come from the event detail endpoint; see loadEventDetail.
+      ticketTiers: []
     };
   });
 }
@@ -93,11 +77,24 @@ export async function apiFetchEvents(): Promise<EventItem[] | null> {
   }
 }
 
+/** Remaining seats per zone, or null when the seat map is unavailable. */
+async function countAvailableSeatsByZone(eventId: string): Promise<Map<string, number> | null> {
+  const seats = await apiFetchSeats(eventId);
+  if (!seats) return null;
+  const counts = new Map<string, number>();
+  for (const seat of seats) {
+    if (seat.status === 'available') counts.set(seat.zoneId, (counts.get(seat.zoneId) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export async function apiFetchEventDetail(identifier: string): Promise<EventItem | null> {
   try {
     const res = await fetch(`/api/events/${identifier}`);
     if (!res.ok) return null;
     const ev = await res.json();
+    const zones: any[] = Array.isArray(ev.zones) ? ev.zones : [];
+    const availableByZone = await countAvailableSeatsByZone(ev.id);
     const d = ev.startsAt ? new Date(ev.startsAt) : new Date();
     return {
       id: ev.id,
@@ -112,7 +109,7 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
       venue: ev.venueName || 'Trung tâm Hội nghị Quốc gia',
       city: ev.city || 'Hà Nội',
       address: ev.venueAddress || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
-      priceStart: (ev.zones && ev.zones.length > 0) ? Math.min(...ev.zones.map((z: any) => z.basePrice)) : 500000,
+      priceStart: zones.length > 0 ? Math.min(...zones.map((z: any) => z.basePrice)) : 0,
       currency: '₫',
       genre: ev.genre || 'Classical & Symphony',
       isTrending: true,
@@ -131,33 +128,14 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
           avatar: ev.imageUrl || DEFAULT_EVENT_IMAGE
         }
       ],
-      ticketTiers: ev.zones && ev.zones.length > 0
-        ? ev.zones.map((z: any) => ({
-            id: z.zoneId,
-            name: z.zoneName,
-            description: `Khu vực ${z.zoneName} (${z.zoneCode}) - ${z.floor || 'Tầng 1'}`,
-            price: z.basePrice,
-            available: z.capacity,
-            perks: ['Vị trí tiêu chuẩn', 'Hỗ trợ check-in nhanh']
-          }))
-        : [
-            {
-              id: '33333333-3333-3333-3333-333333333331',
-              name: 'Khu VIP',
-              description: 'Khu vực VIP tầm nhìn sân khấu trực diện',
-              price: 1500000,
-              available: 20,
-              perks: ['Ghế VIP trung tâm', 'Lối vào ưu tiên', 'Nước uống miễn phí']
-            },
-            {
-              id: '33333333-3333-3333-3333-333333333332',
-              name: 'Khu Phổ Thông (GA)',
-              description: 'Khu vực khán đài tiêu chuẩn',
-              price: 500000,
-              available: 30,
-              perks: ['Khán đài tiêu chuẩn', 'Trải nghiệm âm thanh vòm']
-            }
-          ]
+      ticketTiers: zones.map((z: any) => ({
+        id: z.zoneId,
+        name: z.zoneName,
+        description: `Khu vực ${z.zoneName} (${z.zoneCode})${z.floor ? ` - ${z.floor}` : ''}`,
+        price: z.basePrice,
+        available: availableByZone?.get(z.zoneId) ?? z.capacity,
+        perks: []
+      }))
     };
   } catch {
     return null;
@@ -169,7 +147,7 @@ export async function apiFetchSeats(eventId: string): Promise<SeatItem[] | null>
     const res = await fetch(`/api/events/${eventId}/seats`);
     if (!res.ok) return null;
     const data = await res.json();
-    return data.map((item: any) => ({
+    const seats: SeatItem[] = data.map((item: any) => ({
       id: item.seatId || item.label,
       zoneId: item.zoneId,
       zoneName: item.zoneName,
@@ -179,6 +157,17 @@ export async function apiFetchSeats(eventId: string): Promise<SeatItem[] | null>
       status: item.status,
       tierId: item.zoneId,
     }));
+    // The API orders labels as text (A1, A10, A2…); keep its zone order but sort seats numerically.
+    const zoneOrder = new Map<string, number>();
+    seats.forEach(seat => {
+      if (!zoneOrder.has(seat.zoneId)) zoneOrder.set(seat.zoneId, zoneOrder.size);
+    });
+    return seats.sort(
+      (a, b) =>
+        (zoneOrder.get(a.zoneId) ?? 0) - (zoneOrder.get(b.zoneId) ?? 0) ||
+        a.row.localeCompare(b.row, undefined, { numeric: true }) ||
+        a.number - b.number
+    );
   } catch {
     return null;
   }

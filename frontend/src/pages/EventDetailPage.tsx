@@ -5,7 +5,7 @@ import { Footer } from '../components/Footer';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
 import { useFeatures } from '../context/FeatureContext';
-import { formatPrice, DEFAULT_BANNER_IMAGE, DEFAULT_EVENT_IMAGE, apiFetchEventDetail } from '../services/eventService';
+import { formatPrice, DEFAULT_BANNER_IMAGE, DEFAULT_EVENT_IMAGE } from '../services/eventService';
 import {
   Calendar,
   Clock,
@@ -27,7 +27,7 @@ import { SeatItem } from '../types';
 export const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getEventById, isLoading } = useEvents();
+  const { getEventById, loadEventDetail, isLoading } = useEvents();
   const { isAuthenticated } = useAuth();
   const { isEnabled } = useFeatures();
   const seatMapEnabled = isEnabled('seat_map_realtime');
@@ -35,24 +35,19 @@ export const EventDetailPage: React.FC = () => {
   const [selectedSeats, setSelectedSeats] = useState<SeatItem[]>([]);
   const [activeTab, setActiveTab] = useState<'info' | 'seatmap'>('seatmap');
   const [copiedLink, setCopiedLink] = useState(false);
-  const [directEvent, setDirectEvent] = useState<any>(null);
-  const [isFetchingDirect, setIsFetchingDirect] = useState<boolean>(false);
+  const [isFetchingDetail, setIsFetchingDetail] = useState<boolean>(false);
 
-  const contextEvent = id ? getEventById(id) : undefined;
-  const event = contextEvent || directEvent;
+  const event = id ? getEventById(id) : undefined;
+  // List entries carry no zones; load the detail once for tiers and availability.
+  const needsDetail = !event || event.ticketTiers.length === 0;
 
   useEffect(() => {
-    if (!contextEvent && id) {
-      setIsFetchingDirect(true);
-      apiFetchEventDetail(id).then(res => {
-        if (res) setDirectEvent(res);
-      }).finally(() => {
-        setIsFetchingDirect(false);
-      });
-    }
-  }, [contextEvent, id]);
+    if (!id || !needsDetail) return;
+    setIsFetchingDetail(true);
+    loadEventDetail(id).finally(() => setIsFetchingDetail(false));
+  }, [id, needsDetail, loadEventDetail]);
 
-  if (isLoading || isFetchingDirect) {
+  if (isLoading || (isFetchingDetail && needsDetail)) {
     return (
       <div className="min-h-screen flex flex-col justify-between">
         <Navbar />

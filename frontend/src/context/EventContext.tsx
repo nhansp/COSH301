@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { EventItem, FilterState } from '../types';
-import { fetchEventsFromAPI } from '../services/eventService';
+import { fetchEventsFromAPI, apiFetchEventDetail } from '../services/eventService';
 
 interface EventContextType {
   events: EventItem[];
@@ -23,6 +23,8 @@ interface EventContextType {
   setActiveViewTab: (tab: 'all' | 'popular' | 'trending') => void;
   refreshEvents: () => Promise<void>;
   getEventById: (id: string) => EventItem | undefined;
+  /** Fetches zones and live availability for one event; cached by id and slug. */
+  loadEventDetail: (idOrSlug: string) => Promise<EventItem | null>;
 }
 
 const initialFilterState: FilterState = {
@@ -42,6 +44,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [details, setDetails] = useState<Record<string, EventItem>>({});
   const [filterState, setFilterState] = useState<FilterState>(initialFilterState);
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
   const [activeViewTab, setActiveViewTab] = useState<'all' | 'popular' | 'trending'>('all');
@@ -165,8 +168,21 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [events, filterState, activeViewTab]);
 
   const getEventById = (id: string) => {
-    return events.find(e => e.id === id || e.slug === id);
+    return details[id] ?? events.find(e => e.id === id || e.slug === id);
   };
+
+  const loadEventDetail = useCallback(async (idOrSlug: string) => {
+    const detail = await apiFetchEventDetail(idOrSlug);
+    if (detail) {
+      setDetails(prev => ({
+        ...prev,
+        [detail.id]: detail,
+        ...(detail.slug ? { [detail.slug]: detail } : {}),
+        [idOrSlug]: detail
+      }));
+    }
+    return detail;
+  }, []);
 
   return (
     <EventContext.Provider
@@ -190,6 +206,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         activeViewTab,
         setActiveViewTab,
         refreshEvents: loadEvents,
+        loadEventDetail,
         getEventById
       }}
     >
