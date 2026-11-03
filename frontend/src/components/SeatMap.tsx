@@ -33,6 +33,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
 }) => {
   const { isEnabled } = useFeatures();
   const holdEnabled = isEnabled('seat_hold');
+  const limitEnabled = isEnabled('ticket_limit');
   const [seats, setSeats] = useState<SeatItem[]>([]);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'error' | 'info' | 'success' } | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -171,9 +172,9 @@ export const SeatMap: React.FC<SeatMapProps> = ({
       onSeatsChange(nextSeats);
       showToast(`Đã bỏ chọn ghế ${seat.id}`, 'info');
     } else {
-      // 3. Check max tickets limit (FR-11 / US-07: Giới hạn tối đa 4 vé / người)
-      if (selectedSeatIds.length >= maxSeats) {
-        showToast(`Mỗi tài khoản chỉ được chọn tối đa ${maxSeats} vé (Quy định chống đầu cơ FR-11)!`, 'error');
+      // The server enforces the real limit; this only saves a round trip when ticket_limit is on.
+      if (limitEnabled && selectedSeatIds.length >= maxSeats) {
+        showToast('Đã đạt giới hạn số vé cho sự kiện này.', 'error');
         return;
       }
 
@@ -184,7 +185,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
           showToast(`Ghế ${seat.id} vừa được người khác giữ chỗ! Vui lòng chọn ghế khác.`, 'error');
           setSeats(prev => prev.map(s => s.id === seat.id ? { ...s, status: 'held' } : s));
         } else if (holdRes.error === 'ticket_limit_reached') {
-          showToast(`Đã đạt giới hạn tối đa ${maxSeats} vé cho tài khoản này!`, 'error');
+          showToast('Đã đạt giới hạn số vé cho sự kiện này.', 'error');
         } else if (holdRes.error === 'unauthorized') {
           showToast('Vui lòng đăng nhập để giữ chỗ.', 'error');
         } else if (holdRes.error === 'event_not_on_sale') {
@@ -259,7 +260,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
             <span>Sơ đồ ghế trực quan (Interactive Seat Map)</span>
           </h3>
           <p className="text-xs text-purple-300/80 mt-0.5">
-            Chọn ghế theo thời gian thực • Tối đa {maxSeats} vé/tài khoản
+            Chọn ghế theo thời gian thực{limitEnabled && ` • Tối đa ${maxSeats} vé/tài khoản`}
           </p>
         </div>
 
@@ -437,7 +438,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
           <div className="space-y-1 text-center md:text-left w-full md:w-auto">
             <div className="flex flex-wrap items-center gap-2 justify-center md:justify-start">
               <span className="text-xs text-purple-300 font-semibold">
-                Đã chọn ({selectedSeatsList.length}/{maxSeats} vé):
+                Đã chọn ({selectedSeatsList.length}{limitEnabled && `/${maxSeats}`} vé):
               </span>
               {selectedSeatsList.map(s => (
                 <span
