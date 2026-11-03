@@ -6,6 +6,7 @@ interface EventContextType {
   events: EventItem[];
   filteredEvents: EventItem[];
   isLoading: boolean;
+  loadError: string | null;
   filterState: FilterState;
   setSearchQuery: (query: string) => void;
   setStartDate: (date: string) => void;
@@ -40,17 +41,20 @@ const EventContext = createContext<EventContextType | undefined>(undefined);
 export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filterState, setFilterState] = useState<FilterState>(initialFilterState);
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
   const [activeViewTab, setActiveViewTab] = useState<'all' | 'popular' | 'trending'>('all');
 
   const loadEvents = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const data = await fetchEventsFromAPI();
       setEvents(data);
     } catch (err) {
       console.error('Failed to load events:', err);
+      setLoadError('Không kết nối được máy chủ sự kiện.');
     } finally {
       setIsLoading(false);
     }
@@ -170,6 +174,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         events,
         filteredEvents,
         isLoading,
+        loadError,
         filterState,
         setSearchQuery,
         setStartDate,

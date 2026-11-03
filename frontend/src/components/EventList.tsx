@@ -1,7 +1,7 @@
 import React from 'react';
 import { EventItem } from '../types';
 import { EventCard } from './EventCard';
-import { Music, RefreshCw } from 'lucide-react';
+import { Music, RefreshCw, WifiOff } from 'lucide-react';
 import { useEvents } from '../context/EventContext';
 
 interface EventListProps {
@@ -10,13 +10,37 @@ interface EventListProps {
 }
 
 export const EventList: React.FC<EventListProps> = ({ events, isLoading }) => {
-  const { isFilterOpen, resetFilters, refreshEvents } = useEvents();
+  const { isFilterOpen, resetFilters, refreshEvents, loadError } = useEvents();
 
   if (isLoading) {
     return (
       <div className="w-full py-16 flex flex-col items-center justify-center text-center">
         <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin mb-4" />
         <p className="text-kumo-subtle text-base">Đang tải danh sách sự kiện âm nhạc...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div
+        role="alert"
+        className="w-full py-12 sm:py-16 px-4 rounded-xl bg-kumo-danger-tint ring ring-kumo-line text-center flex flex-col items-center justify-center"
+      >
+        <div className="size-10 rounded-lg bg-kumo-base ring ring-kumo-line grid place-items-center text-kumo-danger mb-4">
+          <WifiOff className="size-5" />
+        </div>
+        <h3 className="text-lg font-semibold text-kumo-strong mb-1">Chưa tải được danh sách sự kiện</h3>
+        <p className="text-base text-kumo-subtle max-w-md mb-6">
+          {loadError} Kiểm tra kết nối mạng rồi thử lại.
+        </p>
+        <button
+          onClick={() => refreshEvents()}
+          className="h-11 sm:h-9 px-3.5 rounded-lg bg-kumo-brand hover:bg-kumo-brand-hover text-kumo-on-brand text-base font-medium flex items-center gap-2 transition-colors"
+        >
+          <RefreshCw className="size-4" />
+          Thử lại
+        </button>
       </div>
     );
   }
