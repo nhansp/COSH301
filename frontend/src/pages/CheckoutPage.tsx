@@ -411,7 +411,7 @@ export const CheckoutPage: React.FC = () => {
                         className="text-[11px] text-purple-400 hover:text-white underline inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                       >
                         <Armchair className="w-3 h-3 text-purple-400" />
-                        <span>Chọn vị trí ghế trực quan (FR-01)</span>
+                        <span>Chọn vị trí ghế trực quan</span>
                       </button>
                     </div>
                     <div className="flex items-center gap-3">
@@ -431,7 +431,7 @@ export const CheckoutPage: React.FC = () => {
                         onClick={() => setQuantity(Math.min(4, quantity + 1))}
                         disabled={quantity >= 4}
                         className="w-8 h-8 rounded-lg bg-purple-900/70 hover:bg-purple-800 disabled:opacity-40 text-white font-bold text-base flex items-center justify-center transition-colors"
-                        title="Tối đa 4 vé theo quy định chống đầu cơ (FR-08)"
+                        title="Tối đa 4 vé theo quy định chống đầu cơ"
                       >
                         +
                       </button>

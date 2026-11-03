@@ -260,7 +260,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
             <span>Sơ đồ ghế trực quan (Interactive Seat Map)</span>
           </h3>
           <p className="text-xs text-purple-300/80 mt-0.5">
-            Chọn ghế theo thời gian thực • Tối đa {maxSeats} vé/tài khoản (FR-08)
+            Chọn ghế theo thời gian thực • Tối đa {maxSeats} vé/tài khoản
           </p>
         </div>
 

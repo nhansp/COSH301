@@ -257,7 +257,7 @@ export const EventDetailPage: React.FC = () => {
               }`}
             >
               <Armchair className="w-4 h-4" />
-              <span>Sơ đồ ghế trực quan (Prototype FR-01)</span>
+              <span>Sơ đồ ghế trực quan</span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] border border-emerald-500/40 font-mono font-semibold">
                 REAL-TIME
               </span>
