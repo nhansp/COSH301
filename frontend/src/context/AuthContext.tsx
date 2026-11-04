@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isMounted = true;
 
     // Reset demo ticket data once to ensure a clean slate for demo users
-    const DEMO_CLEANUP_FLAG = 'sms_demo_cleanup_20261104';
+    const DEMO_CLEANUP_FLAG = 'sms_demo_cleanup_20261104_v4';
     try {
       if (!localStorage.getItem(DEMO_CLEANUP_FLAG)) {
         localStorage.removeItem(BOOKINGS_STORAGE_KEY);
@@ -133,9 +133,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetch('/api/tickets/cancelled', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
-        if (isMounted && Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           setCancelledBookings(data);
-          localStorage.setItem(CANCELLED_STORAGE_KEY, JSON.stringify(data));
+          try {
+            localStorage.setItem(CANCELLED_STORAGE_KEY, JSON.stringify(data));
+          } catch {}
+
+          // Automatically purge any cancelled tickets from active bookings!
+          if (data.length > 0) {
+            const cancelledCodes = new Set<string>();
+            data.forEach((c: CancelledTicket) => {
+              if (c.bookingCode) cancelledCodes.add(c.bookingCode);
+              if (c.bookingId) cancelledCodes.add(c.bookingId);
+            });
+
+            setBookings(prev => {
+              const purged = prev.filter(b => 
+                b.status !== 'cancelled' && 
+                !cancelledCodes.has(b.bookingCode) && 
+                !cancelledCodes.has(b.id)
+              );
+              try {
+                localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(purged));
+              } catch {}
+              return purged;
+            });
+          }
         }
       })
       .catch(() => {});
@@ -351,9 +374,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: initialStatus
     };
 
-    const updatedBookings = [newBooking, ...bookings];
-    setBookings(updatedBookings);
-    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updatedBookings));
+    setBookings(prev => {
+      const cleanPrev = prev.filter(b => b.status !== 'cancelled');
+      const updated = [newBooking, ...cleanPrev];
+      try {
+        localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save booking to localStorage:', e);
+      }
+      return updated;
+    });
 
     // Update seat map status to permanently 'sold' for confirmed seats
     if (initialStatus === 'confirmed' && bookingData.selectedSeats && bookingData.selectedSeats.length > 0) {
@@ -381,18 +411,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const confirmBooking = (bookingId: string): Booking | null => {
     let updatedTarget: Booking | null = null;
-    const updatedBookings = bookings.map(b => {
-      if (b.id === bookingId || b.bookingCode === bookingId) {
-        updatedTarget = { ...b, status: 'confirmed' as const };
-        return updatedTarget;
+
+    setBookings(prev => {
+      const updated = prev.map(b => {
+        if (b.id === bookingId || b.bookingCode === bookingId) {
+          updatedTarget = { ...b, status: 'confirmed' as const };
+          return updatedTarget;
+        }
+        return b;
+      }).filter(b => b.status !== 'cancelled');
+
+      try {
+        localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to update localStorage bookings:', e);
       }
-      return b;
+      return updated;
     });
 
     if (updatedTarget) {
-      setBookings(updatedBookings);
-      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updatedBookings));
-
       const target = updatedTarget as Booking;
       if (target.selectedSeats && target.selectedSeats.length > 0) {
         try {
@@ -415,7 +452,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const cancelBooking = async (bookingId: string, reason?: string): Promise<boolean> => {
-    // 1. Optimistically remove ticket immediately from active bookings so it disappears with 0 delay
+    // 1. Immediately remove ticket from active bookings and mark cancelled in localStorage
     let targetBooking: Booking | undefined;
     setBookings(prev => {
       targetBooking = prev.find(b => b.id === bookingId || b.bookingCode === bookingId);
@@ -432,7 +469,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const booking = targetBooking || bookings.find(b => b.id === bookingId || b.bookingCode === bookingId);
     if (!booking) return false;
 
-    // 2. Restore seats status to available in local cache immediately
+    // 2. Track in cancelledBookings state so it is marked cancelled everywhere
+    const cancelledRecord: CancelledTicket = {
+      id: `cancel_${Date.now()}`,
+      bookingId: booking.id,
+      bookingCode: booking.bookingCode,
+      eventId: booking.eventId,
+      eventTitle: booking.eventTitle,
+      reason: reason || 'Khách hàng xác nhận hủy vé trên ứng dụng',
+      cancelledAt: new Date().toISOString(),
+      seats: booking.selectedSeats || [],
+    };
+    setCancelledBookings(prev => {
+      const merged = [cancelledRecord, ...prev.filter(c => c.bookingCode !== booking.bookingCode && c.bookingId !== booking.id)];
+      try {
+        localStorage.setItem(CANCELLED_STORAGE_KEY, JSON.stringify(merged));
+      } catch {}
+      return merged;
+    });
+
+    // 3. Restore seats status to available in local cache immediately
     if (booking.selectedSeats && booking.selectedSeats.length > 0) {
       try {
         const storageKey = `sms_event_seats_${booking.eventId}`;
@@ -449,7 +505,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // 3. Asynchronously record cancellation to audit_logs in backend without blocking UI
+    // 4. Asynchronously record cancellation to audit_logs in backend without blocking UI
     try {
       fetch('/api/tickets/cancel', {
         method: 'POST',

@@ -29,7 +29,7 @@ import { LogoMark } from '../components/Logo';
 export const PaymentPage: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
-  const { getBookingById, confirmBooking, bookings } = useAuth();
+  const { getBookingById, confirmBooking, cancelBooking, bookings } = useAuth();
 
   const [booking, setBooking] = useState(() => (bookingId ? getBookingById(bookingId) : undefined));
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -474,7 +474,12 @@ export const PaymentPage: React.FC = () => {
                   </button>
 
                   <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => {
+                      if (booking) {
+                        cancelBooking(booking.id, 'Hủy tại bước thanh toán QR');
+                      }
+                      navigate(-1);
+                    }}
                     className="h-10 w-full rounded-xl text-xs sm:text-sm font-medium text-kumo-subtle hover:text-kumo-strong hover:bg-kumo-tint transition-colors"
                   >
                     Hủy và quay lại chọn vé

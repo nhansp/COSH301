@@ -20,13 +20,24 @@ import {
 } from 'lucide-react';
 
 export const MyTicketsPage: React.FC = () => {
-  const { bookings, cancelBooking, clearDemoTickets } = useAuth();
+  const { bookings, cancelledBookings, cancelBooking, clearDemoTickets } = useAuth();
   const [selectedTicket, setSelectedTicket] = useState<Booking | null>(null);
   const [cancelToast, setCancelToast] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState<boolean>(false);
 
+  // Build a set of all cancelled codes and IDs
+  const cancelledCodes = new Set<string>();
+  cancelledBookings.forEach(c => {
+    if (c.bookingCode) cancelledCodes.add(c.bookingCode);
+    if (c.bookingId) cancelledCodes.add(c.bookingId);
+  });
+
   // Strictly filter out any cancelled tickets so they completely disappear
-  const activeBookings = bookings.filter(b => b.status === 'confirmed');
+  const activeBookings = bookings.filter(b => 
+    b.status === 'confirmed' && 
+    !cancelledCodes.has(b.bookingCode) && 
+    !cancelledCodes.has(b.id)
+  );
 
   const handleCancelTicket = async (booking: Booking) => {
     const code = booking.bookingCode;
