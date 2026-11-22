@@ -145,14 +145,35 @@ Giai đoạn này làm song song được với giai đoạn 2–4 sau khi xong 
 **Xong khi:** mọi lỗi nghiêm trọng đã sửa.
 Các chỉ số chưa đạt được ghi vào PR.
 
-## 4. Ngoài phạm vi
+## 4. Tiến độ
+
+| Giai đoạn | Trạng thái | Ghi chú |
+|---|---|---|
+| 0. Kiểm tra | Xong | Archivo có subset `vietnamese` và trục `wdth` |
+| 1. Nền tảng | Xong | Token, phông, màu nhấn theo ảnh |
+| 2. Dữ liệu chọn vé | Xong | `useSeatInventory`, `summarizeZones`, `buildVenueLayout` |
+| 3. Trang chọn vé 2D | Xong | Route `/events/:id/tickets`, khu đứng chọn theo số lượng |
+| 4. Khung 3D | Xong | Đã nâng cấp phần nhìn: kiến trúc, ánh sáng, bóng đổ, bảng thông tin. Chunk 3D 259 KB sau gzip, vượt mục tiêu 9 KB |
+| 4b. Sơ đồ 2D và góc nhìn từ chỗ ngồi | Xong | Sơ đồ 2D cùng dữ liệu với 3D; xem từ ghế đang giữ hoặc từ giữa khu, đều là ước lượng |
+| 5. Các trang còn lại | Xong | Trang Ban Tổ chức chỉ nhận token mới |
+| 6. Kiểm thử và tinh chỉnh | Chưa xong | Mới thử trên Chrome máy tính và khung 390 px; chưa thử thiết bị thật, trình đọc màn hình |
+
+Đã chạy được trên Chrome máy tính, với API giả lập theo đúng DTO của backend:
+
+- chọn khu, giữ và trả ghế trong 3D và trong lưới ghế;
+- giữ vé khu đứng theo số lượng;
+- chặn vé thứ năm;
+- thanh toán thử và hiện vé;
+- danh sách vé của tôi.
+
+## 5. Ngoài phạm vi
 
 - Mọi thay đổi trong `backend/`, kể cả các đề nghị ở mục 14 của `3D_EXPERIENCE.md`.
 - Cổng thanh toán thật.
 - Ảnh góc nhìn thật từ ghế.
 - Phòng chờ (waiting room): bảng `queue_entries` đã có nhưng backend chưa có endpoint.
 
-## 5. Rủi ro của lộ trình
+## 6. Rủi ro của lộ trình
 
 | Rủi ro | Giảm thiểu |
 |---|---|

@@ -140,7 +140,7 @@ Hành trình mua vé đi theo nhịp một đêm concert:
 |---|---|---|
 | Khán phòng | `#F2F3F5` | Nền các trang trước và sau bước chọn vé |
 | Mực | `#16171D` | Chữ trên nền sáng |
-| Sân khấu chờ | `#131735` | Nền khung 3D, luôn tối |
+| Sân khấu chờ | `#0B0E26` | Nền khung 3D, luôn tối |
 | Đèn dõi | `#FFE2A8` | Vị trí của bạn: ghế đang giữ, khu đang chọn, tấm vé |
 | Gel đỏ tía | `#D6336C` | Màu nhấn dự phòng khi ảnh không cho được màu đủ tương phản |
 
@@ -292,7 +292,7 @@ Những điểm đã sửa:
 
 - Nền đen tuyền với một màu neon duy nhất → sửa thành nền sáng cho các trang khám phá.
   Tông tối chỉ dùng trong khung 3D.
-  Nền tối là xanh sân khấu `#131735`, không phải đen pha màu.
+  Nền tối là xanh navy sân khấu `#0B0E26`; màu chỉ nằm ở mặt khu và vài đường đèn mảnh.
 - Trang chủ là lưới thẻ sự kiện bo góc giống nhau → sửa thành lịch diễn theo ngày.
   Ảnh lớn chỉ dành cho sự kiện đầu tiên.
 - Nhãn chữ in hoa giãn cách phía trên mỗi tiêu đề → bỏ hẳn.

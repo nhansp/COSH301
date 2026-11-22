@@ -32,7 +32,7 @@ Nếu chọn hướng khác, tài liệu này sẽ được viết lại.
 | `house` | `#F2F3F5` | `#15161C` | Nền trang |
 | `ink` | `#16171D` | `#ECEDF0` | Chữ chính |
 | `ink-muted` | `#5B5E6B` | `#A3A6B3` | Chữ phụ |
-| `stage` | `#131735` | `#131735` | Nền khung 3D, không đổi theo chế độ |
+| `stage` | `#0B0E26` | `#0B0E26` | Nền khung 3D, không đổi theo chế độ |
 | `spot` | `#FFE2A8` | `#FFE2A8` | Đèn dõi: vị trí của bạn |
 | `accent` | Lấy từ ảnh | Lấy từ ảnh | Màu nhấn của sự kiện |
 | `accent-fallback` | `#D6336C` | `#E0577F` | Khi ảnh không cho được màu dùng được |
@@ -92,7 +92,7 @@ Mỗi trạng thái có một dấu hiệu không phụ thuộc màu.
 | `available` | Xanh lá `#2FA86B` | Ô đặc | Khối ghế cao bình thường |
 | `sold` | Xám `#8C909C` | Số bị gạch ngang | Khối ghế hạ thấp, mờ |
 | `held` | Vàng cam `#E8A23A` | Sọc chéo | Sọc chéo trên mặt ghế |
-| `selected` (của bạn) | Mực, có viền | Viền dày | Vòng sáng màu `spot` quanh ghế |
+| `selected` (của bạn) | Mực, có viền | Viền dày | Màu `spot`, cao hơn ghế thường, có vòng sáng nằm phẳng quanh chân ghế |
 
 Trong khung 3D, `selected` dùng màu `spot` thay cho màu mực.
 Lý do: nền `stage` tối, mực đen không nhìn thấy.
@@ -105,8 +105,11 @@ Lý do: backend chưa có trường màu khu.
 
 - Khu đắt nhất: sáng và ấm nhất.
 - Khu rẻ nhất: tối và lạnh nhất.
-- Thang có 6 bậc, nội suy trong OKLCH từ `#F0C987` đến `#3B4C8C`.
+- Thang có 6 bậc, nội suy trong OKLCH từ `#F2C982` đến `#5A6BB5`:
+  `#F2C982`, `#F4A782`, `#E38C95`, `#C37AAC`, `#9470B9`, `#5A6BB5`.
+- Mọi bậc đạt tương phản tối thiểu 3:1 trên nền `stage`.
 - Sự kiện nhiều hơn 6 khu thì các khu cùng bậc phân biệt bằng nhãn tên.
+- Trong khung 3D, mặt khu tối hơn màu bậc một nấc, để ghế màu `spot` luôn nổi lên trên.
 
 ## 3. Chữ
 
@@ -122,11 +125,8 @@ Archivo dùng hai độ rộng cho hai vai trò:
 - `wdth` 112–125: tên sự kiện, như chữ trên bảng đèn trước nhà hát.
 - `wdth` 62–75: mã vị trí, giá, đồng hồ. Gọn và dễ so sánh.
 
-Cần kiểm tra trước khi dùng:
-
-- Archivo trên Google Fonts có subset `vietnamese` và trục `wdth`.
-- Be Vietnam Pro có `font-feature-settings: "tnum"`.
-  Nếu không có, giá và đồng hồ dùng Archivo.
+Đã kiểm tra: Archivo trên Google Fonts có subset `vietnamese` và trục `wdth` 62–125.
+Giá, mã vị trí và đồng hồ đều dùng Archivo, nên không phụ thuộc chữ số đều cột của Be Vietnam Pro.
 
 ### 3.2 Thang cỡ chữ
 
@@ -154,7 +154,7 @@ Dùng thang cổ điển trong *The Elements of Typographic Style*.
   Tên sự kiện đã viết hoa trong dữ liệu (ví dụ `BLACKPINK WORLD TOUR`) thì giữ nguyên.
 - Không tô riêng một từ trong tiêu đề bằng màu hay chữ nghiêng.
 - Giá viết đầy đủ ở trang thanh toán: `9.800.000 ₫`.
-  Giá rút gọn chỉ dùng ở lịch diễn và nhãn trong khung 3D: `9,8 tr`.
+  Giá rút gọn chỉ dùng ở lịch diễn và danh sách khu: `9,8 tr`.
 
 ## 4. Bố cục
 
