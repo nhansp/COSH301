@@ -5,7 +5,7 @@ import { Footer } from '../components/Footer';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
 import { useFeatures } from '../context/FeatureContext';
-import { formatPrice, DEFAULT_BANNER_IMAGE, DEFAULT_EVENT_IMAGE } from '../services/eventService';
+import { formatPrice, ticketLimitOf, DEFAULT_BANNER_IMAGE, DEFAULT_EVENT_IMAGE } from '../services/eventService';
 import {
   Calendar,
   Clock,
@@ -28,7 +28,7 @@ export const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getEventById, loadEventDetail, isLoading } = useEvents();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, ticketsBookedFor } = useAuth();
   const { isEnabled } = useFeatures();
   const seatMapEnabled = isEnabled('seat_map_realtime');
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
@@ -81,6 +81,8 @@ export const EventDetailPage: React.FC = () => {
       </div>
     );
   }
+
+  const seatsLeftForUser = Math.max(0, ticketLimitOf(event) - ticketsBookedFor(event.id));
 
   // Handle proceed with chosen seats from the interactive seat map
   const handleProceedWithSeats = (chosenSeats: SeatItem[]) => {
@@ -307,7 +309,7 @@ export const EventDetailPage: React.FC = () => {
                 selectedSeatIds={selectedSeats.map(s => s.id)}
                 onSeatsChange={setSelectedSeats}
                 onProceedToCheckout={handleProceedWithSeats}
-                maxSeats={4}
+                maxSeats={seatsLeftForUser}
               />
             ) : (
               <div className="rounded-xl bg-kumo-recessed ring ring-kumo-line p-5 text-base text-kumo-default">

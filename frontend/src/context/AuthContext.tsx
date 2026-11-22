@@ -29,8 +29,11 @@ interface AuthContextType {
     attendeeEmail: string;
     paymentMethod: string;
     selectedSeats?: string[];
+    seatLabels?: string[];
   }) => Booking;
   cancelBooking: (bookingId: string) => void;
+  /** Tickets the signed-in user holds in confirmed bookings for one event. */
+  ticketsBookedFor: (eventId: string) => number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -244,12 +247,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     attendeeEmail: string;
     paymentMethod: string;
     selectedSeats?: string[];
+    seatLabels?: string[];
   }): Booking => {
     const bookingCode = `SMS-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const newBooking: Booking = {
       id: `bk_${Date.now()}`,
       ...bookingData,
+      userId: user?.id,
       bookingCode,
       purchasedAt: new Date().toISOString(),
       status: 'confirmed'
@@ -285,6 +290,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
   };
 
+  const ticketsBookedFor = (eventId: string) => {
+    if (!user) return 0;
+    return bookings
+      .filter(b => b.eventId === eventId && b.status === 'confirmed' && b.userId === user.id)
+      .reduce((sum, b) => sum + b.quantity, 0);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -298,7 +310,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyEmailOtp,
         logout,
         createBooking,
-        cancelBooking
+        cancelBooking,
+        ticketsBookedFor
       }}
     >
       {children}

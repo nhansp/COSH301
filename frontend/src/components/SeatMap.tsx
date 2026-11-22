@@ -18,6 +18,7 @@ interface SeatMapProps {
   selectedSeatIds: string[];
   onSeatsChange: (seats: SeatItem[]) => void;
   onProceedToCheckout?: (selectedSeats: SeatItem[]) => void;
+  /** Seats the user may still take for this event, after earlier bookings. */
   maxSeats?: number;
   /** `modal`: flat full-bleed on mobile with a sticky selection bar. */
   layout?: 'inline' | 'modal';
@@ -35,7 +36,6 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   const isModal = layout === 'modal';
   const { isEnabled } = useFeatures();
   const holdEnabled = isEnabled('seat_hold');
-  const limitEnabled = isEnabled('ticket_limit');
   const [seats, setSeats] = useState<SeatItem[]>([]);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'error' | 'info' | 'success' } | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -102,7 +102,8 @@ export const SeatMap: React.FC<SeatMapProps> = ({
           });
           onSeatsChangeRef.current(seatsRef.current.filter(s => selectedIdsRef.current.includes(s.id) && s.id !== seatId));
           if (type === 'seat_expired') {
-            showToast(`Ghế ${seatId} đã hết hạn giữ chỗ và được nhả về hệ thống.`, 'error');
+            const label = seatsRef.current.find(s => s.id === seatId)?.label ?? '';
+            showToast(`Ghế ${label} đã hết hạn giữ chỗ và được nhả về hệ thống.`, 'error');
           }
         }
       } catch {}
@@ -144,13 +145,13 @@ export const SeatMap: React.FC<SeatMapProps> = ({
   const handleSeatClick = async (seat: SeatItem) => {
     // 1. Given bấm vào ghế màu xám (đã bán) -> thông báo ghế không khả dụng
     if (seat.status === 'sold') {
-      showToast(`Ghế ${seat.id} (${seat.zoneName}) đã bán, không thể chọn!`, 'error');
+      showToast(`Ghế ${seat.label} (${seat.zoneName}) đã bán, không thể chọn!`, 'error');
       return;
     }
 
     // 2. Given bấm vào ghế đang được giữ bởi người khác -> thông báo ghế đang được giữ
     if (seat.status === 'held') {
-      showToast(`Ghế ${seat.id} đang được người khác giữ trong 5 phút. Vui lòng chọn ghế khác!`, 'error');
+      showToast(`Ghế ${seat.label} đang được người khác giữ trong 5 phút. Vui lòng chọn ghế khác!`, 'error');
       return;
     }
 
@@ -172,10 +173,10 @@ export const SeatMap: React.FC<SeatMapProps> = ({
       });
       const nextSeats = seats.filter(s => selectedSeatIds.includes(s.id) && s.id !== seat.id);
       onSeatsChange(nextSeats);
-      showToast(`Đã bỏ chọn ghế ${seat.id}`, 'info');
+      showToast(`Đã bỏ chọn ghế ${seat.label}`, 'info');
     } else {
-      // The server enforces the real limit; this only saves a round trip when ticket_limit is on.
-      if (limitEnabled && selectedSeatIds.length >= maxSeats) {
+      // The server also enforces the limit when ticket_limit is on.
+      if (selectedSeatIds.length >= maxSeats) {
         showToast('Đã đạt giới hạn số vé cho sự kiện này.', 'error');
         return;
       }
@@ -184,7 +185,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
       const holdRes = await apiHoldSeat(eventId, seat.id);
       if (!holdRes.success) {
         if (holdRes.error === 'seat_not_available') {
-          showToast(`Ghế ${seat.id} vừa được người khác giữ chỗ! Vui lòng chọn ghế khác.`, 'error');
+          showToast(`Ghế ${seat.label} vừa được người khác giữ chỗ! Vui lòng chọn ghế khác.`, 'error');
           setSeats(prev => prev.map(s => s.id === seat.id ? { ...s, status: 'held' } : s));
         } else if (holdRes.error === 'ticket_limit_reached') {
           showToast('Đã đạt giới hạn số vé cho sự kiện này.', 'error');
@@ -193,7 +194,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
         } else if (holdRes.error === 'event_not_on_sale') {
           showToast('Sự kiện hiện không mở bán.', 'error');
         } else {
-          showToast(`Không thể giữ ghế ${seat.id}. Vui lòng thử lại!`, 'error');
+          showToast(`Không thể giữ ghế ${seat.label}. Vui lòng thử lại!`, 'error');
         }
         return;
       }
@@ -206,7 +207,7 @@ export const SeatMap: React.FC<SeatMapProps> = ({
 
       const currentlySelected = seats.filter(s => selectedSeatIds.includes(s.id));
       onSeatsChange([...currentlySelected, { ...seat, status: 'selected' }]);
-      showToast(`Đã khóa giữ chỗ ghế ${seat.id} (${formatPrice(seat.price, currency)}) trong 5 phút`, 'success');
+      showToast(`Đã khóa giữ chỗ ghế ${seat.label} (${formatPrice(seat.price, currency)}) trong 5 phút`, 'success');
     }
   };
 
@@ -274,7 +275,11 @@ export const SeatMap: React.FC<SeatMapProps> = ({
           </h3>
           <p className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-kumo-subtle">
             <span>Chọn ghế theo thời gian thực</span>
-            {limitEnabled && <span>Tối đa {maxSeats} vé/tài khoản</span>}
+            <span>
+              {maxSeats > 0
+                ? `Bạn còn được chọn tối đa ${maxSeats} vé`
+                : 'Bạn đã mua đủ số vé tối đa cho sự kiện này'}
+            </span>
           </p>
         </div>
 
@@ -389,8 +394,8 @@ export const SeatMap: React.FC<SeatMapProps> = ({
                             type="button"
                             onClick={() => handleSeatClick(seat)}
                             aria-pressed={isSelected}
-                            aria-label={`Ghế ${seat.id}, ${zone.name}, ${label}, ${formatPrice(seat.price, currency)}`}
-                            title={`Ghế ${seat.id} – ${zone.name} – ${label} – ${formatPrice(seat.price, currency)}`}
+                            aria-label={`Ghế ${seat.label}, ${zone.name}, ${label}, ${formatPrice(seat.price, currency)}`}
+                            title={`Ghế ${seat.label} – ${zone.name} – ${label} – ${formatPrice(seat.price, currency)}`}
                             className={`flex size-8 select-none items-center justify-center rounded-md text-xs font-medium tabular-nums transition sm:size-9 ${seatBgClass}`}
                           >
                             {seat.number}
@@ -443,18 +448,18 @@ export const SeatMap: React.FC<SeatMapProps> = ({
           <div className="min-w-0 space-y-1.5">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-sm font-medium text-kumo-default tabular-nums">
-                Đã chọn ({selectedSeatsList.length}{limitEnabled && `/${maxSeats}`} vé):
+                Đã chọn ({selectedSeatsList.length}/{maxSeats} vé):
               </span>
               {selectedSeatsList.map(s => (
                 <span
                   key={s.id}
                   className="inline-flex items-center gap-0.5 rounded-full bg-kumo-base py-0.5 pl-2 pr-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line"
                 >
-                  <span>{s.id}</span>
+                  <span>{s.label}</span>
                   <button
                     type="button"
                     onClick={() => handleSeatClick(s)}
-                    aria-label={`Bỏ chọn ghế ${s.id}`}
+                    aria-label={`Bỏ chọn ghế ${s.label}`}
                     className="grid size-6 place-items-center rounded-full text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-danger sm:size-4"
                   >
                     <X className="size-3" />

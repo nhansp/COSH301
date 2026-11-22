@@ -39,6 +39,8 @@ export interface EventItem {
   };
   ageRestriction?: string;
   spotifyPlaylistUrl?: string;
+  /** Only present once the event detail has loaded. */
+  maxTicketsPerUser?: number;
 }
 
 export interface User {
@@ -75,13 +77,18 @@ export interface Booking {
   purchasedAt: string;
   paymentMethod: string;
   status: 'confirmed' | 'cancelled';
+  userId?: string;
+  /** Seat IDs, used to talk to the API. */
   selectedSeats?: string[];
+  /** Human-readable seat labels ("A1"), shown to the user. */
+  seatLabels?: string[];
 }
 
 export type SeatStatus = 'available' | 'sold' | 'held' | 'selected';
 
 export interface SeatItem {
   id: string;
+  label: string;
   zoneId: string;
   zoneName: string;
   row: string;

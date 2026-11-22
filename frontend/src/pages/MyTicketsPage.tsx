@@ -138,7 +138,7 @@ export const MyTicketsPage: React.FC = () => {
                           <span className="min-w-0 break-words">
                             Vị trí ghế:{' '}
                             <strong className="font-medium text-kumo-default tabular-nums">
-                              {booking.selectedSeats.join(', ')}
+                              {(booking.seatLabels ?? booking.selectedSeats).join(', ')}
                             </strong>
                           </span>
                         </div>
@@ -252,7 +252,7 @@ export const MyTicketsPage: React.FC = () => {
               {selectedTicket.selectedSeats && selectedTicket.selectedSeats.length > 0 && (
                 <>
                   <dt className="text-kumo-subtle">Vị trí ghế</dt>
-                  <dd className="mb-2 sm:mb-0 min-w-0 break-words font-medium text-kumo-default tabular-nums">{selectedTicket.selectedSeats.join(', ')}</dd>
+                  <dd className="mb-2 sm:mb-0 min-w-0 break-words font-medium text-kumo-default tabular-nums">{(selectedTicket.seatLabels ?? selectedTicket.selectedSeats).join(', ')}</dd>
                 </>
               )}
             </dl>

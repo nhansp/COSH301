@@ -3,6 +3,13 @@ import { EventItem, SeatItem } from '../types';
 export const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80';
 export const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1600&q=80';
 
+// Matches the events.max_tickets_per_user column default.
+export const DEFAULT_MAX_TICKETS_PER_USER = 4;
+
+export function ticketLimitOf(event: EventItem): number {
+  return event.maxTicketsPerUser ?? DEFAULT_MAX_TICKETS_PER_USER;
+}
+
 /**
  * Loads events from the backend only. Seat maps, holds and checkout need the
  * event to exist server-side, so there is no client-side fallback data.
@@ -110,6 +117,10 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
       city: ev.city || 'Hà Nội',
       address: ev.venueAddress || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
       priceStart: zones.length > 0 ? Math.min(...zones.map((z: any) => z.basePrice)) : 0,
+      maxTicketsPerUser:
+        typeof ev.maxTicketsPerUser === 'number' && ev.maxTicketsPerUser > 0
+          ? ev.maxTicketsPerUser
+          : DEFAULT_MAX_TICKETS_PER_USER,
       currency: '₫',
       genre: ev.genre || 'Classical & Symphony',
       isTrending: true,
@@ -149,6 +160,7 @@ export async function apiFetchSeats(eventId: string): Promise<SeatItem[] | null>
     const data = await res.json();
     const seats: SeatItem[] = data.map((item: any) => ({
       id: item.seatId || item.label,
+      label: item.label || `${item.row}${item.number}`,
       zoneId: item.zoneId,
       zoneName: item.zoneName,
       row: item.row,

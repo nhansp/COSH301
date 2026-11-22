@@ -5,8 +5,8 @@ import { TicketQr } from '../components/TicketQr';
 import { Footer } from '../components/Footer';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
-import { formatPrice } from '../services/eventService';
-import { Booking, TicketTier } from '../types';
+import { apiFetchSeats, formatPrice, ticketLimitOf } from '../services/eventService';
+import { Booking, SeatItem, TicketTier } from '../types';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { SeatMap } from '../components/SeatMap';
 import { LogoMark } from '../components/Logo';
-import { SeatItem } from '../types';
 
 export const CheckoutPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -34,7 +33,7 @@ export const CheckoutPage: React.FC = () => {
   const initialTierId = searchParams.get('tier');
   const navigate = useNavigate();
   const { getEventById, loadEventDetail, isLoading } = useEvents();
-  const { user, createBooking } = useAuth();
+  const { user, createBooking, ticketsBookedFor } = useAuth();
 
   const event = eventId ? getEventById(eventId) : undefined;
   const needsDetail = !event || event.ticketTiers.length === 0;
@@ -54,6 +53,28 @@ export const CheckoutPage: React.FC = () => {
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>(initialSeatIds);
   const [showSeatMapModal, setShowSeatMapModal] = useState<boolean>(false);
   const [holdTimeLeft, setHoldTimeLeft] = useState<number | null>(initialSeatIds.length > 0 ? 300 : null);
+
+  // The URL only carries seat IDs; labels, zones and live prices come from the seat map API.
+  const [seatLookup, setSeatLookup] = useState<Record<string, SeatItem>>({});
+  const [seatLoadFailed, setSeatLoadFailed] = useState(false);
+  const rememberSeats = (seats: SeatItem[]) =>
+    setSeatLookup(prev => ({ ...prev, ...Object.fromEntries(seats.map(s => [s.id, s])) }));
+
+  const resolvedEventId = event?.id;
+  const hasSeatSelection = selectedSeatIds.length > 0;
+  useEffect(() => {
+    if (!resolvedEventId || !hasSeatSelection) return;
+    let cancelled = false;
+    setSeatLoadFailed(false);
+    apiFetchSeats(resolvedEventId).then(seats => {
+      if (cancelled) return;
+      if (seats) rememberSeats(seats);
+      else setSeatLoadFailed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedEventId, hasSeatSelection]);
 
   const [selectedTier, setSelectedTier] = useState<TicketTier | null>(null);
   const [quantity, setQuantity] = useState(initialSeatIds.length > 0 ? initialSeatIds.length : 1);
@@ -124,14 +145,35 @@ export const CheckoutPage: React.FC = () => {
     );
   }
 
+  // Seats picked on the map already fix the zone, so they skip tier selection and keep their own price.
+  const isSeatBooking = selectedSeatIds.length > 0;
+  const selectedSeats = selectedSeatIds
+    .map(id => seatLookup[id])
+    .filter((seat): seat is SeatItem => seat !== undefined);
+  const seatsReady = selectedSeats.length === selectedSeatIds.length;
+  const seatLabels = selectedSeatIds.map(id => seatLookup[id]?.label ?? '…');
+  const seatZoneNames = Array.from(new Set(selectedSeats.map(s => s.zoneName)));
+
+  const ticketCount = isSeatBooking ? selectedSeatIds.length : quantity;
+  const ticketLimit = ticketLimitOf(event);
+  const seatsLeftForUser = Math.max(0, ticketLimit - ticketsBookedFor(event.id));
+  const exceedsLimit = ticketCount > seatsLeftForUser;
+
   const ticketPrice = selectedTier?.price || 0;
-  const subtotal = ticketPrice * quantity;
-  const bookingFee = ticketPrice > 0 ? Math.round(subtotal * 0.03) : 0;
+  const subtotal = isSeatBooking
+    ? selectedSeats.reduce((sum, seat) => sum + seat.price, 0)
+    : ticketPrice * quantity;
+  const bookingFee = subtotal > 0 ? Math.round(subtotal * 0.03) : 0;
   const totalAmount = subtotal + bookingFee;
+  const canConfirm =
+    !isProcessing && !exceedsLimit && (isSeatBooking ? seatsReady && selectedSeats.length > 0 : !!selectedTier);
 
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTier) return;
+    const tier = isSeatBooking
+      ? { id: selectedSeats[0]?.zoneId, name: seatZoneNames.join(', ') }
+      : selectedTier;
+    if (!canConfirm || !tier?.id) return;
 
     setIsProcessing(true);
     await new Promise(r => setTimeout(r, 1200));
@@ -144,16 +186,17 @@ export const CheckoutPage: React.FC = () => {
       venue: event.venue,
       city: event.city,
       imageUrl: event.imageUrl,
-      tierId: selectedTier.id,
-      tierName: selectedTier.name,
-      quantity,
+      tierId: tier.id,
+      tierName: tier.name,
+      quantity: ticketCount,
       totalAmount,
       currency: event.currency,
       attendeeName: attendeeName || user?.name || 'Guest Attendee',
       attendeePhone: attendeePhone || user?.phone || 'N/A',
       attendeeEmail: attendeeEmail || user?.email || 'N/A',
       paymentMethod,
-      selectedSeats: selectedSeatIds.length > 0 ? selectedSeatIds : undefined
+      selectedSeats: isSeatBooking ? selectedSeatIds : undefined,
+      seatLabels: isSeatBooking ? selectedSeats.map(s => s.label) : undefined
     });
 
     setIsProcessing(false);
@@ -189,19 +232,35 @@ export const CheckoutPage: React.FC = () => {
 
   const orderSummary = (
     <dl className="space-y-2.5">
-      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
-        <dt className="text-kumo-subtle">Hạng vé</dt>
-        <dd className="text-right font-medium text-kumo-strong">{selectedTier?.name}</dd>
-      </div>
+      {isSeatBooking ? (
+        <div className="space-y-1.5">
+          <dt className="text-kumo-subtle">Vị trí ghế</dt>
+          {selectedSeats.map(seat => (
+            <dd key={seat.id} className="flex justify-between gap-x-4">
+              <span className="min-w-0 text-kumo-default">
+                <span className="font-medium text-kumo-strong">{seat.label}</span> · {seat.zoneName}
+              </span>
+              <span className="text-kumo-default tabular-nums">{formatPrice(seat.price, event.currency)}</span>
+            </dd>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
+            <dt className="text-kumo-subtle">Hạng vé</dt>
+            <dd className="text-right font-medium text-kumo-strong">{selectedTier?.name}</dd>
+          </div>
 
-      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
-        <dt className="text-kumo-subtle">Đơn giá</dt>
-        <dd className="text-kumo-default tabular-nums">{formatPrice(ticketPrice, event.currency)}</dd>
-      </div>
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
+            <dt className="text-kumo-subtle">Đơn giá</dt>
+            <dd className="text-kumo-default tabular-nums">{formatPrice(ticketPrice, event.currency)}</dd>
+          </div>
+        </>
+      )}
 
       <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
         <dt className="text-kumo-subtle">Số lượng</dt>
-        <dd className="font-medium text-kumo-strong tabular-nums">{quantity} vé</dd>
+        <dd className="font-medium text-kumo-strong tabular-nums">{ticketCount} vé</dd>
       </div>
 
       <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
@@ -256,7 +315,7 @@ export const CheckoutPage: React.FC = () => {
                   </span>
                 </div>
                 <div className="break-words text-sm text-kumo-default">
-                  Ghế của bạn ({selectedSeatIds.join(', ')}) đang được bảo vệ chống bán trùng (Zero Double-Booking).
+                  Ghế của bạn ({seatLabels.join(', ')}) đang được bảo vệ chống bán trùng (Zero Double-Booking).
                 </div>
               </div>
             </div>
@@ -334,7 +393,9 @@ export const CheckoutPage: React.FC = () => {
                     {confirmedBooking.selectedSeats && confirmedBooking.selectedSeats.length > 0 && (
                       <div className="flex items-start gap-1.5 pt-0.5 text-sm font-medium text-kumo-success">
                         <Armchair className="mt-0.5 size-3.5 flex-shrink-0" />
-                        <span>Vị trí ghế: {confirmedBooking.selectedSeats.join(', ')}</span>
+                        <span>
+                          Vị trí ghế: {(confirmedBooking.seatLabels ?? confirmedBooking.selectedSeats).join(', ')}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -418,47 +479,22 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Step 1: Select Tier & Quantity */}
+              {/* Step 1: seats picked on the map, or tier & quantity for quick buy */}
               <section className={`${panel} space-y-4 p-4 sm:p-6`}>
                 <h3 className={sectionTitle}>
-                  <Ticket className="size-4 text-kumo-subtle" />
-                  <span>1. Chọn loại vé &amp; Số lượng</span>
+                  {isSeatBooking ? (
+                    <Armchair className="size-4 text-kumo-subtle" />
+                  ) : (
+                    <Ticket className="size-4 text-kumo-subtle" />
+                  )}
+                  <span>{isSeatBooking ? '1. Vị trí ghế đã chọn' : '1. Chọn loại vé & Số lượng'}</span>
                 </h3>
 
-                <div className="space-y-2">
-                  {event.ticketTiers.map(tier => (
-                    <label
-                      key={tier.id}
-                      onClick={() => setSelectedTier(tier)}
-                      className={`${option(selectedTier?.id === tier.id)} justify-between`}
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <input
-                          type="radio"
-                          name="ticketTier"
-                          checked={selectedTier?.id === tier.id}
-                          onChange={() => setSelectedTier(tier)}
-                          className="size-4 flex-shrink-0 accent-kumo-brand"
-                        />
-                        <div className="min-w-0">
-                          <div className="font-medium text-kumo-strong">{tier.name}</div>
-                          <div className="text-sm text-kumo-subtle">{tier.description}</div>
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0 text-right font-semibold text-kumo-strong tabular-nums">
-                        {formatPrice(tier.price, event.currency)}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-
-                {/* Selected Seats Display or Quantity selector */}
-                {selectedSeatIds.length > 0 ? (
-                  <div className="space-y-2 border-t border-kumo-hairline pt-3">
+                {isSeatBooking ? (
+                  <div className="space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                      <span className="flex items-center gap-1.5 font-medium text-kumo-default">
-                        <Armchair className="size-4 text-kumo-success" />
-                        <span>Vị trí ghế đã chọn ({selectedSeatIds.length} vé):</span>
+                      <span className="font-medium text-kumo-default">
+                        {ticketCount} vé · {seatZoneNames.join(', ') || 'Đang tải thông tin ghế...'}
                       </span>
                       <button
                         type="button"
@@ -468,18 +504,56 @@ export const CheckoutPage: React.FC = () => {
                         Đổi vị trí ghế
                       </button>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedSeatIds.map(seatId => (
-                        <span
-                          key={seatId}
-                          className="rounded-full bg-kumo-tint px-2 py-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line"
-                        >
-                          {seatId}
-                        </span>
-                      ))}
-                    </div>
+                    <ul className="flex flex-wrap gap-1.5">
+                      {selectedSeatIds.map(seatId => {
+                        const seat = seatLookup[seatId];
+                        return (
+                          <li
+                            key={seatId}
+                            className="rounded-full bg-kumo-tint px-2.5 py-0.5 text-sm font-medium text-kumo-default ring ring-kumo-line"
+                          >
+                            {seat ? `${seat.label} · ${seat.zoneName}` : '…'}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {seatLoadFailed && (
+                      <p role="alert" className="flex items-start gap-2 rounded-lg bg-kumo-danger-tint px-3 py-2 text-sm text-kumo-danger">
+                        <AlertCircle className="mt-0.5 size-4 flex-shrink-0" />
+                        <span>Không tải được thông tin ghế. Vui lòng chọn lại ghế.</span>
+                      </p>
+                    )}
                   </div>
                 ) : (
+                  <div className="space-y-2">
+                    {event.ticketTiers.map(tier => (
+                      <label
+                        key={tier.id}
+                        onClick={() => setSelectedTier(tier)}
+                        className={`${option(selectedTier?.id === tier.id)} justify-between`}
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ticketTier"
+                            checked={selectedTier?.id === tier.id}
+                            onChange={() => setSelectedTier(tier)}
+                            className="size-4 flex-shrink-0 accent-kumo-brand"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-medium text-kumo-strong">{tier.name}</div>
+                            <div className="text-sm text-kumo-subtle">{tier.description}</div>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 text-right font-semibold text-kumo-strong tabular-nums">
+                          {formatPrice(tier.price, event.currency)}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {!isSeatBooking && (
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-kumo-hairline pt-3">
                     <div className="min-w-0">
                       <span className="block font-medium text-kumo-default">Số lượng vé muốn mua:</span>
@@ -507,16 +581,27 @@ export const CheckoutPage: React.FC = () => {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setQuantity(Math.min(4, quantity + 1))}
-                        disabled={quantity >= 4}
+                        onClick={() => setQuantity(Math.min(seatsLeftForUser, quantity + 1))}
+                        disabled={quantity >= seatsLeftForUser}
                         aria-label="Tăng số lượng"
                         className={stepper}
-                        title="Tối đa 4 vé theo quy định chống đầu cơ"
+                        title={`Tối đa ${ticketLimit} vé mỗi tài khoản cho sự kiện này`}
                       >
                         +
                       </button>
                     </div>
                   </div>
+                )}
+
+                {exceedsLimit && (
+                  <p role="alert" className="flex items-start gap-2 rounded-lg bg-kumo-danger-tint px-3 py-2 text-sm text-kumo-danger">
+                    <AlertCircle className="mt-0.5 size-4 flex-shrink-0" />
+                    <span>
+                      {seatsLeftForUser === 0
+                        ? `Bạn đã mua đủ ${ticketLimit} vé tối đa cho sự kiện này.`
+                        : `Mỗi tài khoản chỉ được mua tối đa ${ticketLimit} vé cho sự kiện này. Bạn còn được mua ${seatsLeftForUser} vé.`}
+                    </span>
+                  </p>
                 )}
               </section>
 
@@ -630,7 +715,7 @@ export const CheckoutPage: React.FC = () => {
 
                 {orderSummary}
 
-                <button type="submit" form="checkout-form" disabled={isProcessing} className={`mt-5 ${confirmButtonClass}`}>
+                <button type="submit" form="checkout-form" disabled={!canConfirm} className={`mt-5 ${confirmButtonClass}`}>
                   {confirmButtonContent}
                 </button>
 
@@ -667,7 +752,7 @@ export const CheckoutPage: React.FC = () => {
                 </span>
               )}
             </div>
-            <button type="submit" form="checkout-form" disabled={isProcessing} className={confirmButtonClass}>
+            <button type="submit" form="checkout-form" disabled={!canConfirm} className={confirmButtonClass}>
               {confirmButtonContent}
             </button>
           </div>
@@ -709,13 +794,15 @@ export const CheckoutPage: React.FC = () => {
               currency={event.currency}
               selectedSeatIds={selectedSeatIds}
               onSeatsChange={(seats: SeatItem[]) => {
+                rememberSeats(seats);
                 setSelectedSeatIds(seats.map(s => s.id));
               }}
               onProceedToCheckout={(seats: SeatItem[]) => {
+                rememberSeats(seats);
                 setSelectedSeatIds(seats.map(s => s.id));
                 setShowSeatMapModal(false);
               }}
-              maxSeats={4}
+              maxSeats={seatsLeftForUser}
             />
           </div>
         </div>
