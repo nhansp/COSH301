@@ -34,7 +34,7 @@ export const HoldTimer: React.FC<HoldTimerProps> = ({ secondsLeft, className = '
     <span className={`inline-flex items-baseline gap-1.5 ${className}`}>
       <span className={`text-sm ${tone === 'stage' ? 'text-stage-muted' : 'text-kumo-subtle'}`}>{label}</span>
       <span
-        className={`font-display text-xl font-bold tabular-nums [font-stretch:68%] ${urgent ? 'text-seat-held' : base}`}
+        className={`font-display text-xl font-bold tabular-nums ${urgent ? 'text-seat-held' : base}`}
         aria-label={`${Math.floor(secondsLeft / 60)} phút ${secondsLeft % 60} giây`}
       >
         {formatClock(secondsLeft)}

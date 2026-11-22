@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Minus, Plus } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { PageShell } from '../components/layout/PageShell';
+import { EmptyState } from '../components/ui/EmptyState';
 import { TicketStub } from '../components/TicketStub';
 import { HoldTimer } from '../components/tickets/HoldTimer';
 import { useEvents } from '../context/EventContext';
@@ -11,16 +13,11 @@ import { useFeatures } from '../context/FeatureContext';
 import { readHoldExpiries } from '../hooks/useSeatInventory';
 import { apiFetchSeats, formatPrice, serviceFeeOf, ticketLimitOf } from '../services/eventService';
 import { ticketLabelOf, zoneKindOf } from '../services/venue';
+import { PAYMENT_METHODS } from '../services/paymentMethods';
 import { Booking, SeatItem, TicketTier } from '../types';
 
 /** Fallback when the hold was made in another tab and its expiry is unknown here. */
 const DEFAULT_HOLD_SECONDS = 300;
-
-const PAYMENT_METHODS = [
-  { id: 'momo_qr', name: 'Ví MoMo', desc: 'Quét mã QR trong ứng dụng MoMo' },
-  { id: 'vnpay', name: 'VNPAY', desc: 'Thẻ ATM nội địa hoặc QR ngân hàng' },
-  { id: 'visa_master', name: 'Thẻ quốc tế', desc: 'Visa, Mastercard, JCB' }
-] as const;
 
 export const CheckoutPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -111,24 +108,36 @@ export const CheckoutPage: React.FC = () => {
 
   if (isLoading || (isFetchingDetail && needsDetail)) {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <Navbar />
-        <p className="m-auto text-kumo-subtle">Đang tải sự kiện…</p>
-      </div>
+      <PageShell tone="stage">
+        <Navbar tone="stage" />
+        <main aria-busy="true" className="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:px-10">
+          <div className="space-y-5">
+            <div className="skeleton h-14 w-64" />
+            <div className="skeleton h-40 w-full rounded-card" />
+            <div className="skeleton h-56 w-full rounded-card" />
+          </div>
+          <div className="skeleton h-80 rounded-card" />
+        </main>
+      </PageShell>
     );
   }
 
   if (!event) {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <Navbar />
-        <div className="m-auto max-w-md px-4 text-center">
-          <h1 className="font-display text-2xl font-bold text-kumo-strong">Không tìm thấy sự kiện</h1>
-          <Link to="/" className="mt-6 inline-flex h-11 items-center rounded-lg bg-kumo-contrast px-4 font-medium text-kumo-inverse">
-            Xem lịch diễn
-          </Link>
-        </div>
-      </div>
+      <PageShell tone="stage">
+        <Navbar tone="stage" />
+        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-16 sm:px-6">
+          <EmptyState
+            title="Không tìm thấy sự kiện"
+            body="Sự kiện có thể đã kết thúc hoặc không còn mở bán."
+            action={
+              <Link to="/" className="btn btn-primary">
+                Xem lịch diễn
+              </Link>
+            }
+          />
+        </main>
+      </PageShell>
     );
   }
 
@@ -197,59 +206,44 @@ export const CheckoutPage: React.FC = () => {
 
   if (confirmedBooking) {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <Navbar />
-        <main className="mx-auto w-full max-w-xl flex-1 px-4 py-10 sm:py-14">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-kumo-strong [font-stretch:115%] sm:text-4xl">
-            Vé của bạn đã sẵn sàng
-          </h1>
-          <p className="mt-2 mb-8 text-kumo-subtle">
-            Đưa mã QR này cho nhân viên soát vé ở cổng. Vé cũng được lưu trong mục Vé của tôi.
-          </p>
+      <PageShell tone="stage">
+        <Navbar tone="stage" />
+        <main className="mx-auto w-full max-w-xl flex-1 px-4 py-12 sm:py-16">
+          <p className="inline-flex h-7 items-center rounded-full bg-kumo-success-tint px-3 text-sm font-semibold text-kumo-success">Đã thanh toán</p>
+          <h1 className="type-display mt-4 text-display-md">Vé của bạn đã sẵn sàng</h1>
+          <p className="mt-3 mb-10 text-kumo-subtle">Đưa mã QR này cho nhân viên soát vé ở cổng. Vé cũng được lưu trong mục Vé của tôi.</p>
           <TicketStub booking={confirmedBooking} reveal />
-          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-            <Link
-              to="/my-tickets"
-              className="inline-flex h-12 items-center justify-center rounded-lg bg-kumo-contrast px-5 font-semibold text-kumo-inverse"
-            >
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link to="/my-tickets" className="btn btn-primary btn-lg">
               Xem vé của tôi
             </Link>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex h-12 items-center justify-center rounded-lg bg-kumo-base px-5 font-medium text-kumo-default ring ring-kumo-line hover:bg-kumo-tint"
-            >
+            <button type="button" onClick={() => window.print()} className="btn btn-secondary btn-lg">
               In vé
             </button>
           </div>
         </main>
         <Footer />
-      </div>
+      </PageShell>
     );
   }
 
-  const panel = 'rounded-2xl bg-kumo-base p-5 ring ring-kumo-line sm:p-6';
-  const stepTitle = 'mb-4 flex items-baseline gap-3 font-display text-xl font-semibold text-kumo-strong [font-stretch:110%]';
-  const stepNumber = 'font-display text-base font-bold text-kumo-subtle tabular-nums [font-stretch:75%]';
-  const fieldLabel = 'mb-1.5 block text-sm font-medium text-kumo-default';
-  const input =
-    'h-11 w-full rounded-lg bg-kumo-control px-3 text-base text-kumo-default ring ring-kumo-line placeholder:text-kumo-placeholder focus:ring-2 focus:ring-kumo-contrast focus:outline-none';
+  const stepTitle = 'type-display mb-5 flex items-baseline gap-3 text-title';
+  const stepNumber = 'type-figure text-base text-violet';
   const option = (active: boolean) =>
-    `flex cursor-pointer items-center gap-3 rounded-xl p-3.5 ring transition-colors ${
-      active ? 'bg-kumo-tint ring-2 ring-kumo-contrast' : 'bg-kumo-base ring-kumo-line hover:bg-kumo-tint'
+    `flex cursor-pointer items-center gap-3 rounded-2xl p-4 ring transition-[background-color,box-shadow] ring-inset ${
+      active ? 'bg-kumo-tint ring-2 ring-violet' : 'bg-kumo-recessed ring-kumo-line hover:bg-kumo-tint'
     }`;
 
   const confirmLabel = isProcessing ? 'Đang xử lý…' : `Thanh toán ${formatPrice(totalAmount, event.currency)}`;
 
   const summary = (
-    <dl className="space-y-2.5">
+    <dl className="space-y-3">
       {isSeatBooking ? (
         <>
           {seatedPicks.map(seat => (
             <div key={seat.id} className="flex items-baseline justify-between gap-4">
               <dt className="min-w-0 text-kumo-default">
-                <span className="font-display text-lg font-bold text-kumo-strong [font-stretch:70%]">{seat.label}</span>{' '}
-                <span className="text-sm text-kumo-subtle">{seat.zoneName}</span>
+                <span className="type-figure text-lg text-spot">{seat.label}</span> <span className="text-sm text-kumo-subtle">{seat.zoneName}</span>
               </dt>
               <dd className="tabular-nums text-kumo-default">{formatPrice(seat.price, event.currency)}</dd>
             </div>
@@ -257,15 +251,18 @@ export const CheckoutPage: React.FC = () => {
           {standingPicks.map(group => (
             <div key={group[0].zoneId} className="flex items-baseline justify-between gap-4">
               <dt className="min-w-0 text-kumo-default">
-                <span className="font-display text-lg font-bold text-kumo-strong [font-stretch:70%]">{group.length}×</span>{' '}
-                <span className="text-sm text-kumo-subtle">{group[0].zoneName} · Vé đứng</span>
+                <span className="type-figure text-lg text-spot">{group.length}×</span>{' '}
+                <span className="text-sm text-kumo-subtle">{group[0].zoneName}, vé đứng</span>
               </dt>
-              <dd className="tabular-nums text-kumo-default">
-                {formatPrice(group.reduce((sum, s) => sum + s.price, 0), event.currency)}
-              </dd>
+              <dd className="tabular-nums text-kumo-default">{formatPrice(group.reduce((sum, s) => sum + s.price, 0), event.currency)}</dd>
             </div>
           ))}
-          {!seatsReady && !seatLoadFailed && <p className="text-sm text-kumo-subtle">Đang tải thông tin vé…</p>}
+          {!seatsReady && !seatLoadFailed && (
+            <div aria-hidden="true" className="space-y-2">
+              <div className="skeleton h-5 w-full" />
+              <div className="skeleton h-5 w-2/3" />
+            </div>
+          )}
         </>
       ) : (
         <div className="flex items-baseline justify-between gap-4">
@@ -275,47 +272,48 @@ export const CheckoutPage: React.FC = () => {
           <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, event.currency)}</dd>
         </div>
       )}
+      <div className="flex items-baseline justify-between gap-4 border-t border-kumo-hairline pt-3 text-sm">
+        <dt className="text-kumo-subtle">Tạm tính</dt>
+        <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, event.currency)}</dd>
+      </div>
       <div className="flex items-baseline justify-between gap-4 text-sm">
         <dt className="text-kumo-subtle">Phí dịch vụ (3%)</dt>
-        <dd className="tabular-nums text-kumo-subtle">{formatPrice(bookingFee, event.currency)}</dd>
+        <dd className="tabular-nums text-kumo-default">{formatPrice(bookingFee, event.currency)}</dd>
       </div>
-      <div className="flex items-baseline justify-between gap-4 border-t border-kumo-hairline pt-3">
+      <div className="flex items-baseline justify-between gap-4 border-t border-kumo-hairline pt-4">
         <dt className="font-medium text-kumo-strong">Tổng cộng</dt>
-        <dd className="font-display text-2xl font-bold tabular-nums text-kumo-strong [font-stretch:75%]">
-          {formatPrice(totalAmount, event.currency)}
-        </dd>
+        <dd className="type-figure text-3xl text-kumo-strong">{formatPrice(totalAmount, event.currency)}</dd>
       </div>
     </dl>
   );
 
   return (
-    <div className="flex min-h-dvh flex-col pb-32 lg:pb-0">
-      <Navbar />
+    <PageShell tone="stage" className="pb-32 lg:pb-0">
+      <Navbar tone="stage" />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-        <Link
-          to={isSeatBooking ? changeSeatsUrl : `/event/${event.id}`}
-          className="-ml-2 inline-flex h-10 items-center gap-1.5 rounded-md px-2 text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-default"
-        >
+      <main className="page-enter mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-16 sm:px-6 lg:px-10">
+        <Link to={isSeatBooking ? changeSeatsUrl : `/event/${event.id}`} className="btn btn-quiet btn-sm -ml-3">
           <ArrowLeft className="size-4" />
           {isSeatBooking ? 'Đổi vị trí' : 'Quay lại sự kiện'}
         </Link>
 
-        <div className="mt-2 mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+        <div className="mt-4 mb-10 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">
-            <h1 className="font-display text-3xl font-bold tracking-tight text-kumo-strong [font-stretch:115%] sm:text-4xl">
-              Thanh toán
-            </h1>
-            <p className="mt-1 text-kumo-subtle">
-              {event.title} · {event.date}, {event.time}
+            <h1 className="type-display text-display-lg">Thanh toán</h1>
+            <p className="mt-2 text-kumo-subtle">
+              {event.title}, {event.date}, {event.time}
             </p>
           </div>
-          {holdSecondsLeft !== null && <HoldTimer secondsLeft={holdSecondsLeft} />}
+          {holdSecondsLeft !== null && (
+            <div className="rounded-full bg-kumo-base px-4 py-2 ring ring-kumo-line">
+              <HoldTimer secondsLeft={holdSecondsLeft} />
+            </div>
+          )}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-8">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10">
           <div className="space-y-5">
-            <section className={panel} aria-labelledby="step-places">
+            <section className="panel p-5 sm:p-7" aria-labelledby="step-places">
               <h2 id="step-places" className={stepTitle}>
                 <span className={stepNumber}>1</span>
                 {isSeatBooking ? 'Vị trí của bạn' : 'Hạng vé và số lượng'}
@@ -325,24 +323,24 @@ export const CheckoutPage: React.FC = () => {
                 <div className="space-y-3">
                   <ul className="flex flex-wrap gap-2">
                     {seatedPicks.map(seat => (
-                      <li key={seat.id} className="flex items-baseline gap-1.5 rounded-lg bg-spot px-3 py-1.5 text-spot-ink">
-                        <span className="font-display text-xl leading-none font-bold [font-stretch:68%]">{seat.label}</span>
+                      <li key={seat.id} className="flex items-baseline gap-2 rounded-xl bg-spot px-3.5 py-2 text-spot-ink">
+                        <span className="type-figure text-xl leading-none">{seat.label}</span>
                         <span className="text-xs">{seat.zoneName}</span>
                       </li>
                     ))}
                     {standingPicks.map(group => (
-                      <li key={group[0].zoneId} className="flex items-baseline gap-1.5 rounded-lg bg-spot px-3 py-1.5 text-spot-ink">
-                        <span className="font-display text-xl leading-none font-bold [font-stretch:68%]">{group.length}×</span>
-                        <span className="text-xs">{group[0].zoneName} · Vé đứng</span>
+                      <li key={group[0].zoneId} className="flex items-baseline gap-2 rounded-xl bg-spot px-3.5 py-2 text-spot-ink">
+                        <span className="type-figure text-xl leading-none">{group.length}×</span>
+                        <span className="text-xs">{group[0].zoneName}, vé đứng</span>
                       </li>
                     ))}
                   </ul>
                   {seatLoadFailed && (
-                    <p role="alert" className="flex items-start gap-2 text-sm text-kumo-danger">
+                    <p role="alert" className="flex items-start gap-2 rounded-xl bg-kumo-danger-tint px-3.5 py-2.5 text-sm text-kumo-danger">
                       <AlertCircle className="mt-0.5 size-4 shrink-0" />
                       <span>
                         Chưa tải được thông tin vé.{' '}
-                        <Link to={changeSeatsUrl} className="underline">
+                        <Link to={changeSeatsUrl} className="underline underline-offset-2">
                           Chọn lại vị trí
                         </Link>
                       </span>
@@ -350,7 +348,7 @@ export const CheckoutPage: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="space-y-2" role="radiogroup" aria-label="Hạng vé">
                     {event.ticketTiers.map(tier => (
                       <label key={tier.id} className={`${option(selectedTier?.id === tier.id)} justify-between`}>
@@ -360,18 +358,16 @@ export const CheckoutPage: React.FC = () => {
                             name="ticketTier"
                             checked={selectedTier?.id === tier.id}
                             onChange={() => setSelectedTier(tier)}
-                            className="size-4 shrink-0 accent-kumo-contrast"
+                            className="size-4 shrink-0 accent-violet"
                           />
                           <span className="min-w-0">
                             <span className="block font-medium text-kumo-strong">{tier.name}</span>
                             <span className="block text-sm text-kumo-subtle">
-                              {tier.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'} · còn {tier.available} vé
+                              {tier.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'}, còn {tier.available} vé
                             </span>
                           </span>
                         </span>
-                        <span className="shrink-0 font-display text-lg font-semibold tabular-nums text-kumo-strong [font-stretch:75%]">
-                          {formatPrice(tier.price, event.currency)}
-                        </span>
+                        <span className="type-figure shrink-0 text-lg text-kumo-strong">{formatPrice(tier.price, event.currency)}</span>
                       </label>
                     ))}
                   </div>
@@ -383,26 +379,24 @@ export const CheckoutPage: React.FC = () => {
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                         disabled={quantity <= 1}
                         aria-label="Bớt một vé"
-                        className="grid size-11 place-items-center rounded-lg bg-kumo-base ring ring-kumo-line hover:bg-kumo-tint disabled:opacity-40"
+                        className="btn-icon ring ring-kumo-line disabled:opacity-40"
                       >
                         <Minus className="size-4" />
                       </button>
-                      <output className="w-8 text-center font-display text-2xl font-bold tabular-nums text-kumo-strong [font-stretch:68%]">
-                        {quantity}
-                      </output>
+                      <output className="type-figure w-10 text-center text-3xl text-kumo-strong">{quantity}</output>
                       <button
                         type="button"
                         onClick={() => setQuantity(Math.min(seatsLeftForUser, quantity + 1))}
                         disabled={quantity >= seatsLeftForUser}
                         aria-label="Thêm một vé"
-                        className="grid size-11 place-items-center rounded-lg bg-kumo-base ring ring-kumo-line hover:bg-kumo-tint disabled:opacity-40"
+                        className="btn-icon ring ring-kumo-line disabled:opacity-40"
                       >
                         <Plus className="size-4" />
                       </button>
                     </div>
                   </div>
                   {isEnabled('seat_map_realtime') && (
-                    <Link to={changeSeatsUrl} className="inline-flex text-sm text-kumo-link underline underline-offset-4">
+                    <Link to={changeSeatsUrl} className="link inline-flex text-sm">
                       Muốn chọn vị trí cụ thể? Mở sơ đồ chọn vé
                     </Link>
                   )}
@@ -410,7 +404,7 @@ export const CheckoutPage: React.FC = () => {
               )}
 
               {exceedsLimit && (
-                <p role="alert" className="mt-4 flex items-start gap-2 rounded-lg bg-kumo-danger-tint px-3 py-2 text-sm text-kumo-danger">
+                <p role="alert" className="mt-4 flex items-start gap-2 rounded-xl bg-kumo-danger-tint px-3.5 py-2.5 text-sm text-kumo-danger">
                   <AlertCircle className="mt-0.5 size-4 shrink-0" />
                   {seatsLeftForUser === 0
                     ? `Bạn đã mua đủ ${ticketLimit} vé tối đa cho sự kiện này.`
@@ -419,14 +413,14 @@ export const CheckoutPage: React.FC = () => {
               )}
             </section>
 
-            <form id="checkout-form" onSubmit={handleConfirmBooking} className={panel} aria-labelledby="step-attendee">
+            <form id="checkout-form" onSubmit={handleConfirmBooking} className="panel p-5 sm:p-7" aria-labelledby="step-attendee">
               <h2 id="step-attendee" className={stepTitle}>
                 <span className={stepNumber}>2</span>
                 Người tham dự
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="attendee-name" className={fieldLabel}>
+                  <label htmlFor="attendee-name" className="field-label">
                     Họ và tên
                   </label>
                   <input
@@ -436,12 +430,12 @@ export const CheckoutPage: React.FC = () => {
                     autoComplete="name"
                     value={attendeeName}
                     onChange={e => setAttendeeName(e.target.value)}
-                    className={input}
+                    className="field"
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="attendee-phone" className={fieldLabel}>
+                    <label htmlFor="attendee-phone" className="field-label">
                       Số điện thoại
                     </label>
                     <input
@@ -451,11 +445,11 @@ export const CheckoutPage: React.FC = () => {
                       autoComplete="tel"
                       value={attendeePhone}
                       onChange={e => setAttendeePhone(e.target.value)}
-                      className={input}
+                      className="field"
                     />
                   </div>
                   <div>
-                    <label htmlFor="attendee-email" className={fieldLabel}>
+                    <label htmlFor="attendee-email" className="field-label">
                       Email nhận vé
                     </label>
                     <input
@@ -465,14 +459,14 @@ export const CheckoutPage: React.FC = () => {
                       autoComplete="email"
                       value={attendeeEmail}
                       onChange={e => setAttendeeEmail(e.target.value)}
-                      className={input}
+                      className="field"
                     />
                   </div>
                 </div>
               </div>
             </form>
 
-            <section className={panel} aria-labelledby="step-payment">
+            <section className="panel p-5 sm:p-7" aria-labelledby="step-payment">
               <h2 id="step-payment" className={stepTitle}>
                 <span className={stepNumber}>3</span>
                 Thanh toán
@@ -485,7 +479,7 @@ export const CheckoutPage: React.FC = () => {
                       name="paymentMethod"
                       checked={paymentMethod === method.id}
                       onChange={() => setPaymentMethod(method.id)}
-                      className="size-4 shrink-0 accent-kumo-contrast"
+                      className="size-4 shrink-0 accent-violet"
                     />
                     <span className="min-w-0">
                       <span className="block font-medium text-kumo-strong">{method.name}</span>
@@ -494,44 +488,44 @@ export const CheckoutPage: React.FC = () => {
                   </label>
                 ))}
               </div>
-              <p className="mt-3 text-sm text-kumo-subtle">
-                Bản thử nghiệm: chưa kết nối cổng thanh toán, không có khoản tiền nào bị trừ.
-              </p>
+              <p className="mt-4 text-sm text-kumo-subtle">Bản thử nghiệm: chưa kết nối cổng thanh toán, không có khoản tiền nào bị trừ.</p>
             </section>
           </div>
 
-          <aside className="lg:sticky lg:top-20 lg:self-start">
-            <div className={panel}>
-              <h2 className="mb-4 font-display text-xl font-semibold text-kumo-strong [font-stretch:110%]">Đơn của bạn</h2>
-              {summary}
-              <button
-                type="submit"
-                form="checkout-form"
-                disabled={!canConfirm}
-                className="mt-5 hidden h-12 w-full items-center justify-center rounded-lg bg-kumo-contrast font-semibold text-kumo-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 lg:flex"
-              >
-                {confirmLabel}
-              </button>
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <div className="panel overflow-hidden">
+              <div className="flex items-center gap-4 border-b border-kumo-hairline p-5 sm:p-6">
+                <img src={event.imageUrl} alt="" referrerPolicy="no-referrer" className="size-16 shrink-0 rounded-xl object-cover" />
+                <div className="min-w-0">
+                  <p className="type-display line-clamp-2 text-lg leading-snug">{event.title}</p>
+                  <p className="mt-0.5 truncate text-sm text-kumo-subtle">{event.venue}</p>
+                </div>
+              </div>
+              <div className="p-5 sm:p-6">
+                <h2 className="mb-4 text-sm text-kumo-subtle">Đơn của bạn</h2>
+                {summary}
+                <button type="submit" form="checkout-form" disabled={!canConfirm} className="btn btn-primary btn-lg mt-6 hidden w-full lg:flex">
+                  {confirmLabel}
+                </button>
+              </div>
             </div>
           </aside>
         </div>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-raised/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+      <div
+        style={{ zIndex: 'var(--z-sheet)' }}
+        className="fixed inset-x-0 bottom-0 border-t border-kumo-hairline bg-kumo-canvas/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
+      >
         <div className="mx-auto max-w-6xl space-y-2">
           {holdSecondsLeft !== null && <HoldTimer secondsLeft={holdSecondsLeft} className="text-sm" />}
-          <button
-            type="submit"
-            form="checkout-form"
-            disabled={!canConfirm}
-            className="flex h-12 w-full items-center justify-center rounded-lg bg-kumo-contrast font-semibold text-kumo-inverse disabled:opacity-40"
-          >
+          <button type="submit" form="checkout-form" disabled={!canConfirm} className="btn btn-primary btn-lg w-full">
             {confirmLabel}
           </button>
         </div>
       </div>
 
       <Footer />
-    </div>
+    </PageShell>
   );
 };

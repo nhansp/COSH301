@@ -38,7 +38,7 @@ export const SeatGrid: React.FC<SeatGridProps> = ({ seats, pending, onSeatClick 
             className="grid items-center gap-1"
             style={{ gridTemplateColumns: `1.5rem repeat(${columns}, minmax(var(--seat-min), 1fr))` }}
           >
-            <span role="rowheader" className="text-center font-display text-sm font-semibold text-kumo-subtle [font-stretch:75%]">
+            <span role="rowheader" className="text-center font-display text-sm font-semibold text-kumo-subtle">
               {row}
             </span>
             {seats
@@ -53,7 +53,7 @@ export const SeatGrid: React.FC<SeatGridProps> = ({ seats, pending, onSeatClick 
                       disabled={busy}
                       aria-pressed={seat.status === 'selected'}
                       aria-label={`Ghế ${seat.label}, ${seat.zoneName}, ${formatPrice(seat.price, '₫')}, ${STATUS_LABEL[seat.status]}`}
-                      className={`grid aspect-square w-full max-w-10 place-items-center rounded-md font-display text-xs font-semibold tabular-nums transition [font-stretch:75%] ${STATUS_CLASS[seat.status]} ${
+                      className={`grid aspect-square w-full max-w-10 place-items-center rounded-md font-display text-xs font-semibold tabular-nums transition ${STATUS_CLASS[seat.status]} ${
                         busy ? 'animate-pulse' : ''
                       }`}
                     >

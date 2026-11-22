@@ -2,6 +2,8 @@ import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useStat
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Box, ChevronUp, Eye, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
+import { PageShell } from '../components/layout/PageShell';
+import { EmptyState } from '../components/ui/EmptyState';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
 import { useFeatures } from '../context/FeatureContext';
@@ -211,25 +213,35 @@ export const TicketSelectionPage: React.FC = () => {
 
   if (isLoading || (isFetchingDetail && needsDetail)) {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <Navbar />
-        <p className="m-auto text-kumo-subtle">Đang tải sự kiện…</p>
-      </div>
+      <PageShell tone="stage">
+        <Navbar tone="stage" />
+        <div aria-busy="true" className="mx-auto grid w-full max-w-[1400px] flex-1 gap-5 px-4 pt-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:px-10">
+          <div className="space-y-4">
+            <div className="skeleton h-12 w-48" />
+            <div className="skeleton h-[60svh] rounded-2xl" />
+          </div>
+          <div className="skeleton hidden h-[60svh] rounded-2xl lg:block" />
+        </div>
+      </PageShell>
     );
   }
 
   if (!event) {
     return (
-      <div className="flex min-h-dvh flex-col">
-        <Navbar />
-        <div className="m-auto max-w-md px-4 text-center">
-          <h1 className="font-display text-2xl font-bold text-kumo-strong">Không tìm thấy sự kiện</h1>
-          <p className="mt-2 text-kumo-subtle">Sự kiện có thể đã kết thúc hoặc không còn mở bán.</p>
-          <Link to="/" className="mt-6 inline-flex h-11 items-center rounded-lg bg-kumo-contrast px-4 font-medium text-kumo-inverse">
-            Xem lịch diễn
-          </Link>
-        </div>
-      </div>
+      <PageShell tone="stage">
+        <Navbar tone="stage" />
+        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-16 sm:px-6">
+          <EmptyState
+            title="Không tìm thấy sự kiện"
+            body="Sự kiện có thể đã kết thúc hoặc không còn mở bán."
+            action={
+              <Link to="/" className="btn btn-primary">
+                Xem lịch diễn
+              </Link>
+            }
+          />
+        </main>
+      </PageShell>
     );
   }
 
@@ -270,7 +282,7 @@ export const TicketSelectionPage: React.FC = () => {
       <button
         type="button"
         onClick={() => setActiveZoneId(null)}
-        className="-ml-2 inline-flex h-10 items-center gap-1.5 rounded-md px-2 text-sm text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-default"
+        className="btn btn-quiet btn-sm -ml-3"
       >
         <ArrowLeft className="size-4" />
         Quay lại toàn sân
@@ -278,7 +290,7 @@ export const TicketSelectionPage: React.FC = () => {
       <div className="mt-1 mb-3 flex items-start gap-3">
         <span aria-hidden="true" className="mt-1 h-7 w-1.5 shrink-0 rounded-full" style={{ background: activeZone.color }} />
         <div className="min-w-0">
-          <h2 className="font-display text-xl font-semibold text-kumo-strong [font-stretch:112%]">{activeZone.name}</h2>
+          <h2 className="type-display text-title">{activeZone.name}</h2>
           <p className="text-sm text-kumo-subtle">
             {activeZone.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'} · {activeZone.available === 0 ? 'Hết vé' : `còn ${activeZone.available} vé`} ·{' '}
             {formatPrice(activeZone.priceFrom, '₫')}
@@ -291,7 +303,7 @@ export const TicketSelectionPage: React.FC = () => {
         <select
           value={activeZone.id}
           onChange={e => setActiveZoneId(e.target.value)}
-          className="h-9 min-w-0 flex-1 rounded-lg bg-kumo-control px-2 text-sm text-kumo-default ring ring-kumo-line focus:outline-none focus-visible:ring-2 focus-visible:ring-kumo-contrast"
+          className="field h-10 min-w-0 flex-1 rounded-full px-3 text-sm"
         >
           {zones.map(z => (
             <option key={z.id} value={z.id}>
@@ -302,12 +314,12 @@ export const TicketSelectionPage: React.FC = () => {
         </select>
       </label>
       {povTarget && (
-        <div className="mb-4 rounded-xl bg-kumo-tint p-3">
+        <div className="mb-4 rounded-2xl bg-kumo-recessed p-3">
           {povView ? (
             <button
               type="button"
               onClick={() => setPov(null)}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-kumo-contrast px-4 font-semibold text-kumo-inverse transition-opacity hover:opacity-90"
+              className="btn btn-ink w-full"
             >
               <LogOut className="size-4" />
               Thoát góc nhìn
@@ -317,7 +329,7 @@ export const TicketSelectionPage: React.FC = () => {
               type="button"
               onClick={startPov}
               disabled={!webgl}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-kumo-contrast px-4 font-semibold text-kumo-inverse transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="btn btn-ink w-full"
             >
               <Eye className="size-4" />
               {activeZone.kind === 'standing' ? 'Xem từ khu đứng' : 'Xem từ chỗ ngồi'}
@@ -343,34 +355,28 @@ export const TicketSelectionPage: React.FC = () => {
   );
 
   return (
-    <div
-      style={accentStyle(accent)}
-      data-dim={dimmed || undefined}
-      className="house-lights flex min-h-dvh flex-col pb-28 lg:pb-0"
-    >
-      <Navbar />
+    <PageShell tone="stage" style={accentStyle(accent)} data-dim={dimmed || undefined} className="house-lights pb-28 lg:pb-0">
+      <Navbar tone="stage" />
       <NoticeToast notice={inventory.notice} onDismiss={inventory.dismissNotice} />
 
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pt-4 pb-10 sm:px-6 lg:px-10 lg:pb-6">
-        <header className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pt-3 pb-10 sm:px-6 lg:px-10 lg:pb-4">
+        <header className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">
             <Link
               to={`/event/${event.id}`}
-              className="-ml-2 inline-flex h-10 max-w-full items-center gap-1.5 rounded-md px-2 text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-default"
+              className="btn btn-quiet btn-sm -ml-3 max-w-full"
             >
               <ArrowLeft className="size-4 shrink-0" />
               <span className="truncate">{event.title}</span>
             </Link>
-            <h1 className="font-display text-3xl font-bold tracking-tight text-kumo-strong [font-stretch:118%] sm:text-4xl">
-              Chọn vé
-            </h1>
-            <p className="mt-1 text-kumo-subtle">
+            <h1 className="type-display mt-1 text-display-sm">Chọn vé</h1>
+            <p className="mt-1.5 text-kumo-subtle">
               {event.date}, {event.time} · {event.venue}
             </p>
           </div>
 
           {webgl && !seatMapOff && (
-            <div role="radiogroup" aria-label="Kiểu sơ đồ" className="flex items-center gap-0.5 rounded-lg bg-kumo-recessed p-0.5 ring ring-kumo-line">
+            <div role="radiogroup" aria-label="Kiểu sơ đồ" className="flex items-center gap-1 rounded-full bg-kumo-recessed p-1">
               {([
                 ['2d', 'Sơ đồ 2D', MapIcon],
                 ['3d', 'Sân khấu 3D', Box]
@@ -381,8 +387,8 @@ export const TicketSelectionPage: React.FC = () => {
                   role="radio"
                   aria-checked={view === value}
                   onClick={() => chooseView(value)}
-                  className={`flex h-10 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors md:h-8 ${
-                    view === value ? 'bg-kumo-base text-kumo-strong shadow-xs ring ring-kumo-line' : 'text-kumo-subtle hover:text-kumo-default'
+                  className={`flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors md:h-9 ${
+                    view === value ? 'bg-kumo-contrast text-kumo-inverse' : 'text-kumo-subtle hover:text-kumo-strong'
                   }`}
                 >
                   <Icon className="size-4" />
@@ -398,7 +404,7 @@ export const TicketSelectionPage: React.FC = () => {
             <p className="text-kumo-default">Sơ đồ chọn vé đang tạm đóng. Bạn vẫn có thể mua vé theo hạng.</p>
             <Link
               to={`/checkout/${event.id}`}
-              className="mt-4 inline-flex h-11 items-center rounded-lg bg-kumo-contrast px-4 font-medium text-kumo-inverse"
+              className="btn btn-primary mt-4"
             >
               Mua vé theo hạng
             </Link>
@@ -409,7 +415,7 @@ export const TicketSelectionPage: React.FC = () => {
             <button
               type="button"
               onClick={() => inventory.reload()}
-              className="mt-4 inline-flex h-11 items-center gap-2 rounded-lg bg-kumo-contrast px-4 font-medium text-kumo-inverse"
+              className="btn btn-ink mt-4"
             >
               <RefreshCw className="size-4" />
               Tải lại
@@ -510,7 +516,7 @@ export const TicketSelectionPage: React.FC = () => {
 
       {/* Phones keep the order in reach: a sticky bar that opens into the full summary. */}
       {mine.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-raised/95 backdrop-blur lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-canvas/95 backdrop-blur lg:hidden">
           {summaryOpen && (
             <div id="order-sheet" className="mx-auto flex max-h-[min(60dvh,34rem)] max-w-2xl flex-col border-b border-kumo-hairline px-4 pt-4 pb-3">
               <SelectionTray
@@ -537,9 +543,7 @@ export const TicketSelectionPage: React.FC = () => {
               <ChevronUp className={`size-5 shrink-0 text-kumo-subtle transition-transform ${summaryOpen ? '' : 'rotate-180'}`} />
               <span className="min-w-0">
                 <span className="flex items-baseline gap-1.5">
-                  <span className="font-display text-xl font-bold tabular-nums text-kumo-strong [font-stretch:75%]">
-                    {formatPrice(totals.total, '₫')}
-                  </span>
+                  <span className="type-figure text-xl text-kumo-strong">{formatPrice(totals.total, '₫')}</span>
                   <span className="text-xs text-kumo-subtle">đã gồm phí</span>
                 </span>
                 <span className="flex flex-wrap items-baseline gap-x-2 text-sm text-kumo-subtle">
@@ -551,14 +555,14 @@ export const TicketSelectionPage: React.FC = () => {
               </span>
             </button>
             {!summaryOpen && (
-              <button type="button" onClick={goToCheckout} className="h-12 shrink-0 rounded-lg bg-kumo-contrast px-4 font-semibold text-kumo-inverse">
+              <button type="button" onClick={goToCheckout} className="btn btn-primary h-12 shrink-0 px-5">
                 Thanh toán
               </button>
             )}
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 };
 

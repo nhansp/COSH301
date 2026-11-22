@@ -144,7 +144,7 @@ export const ZoneList: React.FC<ZoneListProps> = ({ zones, activeZoneId, heldByZ
                   </span>
                   <span className="shrink-0 text-right">
                     <span
-                      className={`block font-display text-lg leading-tight font-bold tabular-nums [font-stretch:75%] ${
+                      className={`block font-display text-lg leading-tight font-bold tabular-nums ${
                         soldOut ? 'text-kumo-subtle line-through' : 'text-kumo-strong'
                       }`}
                     >
@@ -194,7 +194,7 @@ export const ZoneDetail: React.FC<ZoneDetailProps> = ({
         </p>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="font-display text-xl font-semibold tabular-nums text-kumo-strong [font-stretch:75%]">
+            <div className="font-display text-xl font-semibold tabular-nums text-kumo-strong">
               {formatPrice(zone.priceFrom, '₫')}
             </div>
             <div className="text-sm text-kumo-subtle">mỗi vé</div>
@@ -211,7 +211,7 @@ export const ZoneDetail: React.FC<ZoneDetailProps> = ({
             </button>
             <output
               aria-live="polite"
-              className="w-8 text-center font-display text-2xl font-bold tabular-nums text-kumo-strong [font-stretch:68%]"
+              className="w-8 text-center font-display text-2xl font-bold tabular-nums text-kumo-strong"
             >
               {heldInZone}
             </output>

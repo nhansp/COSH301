@@ -150,15 +150,11 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
         <div className="mt-2 flex items-center justify-between gap-3">
           <p className="min-w-0">
             <span className="block text-sm font-medium text-kumo-strong">Tổng cộng</span>
-            <span className="block font-display text-2xl leading-tight font-bold tabular-nums text-kumo-strong [font-stretch:75%]">
+            <span className="type-figure block text-2xl leading-tight text-kumo-strong">
               {formatPrice(total, '₫')}
             </span>
           </p>
-          <button
-            type="button"
-            onClick={onCheckout}
-            className="flex h-12 shrink-0 items-center justify-center rounded-lg bg-kumo-contrast px-5 font-semibold text-kumo-inverse transition-opacity hover:opacity-90"
-          >
+          <button type="button" onClick={onCheckout} className="btn btn-primary h-12 shrink-0">
             Tiếp tục thanh toán
           </button>
         </div>
@@ -168,7 +164,7 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
 };
 
 const OrderHeading: React.FC<{ count: number; limit: number }> = ({ count, limit }) => (
-  <h2 className="font-display text-lg font-semibold text-kumo-strong [font-stretch:108%]">
+  <h2 className="type-display text-lg">
     Đơn của bạn <span className="font-sans text-sm font-normal text-kumo-subtle tabular-nums">· {count}/{limit} vé</span>
   </h2>
 );
@@ -192,7 +188,7 @@ const TicketGroup: React.FC<TicketGroupProps> = ({ seats, zone, pending, onRelea
       <div className="flex items-baseline gap-2">
         <span aria-hidden="true" className="size-2.5 shrink-0 translate-y-px rounded-full" style={{ background: zone?.color }} />
         <p className="min-w-0 flex-1 truncate font-medium text-kumo-strong">{seats[0].zoneName}</p>
-        <span className="shrink-0 font-display text-base font-semibold tabular-nums text-kumo-strong [font-stretch:75%]">
+        <span className="type-figure shrink-0 text-base text-kumo-strong">
           {formatPrice(lineTotal, '₫')}
         </span>
       </div>
@@ -219,7 +215,7 @@ const TicketGroup: React.FC<TicketGroupProps> = ({ seats, zone, pending, onRelea
         <ul className="mt-1.5 flex flex-wrap gap-1.5 pl-4.5">
           {seats.map(seat => (
             <li key={seat.id} data-seat-id={seat.id} className="flex items-center gap-0.5 rounded-lg bg-spot py-0.5 pr-0.5 pl-2 text-spot-ink">
-              <span className="font-display text-base font-bold tabular-nums [font-stretch:68%]">{seat.label}</span>
+              <span className="type-figure text-base">{seat.label}</span>
               {!samePrice && <span className="text-xs tabular-nums opacity-75">{formatPriceShort(seat.price)}</span>}
               <button
                 type="button"

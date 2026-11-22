@@ -14,8 +14,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin" />
+      <div role="status" aria-label="Đang kiểm tra đăng nhập" className="flex min-h-dvh items-center justify-center bg-kumo-canvas">
+        <div className="size-8 rounded-full border-2 border-kumo-interact border-t-violet-ink animate-spin" />
       </div>
     );
   }

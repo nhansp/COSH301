@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
+import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
 import { useFeatures } from '../context/FeatureContext';
 import { formatPrice } from '../services/eventService';
@@ -104,7 +105,7 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
                 inputMode="numeric"
                 value={draft[key]}
                 onChange={e => setDraft({ ...draft, [key]: e.target.value })}
-                className="mt-1.5 w-full h-11 sm:h-9 rounded-lg bg-kumo-control ring ring-kumo-line px-3 text-base font-normal text-kumo-default tabular-nums placeholder:text-kumo-placeholder focus:outline-none focus:ring-2 focus:ring-kumo-brand"
+                className="field mt-1.5 font-normal tabular-nums"
               />
             ) : (
               <div className="mt-1.5 rounded-lg bg-kumo-recessed px-3 py-2 text-base font-semibold text-kumo-strong tabular-nums">
@@ -125,7 +126,7 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
           <button
             type="submit"
             disabled={isSaving}
-            className="h-11 sm:h-9 px-3.5 rounded-lg bg-kumo-brand hover:bg-kumo-brand-hover text-kumo-on-brand text-base font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-ink"
           >
             <Save className="size-4" />
             <span>{isSaving ? 'Đang lưu...' : 'Lưu giá'}</span>
@@ -182,18 +183,18 @@ export const OrganizerPage: React.FC = () => {
 
   if (featuresLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin" />
-      </div>
+      <PageShell className="items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-kumo-interact border-t-violet-ink animate-spin" />
+      </PageShell>
     );
   }
   if (!consoleEnabled) return <Navigate to="/" replace />;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <PageShell>
       <Navbar />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-kumo-strong mb-6">Quản lý sự kiện</h1>
+      <main className="page-enter flex-1 max-w-page w-full mx-auto px-4 sm:px-6 lg:px-10 pt-10 pb-20">
+        <h1 className="type-display text-display-lg mb-10">Quản lý sự kiện</h1>
 
         {error && (
           <p role="alert" className="mb-4 rounded-lg px-3 py-2 text-sm bg-kumo-danger-tint text-kumo-danger flex items-start gap-2">
@@ -222,7 +223,7 @@ export const OrganizerPage: React.FC = () => {
                       aria-pressed={active}
                       className={`w-full min-h-11 text-left rounded-xl p-4 transition-colors ${
                         active
-                          ? 'bg-kumo-base ring-2 ring-kumo-brand'
+                          ? 'bg-kumo-base ring-2 ring-violet-ink'
                           : 'bg-kumo-base ring ring-kumo-line hover:ring-kumo-interact'
                       }`}
                     >
@@ -274,6 +275,6 @@ export const OrganizerPage: React.FC = () => {
         </div>
       </main>
       <Footer />
-    </div>
+    </PageShell>
   );
 };

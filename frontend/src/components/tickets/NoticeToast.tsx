@@ -17,12 +17,12 @@ export const NoticeToast: React.FC<{ notice: InventoryNotice | null; onDismiss: 
 
   const tone = notice ? TONE[notice.tone] : null;
   return (
-    <div aria-live="polite" className="pointer-events-none fixed inset-x-4 top-18 z-[60] flex justify-center">
+    <div aria-live="polite" style={{ zIndex: 'var(--z-toast)' }} className="pointer-events-none fixed inset-x-4 top-20 flex justify-center">
       {notice && tone && (
         <div
           key={notice.id}
           role={notice.tone === 'error' ? 'alert' : 'status'}
-          className="pointer-events-auto flex max-w-md items-start gap-2.5 rounded-xl bg-kumo-raised py-2.5 pr-2 pl-3.5 text-base text-kumo-default shadow-lg ring ring-kumo-line motion-safe:animate-[notice-in_240ms_var(--ease-reveal)]"
+          className="pointer-events-auto flex max-w-md items-start gap-3 rounded-2xl bg-kumo-raised py-3 pr-2 pl-4 text-base text-kumo-strong shadow-[var(--shadow-pop)] ring ring-kumo-line motion-safe:animate-[notice-in_240ms_var(--ease-reveal)]"
         >
           <tone.icon className={`mt-0.5 size-4 shrink-0 ${tone.className}`} />
           <span className="min-w-0 flex-1">{notice.text}</span>

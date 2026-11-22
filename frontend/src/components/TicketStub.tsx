@@ -27,6 +27,7 @@ interface TicketStubProps {
   notches?: boolean;
 }
 
+/** The full ticket: what the gate staff scan. Always a stage surface, whatever page it sits on. */
 export const TicketStub: React.FC<TicketStubProps> = ({ booking, reveal = false, notches = true }) => {
   const accent = useEventAccent(booking.imageUrl);
   const { codes, standing } = describePlaces(booking);
@@ -34,86 +35,75 @@ export const TicketStub: React.FC<TicketStubProps> = ({ booking, reveal = false,
 
   return (
     <article
+      data-mode="dark"
       style={accentStyle(accent)}
-      className={`relative overflow-hidden rounded-[20px] bg-kumo-raised shadow-xl ring ring-kumo-line ${
+      className={`@container relative overflow-hidden rounded-card bg-plum text-kumo-default shadow-[var(--shadow-lift)] ring ring-kumo-line ${
         reveal ? 'motion-safe:animate-[ticket-in_900ms_var(--ease-encore)_both]' : ''
       }`}
     >
-      <div className="relative h-32 overflow-hidden bg-kumo-recessed sm:h-40">
-        <img
-          src={booking.imageUrl}
-          alt=""
-          className={`size-full object-cover ${cancelled ? 'grayscale' : ''}`}
-          referrerPolicy="no-referrer"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-        <span className="absolute bottom-3 left-5 text-sm font-medium text-white/90 sm:left-6">
-          {booking.eventDate}, {booking.eventTime}
-        </span>
+      <div className="relative h-36 overflow-hidden bg-kumo-recessed sm:h-44">
+        <img src={booking.imageUrl} alt="" className={`size-full object-cover ${cancelled ? 'grayscale' : ''}`} referrerPolicy="no-referrer" />
+        <div className="absolute inset-0 bg-gradient-to-t from-plum via-plum/30 to-transparent" />
       </div>
 
-      <div className="px-5 pt-4 pb-5 sm:px-6">
-        <h2 className="font-display text-2xl leading-tight font-bold text-balance text-kumo-strong [font-stretch:112%]">
-          {booking.eventTitle}
-        </h2>
+      <div className="relative -mt-12 px-6 pb-5 sm:px-7">
+        <p className="text-sm text-kumo-subtle">
+          {booking.eventDate}, {booking.eventTime}
+        </p>
+        <h2 className="type-display mt-1 text-2xl leading-tight sm:text-3xl">{booking.eventTitle}</h2>
         <p className="mt-1 text-kumo-subtle">{booking.venue}</p>
       </div>
 
       {/* Tear line: two half-circle notches cut by the page colour. */}
-      <div aria-hidden="true" className="relative mx-5 border-t-2 border-dashed border-kumo-line">
+      <div aria-hidden="true" className="relative mx-6 border-t-2 border-dashed border-kumo-line">
         {notches && (
           <>
-            <span className="absolute -top-3 -left-8 size-6 rounded-full bg-kumo-canvas" />
-            <span className="absolute -top-3 -right-8 size-6 rounded-full bg-kumo-canvas" />
+            <span className="absolute -top-3.5 -left-9.5 size-7 rounded-full bg-kumo-canvas" />
+            <span className="absolute -top-3.5 -right-9.5 size-7 rounded-full bg-kumo-canvas" />
           </>
         )}
       </div>
 
-      <div className="relative grid gap-5 py-5 pr-5 pl-7 sm:grid-cols-[1fr_auto] sm:pr-6 sm:pl-8">
-        <span aria-hidden="true" className="absolute inset-y-0 left-0 w-2 bg-accent" />
-        <div className="min-w-0 space-y-4">
+      <div className="relative grid gap-6 py-6 pr-6 pl-8 sm:grid-cols-[1fr_auto] sm:pr-7 sm:pl-9">
+        <span aria-hidden="true" className="absolute inset-y-6 left-0 w-1.5 rounded-r-full bg-accent" />
+        <div className="min-w-0 space-y-5">
           <div>
             <div className="text-sm text-kumo-subtle">Vị trí</div>
-            <div className="relative">
-              {codes.length > 0 && (
-                <p className="font-display text-5xl leading-none font-bold tabular-nums text-kumo-strong [font-stretch:68%]">
-                  {codes.join(' ')}
-                </p>
-              )}
+            <div className="relative mt-1">
+              {codes.length > 0 && <p className="type-figure text-5xl leading-none text-spot">{codes.join(' ')}</p>}
               {standing.map(group => (
-                <p key={group.zone} className="font-display text-2xl leading-tight font-bold text-kumo-strong [font-stretch:80%]">
-                  {group.count} vé đứng · {group.zone}
+                <p key={group.zone} className="type-display text-2xl leading-tight text-spot">
+                  {group.count} vé đứng, {group.zone}
                 </p>
               ))}
               {codes.length === 0 && standing.length === 0 && (
-                <p className="font-display text-2xl font-bold text-kumo-strong [font-stretch:80%]">
-                  {booking.quantity} vé · {booking.tierName}
+                <p className="type-display text-2xl text-spot">
+                  {booking.quantity} vé {booking.tierName}
                 </p>
               )}
               {reveal && <span aria-hidden="true" className="spot-sweep pointer-events-none absolute -inset-2" />}
             </div>
-            {codes.length > 0 && <p className="mt-1 text-sm text-kumo-subtle">{booking.tierName}</p>}
+            {codes.length > 0 && <p className="mt-2 text-sm text-kumo-subtle">{booking.tierName}</p>}
           </div>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          {/* Side by side only when the ticket is wide enough; in the narrow dialog they stack. */}
+          <dl className="grid gap-x-4 gap-y-3 text-sm @lg:grid-cols-2">
             <div>
               <dt className="text-kumo-subtle">Người tham dự</dt>
-              <dd className="font-medium break-words text-kumo-default">{booking.attendeeName}</dd>
+              <dd className="mt-0.5 font-medium break-words text-kumo-strong">{booking.attendeeName}</dd>
             </div>
             <div>
               <dt className="text-kumo-subtle">Mã vé</dt>
-              <dd className="font-display text-base font-semibold tabular-nums text-kumo-strong [font-stretch:80%]">
-                {booking.bookingCode}
-              </dd>
+              <dd className="type-figure mt-0.5 text-base text-kumo-strong">{booking.bookingCode}</dd>
             </div>
           </dl>
         </div>
 
-        {/* White in both themes so gate scanners read it. */}
+        {/* White in every theme so gate scanners read it. */}
         <div className="flex flex-col items-center self-start justify-self-center rounded-xl bg-white p-3">
           {cancelled ? (
-            <div className="grid size-32 place-items-center text-center text-sm font-medium text-neutral-500">Vé đã huỷ</div>
+            <div className="grid size-36 place-items-center text-center text-sm font-medium text-neutral-500">Vé đã huỷ</div>
           ) : (
-            <TicketQr code={booking.bookingCode} className="size-32" />
+            <TicketQr code={booking.bookingCode} className="size-36" />
           )}
         </div>
       </div>

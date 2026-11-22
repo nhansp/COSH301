@@ -15,7 +15,7 @@ export const ThemeToggle: React.FC = () => {
     <div
       role="radiogroup"
       aria-label="Giao diện"
-      className="flex items-center gap-0.5 rounded-lg bg-kumo-recessed p-0.5 ring ring-kumo-line"
+      className="flex items-center gap-0.5 rounded-full bg-kumo-recessed p-1"
     >
       {OPTIONS.map(({ value, label, icon: Icon }) => {
         const active = preference === value;
@@ -28,9 +28,9 @@ export const ThemeToggle: React.FC = () => {
             aria-label={label}
             title={label}
             onClick={() => setPreference(value)}
-            className={`grid size-11 md:size-7 place-items-center rounded-md transition-colors ${
+            className={`grid size-11 place-items-center rounded-full transition-colors md:size-8 ${
               active
-                ? 'bg-kumo-base text-kumo-strong shadow-xs ring ring-kumo-line'
+                ? 'bg-kumo-base text-kumo-strong shadow-xs'
                 : 'text-kumo-subtle hover:text-kumo-default'
             }`}
           >
