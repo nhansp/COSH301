@@ -238,7 +238,7 @@ flowchart TD
 
 | Chỉ số | Mục tiêu |
 |---|---|
-| Chunk 3D sau gzip | ≤ 250 KB (đo được 259 KB, vượt 9 KB) |
+| Chunk 3D sau gzip | ≤ 250 KB (đo được 261 KB, vượt 11 KB) |
 | Draw call ở toàn sân | ≤ 45 khi có kiến trúc (ước tính khoảng 40, chưa kể lượt vẽ bóng) |
 | Khung hình khi xoay, Android tầm trung | ≥ 50 fps |
 | Bộ nhớ GPU | ≤ 64 MB |
@@ -296,7 +296,55 @@ flowchart TD
   - "Đặt lại góc nhìn" quay về hướng sân khấu;
   - "Thoát góc nhìn" đưa camera về đúng vị trí trước đó.
 - Trong góc nhìn này không chọn hay giữ ghế được, để tránh bấm nhầm.
-- Chuyển sang 2D hoặc chọn khu khác thì tự thoát góc nhìn.
+- Chuyển sang 2D thì tự thoát góc nhìn.
+- Đổi hạng vé bằng ô "Đổi hạng vé" trong bảng điều khiển thì góc nhìn đi theo hạng mới; "Quay lại toàn sân" thì thoát.
+
+### 9.4 Bảng hạng vé và đơn hàng
+
+- Mỗi hạng vé là một thẻ một cột: dấu chọn (không chỉ dựa vào màu), màu khu, tên đầy đủ, nhãn ghế ngồi hoặc khu đứng, số chỗ còn, giá nổi bật.
+- Lọc theo loại (tất cả, ghế ngồi, khu đứng; chỉ hiện khi sự kiện có cả hai) và sắp xếp theo giá hoặc số chỗ còn.
+  Không có lọc "VIP" vì backend chưa có cờ hạng cao cấp; màu bậc giá đã thể hiện thứ hạng.
+- Rê chuột hoặc focus vào một thẻ thì khu đó sáng lên trên sơ đồ 2D và 3D, camera không di chuyển.
+- Tóm tắt đơn: số vé theo từng hạng, đơn giá, tạm tính, phí dịch vụ 3% và tổng cộng.
+  Phí dịch vụ là quy tắc của frontend (`serviceFeeOf`), dùng chung với trang thanh toán nên hai nơi luôn khớp.
+- Máy tính: tóm tắt nằm cố định ở cột phải. Điện thoại: thanh cố định ở đáy, bấm vào để mở toàn bộ tóm tắt.
+
+### 9.5 Chi tiết khán đài
+
+- Ghế có mặt ngồi hơi ngửa, lưng tựa ngả ra sau và hai tay vịn; vẫn là bốn `InstancedMesh` theo trạng thái.
+- Lối đi giữa các khu cùng vòng có cầu thang, hai bậc cho mỗi hàng ghế.
+- Mép trước mỗi vòng khán đài có lan can kính và tay vịn.
+- Sân khấu có bục cao phía sau và bậc lên ở hai góc trước; màn LED có khung.
+- Toạ độ ghế và vị trí các khu không đổi.
+
+### 9.6 Nâng cấp hình ảnh
+
+- Ghế còn trống mang màu vải trung tính pha màu khu; khi đang chọn một khu, ghế trống của khu đó chuyển xanh như chú thích.
+  Ghế người khác giữ, ghế đã bán và ghế của bạn giữ nguyên quy ước trạng thái.
+- Sân khấu: hai cánh thấp hai bên, bục cao phía sau, hai cột LED dọc, màn bên lớn hơn, dải LED ở mặt trước sàn diễn.
+- Màn LED dùng một shader chung, chuyển động nhẹ ở 24 khung hình/giây; tắt chuyển động khi giảm chuyển động hoặc máy yếu.
+- Chùm sáng từ giàn sau toả lên khán phòng, thêm lớp sương thấp trên sàn đứng.
+- Vòng khán đài xa phía sau tường, mờ trong sương, chỉ để tạo cảm giác quy mô; không có ghế, không bấm được.
+- Môi trường phản chiếu nhẹ (`RoomEnvironment` sinh trên GPU, không tải file HDR) cho kim loại, kính, sàn diễn.
+- Camera mở đầu: từ cao và xa lướt vào góc ba phần tư trong khoảng một giây; bỏ qua khi giảm chuyển động.
+- Không thêm khán giả giả lập: khu đứng là vé đang bán, vẽ người lên đó dễ bị hiểu là đã kín chỗ.
+
+Chất lượng theo thiết bị:
+
+| Mức | Khi nào | Bóng đổ | LED chuyển động |
+|---|---|---|---|
+| Cao | Khung từ 1100 px, máy hơn 4 nhân | 2048 | Có |
+| Trung bình | Khung 640–1099 px, hoặc bật giảm chuyển động | 1024 | Có, trừ khi giảm chuyển động |
+| Thấp | Khung dưới 640 px, hoặc máy tối đa 4 nhân | Không | Không |
+
+Đo trên khung 1125 × 745, tỉ lệ điểm ảnh 1,25:
+
+| | Draw call mỗi khung | Thời gian mỗi khung |
+|---|---|---|
+| Bóng đổ vẽ lại mỗi khung | 54 | 12,9 ms |
+| Bóng đổ vẽ một lần (hiện tại) | 41 | 7,0 ms |
+
+Cảnh khoảng 22 nghìn tam giác. Chunk 3D sau gzip: 261 KB.
 
 ## 10. Điện thoại
 

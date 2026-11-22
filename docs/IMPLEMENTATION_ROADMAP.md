@@ -155,6 +155,8 @@ Các chỉ số chưa đạt được ghi vào PR.
 | 3. Trang chọn vé 2D | Xong | Route `/events/:id/tickets`, khu đứng chọn theo số lượng |
 | 4. Khung 3D | Xong | Đã nâng cấp phần nhìn: kiến trúc, ánh sáng, bóng đổ, bảng thông tin. Chunk 3D 259 KB sau gzip, vượt mục tiêu 9 KB |
 | 4b. Sơ đồ 2D và góc nhìn từ chỗ ngồi | Xong | Sơ đồ 2D cùng dữ liệu với 3D; xem từ ghế đang giữ hoặc từ giữa khu, đều là ước lượng |
+| 4c. Hoàn thiện chọn vé | Xong | Ghế và khán đài chi tiết hơn, bảng hạng vé mới, tóm tắt đơn có phí và tổng, rê chuột đồng bộ sơ đồ |
+| 4d. Nâng cấp hình ảnh sân khấu 3D | Xong | Sân khấu, LED động, sương, phản chiếu, ghế trung tính, ba mức chất lượng; bóng đổ vẽ một lần giảm thời gian khung từ 12,9 ms xuống 7,0 ms |
 | 5. Các trang còn lại | Xong | Trang Ban Tổ chức chỉ nhận token mới |
 | 6. Kiểm thử và tinh chỉnh | Chưa xong | Mới thử trên Chrome máy tính và khung 390 px; chưa thử thiết bị thật, trình đọc màn hình |
 
