@@ -1,95 +1,25 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, ShieldCheck } from 'lucide-react';
 import { Logo } from './Logo';
 
-interface FooterLink {
-  label: string;
-  to?: string;
-  href?: string;
-}
-
-const COLUMNS: ReadonlyArray<{ title: string; links: FooterLink[] }> = [
-  {
-    title: 'Concerts',
-    links: [
-      { label: 'All Concerts', to: '/' },
-      { label: 'Popular Events', to: '/' },
-      { label: 'Trending Venues', to: '/' },
-    ],
-  },
-  {
-    title: 'Ticket Support',
-    links: [
-      { label: 'Vé của tôi', to: '/my-tickets' },
-      { label: 'Hướng dẫn quét mã QR', href: '#help' },
-      { label: 'Câu hỏi thường gặp', href: '#faq' },
-    ],
-  },
-  {
-    title: 'Company',
-    links: [
-      { label: 'About Us', href: '#about' },
-      { label: 'Privacy Policy', href: '#privacy' },
-      { label: 'Terms of Service', href: '#terms' },
-    ],
-  },
-];
-
-const linkClass = 'text-kumo-subtle hover:text-kumo-default transition-colors';
-const socialClass =
-  'grid size-8 place-items-center rounded-lg text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint transition-colors';
-
-export const Footer: React.FC = () => {
-  return (
-    <footer className="w-full mt-auto bg-kumo-elevated border-t border-kumo-hairline">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-x-8 gap-y-10 pb-10">
-          <div className="col-span-2 space-y-3">
-            <Logo />
-            <p className="text-base text-kumo-subtle max-w-sm leading-relaxed">
-              Nền tảng khám phá và mua vé concert âm nhạc, festival và live show hàng đầu. 100% vé điện tử chính hãng, check-in mã QR bảo mật và xác thực tức thì.
-            </p>
-            <p className="flex items-start gap-2 text-sm text-kumo-success">
-              <ShieldCheck className="size-4 flex-shrink-0 mt-px" />
-              <span>Bảo vệ quyền lợi khán giả. Hoàn tiền nếu hủy show.</span>
-            </p>
-          </div>
-
-          {COLUMNS.map(column => (
-            <nav key={column.title} aria-label={column.title}>
-              <h4 className="text-sm font-semibold text-kumo-strong mb-3">{column.title}</h4>
-              <ul className="space-y-2 text-base">
-                {column.links.map(link => (
-                  <li key={link.label}>
-                    {link.to ? (
-                      <Link to={link.to} className={linkClass}>
-                        {link.label}
-                      </Link>
-                    ) : (
-                      <a href={link.href} className={linkClass}>
-                        {link.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
-        </div>
-
-        <div className="pt-6 border-t border-kumo-hairline flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-kumo-subtle">
-          <p>© 2026 SortMyScene. Live concert &amp; event ticketing.</p>
-          <div className="flex items-center gap-1">
-            <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className={socialClass}>
-              <Facebook className="size-4" />
-            </a>
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className={socialClass}>
-              <Instagram className="size-4" />
-            </a>
-          </div>
-        </div>
+export const Footer: React.FC = () => (
+  <footer className="mt-auto w-full border-t border-kumo-hairline">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-start sm:justify-between sm:px-6 lg:px-10">
+      <div className="max-w-sm space-y-2">
+        <Logo />
+        <p className="text-kumo-subtle">Mua vé concert, chọn chỗ trên sơ đồ sân khấu và nhận vé điện tử ngay.</p>
       </div>
-    </footer>
-  );
-};
+      <nav aria-label="Liên kết cuối trang" className="flex gap-6 text-base">
+        <Link to="/" className="text-kumo-subtle transition-colors hover:text-kumo-default">
+          Lịch diễn
+        </Link>
+        <Link to="/my-tickets" className="text-kumo-subtle transition-colors hover:text-kumo-default">
+          Vé của tôi
+        </Link>
+      </nav>
+    </div>
+    <div className="mx-auto max-w-6xl border-t border-kumo-hairline px-4 py-5 text-sm text-kumo-subtle sm:px-6 lg:px-10">
+      <p>© 2026 SortMyScene. Ảnh sự kiện từ Wikimedia Commons theo giấy phép Creative Commons; tác giả ghi dưới từng ảnh.</p>
+    </div>
+  </footer>
+);

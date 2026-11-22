@@ -1,9 +1,15 @@
+export type ZoneKind = 'seated' | 'standing';
+
 export interface TicketTier {
   id: string;
+  /** Zone code from the API, e.g. VIP or GA1. */
+  code?: string;
   name: string;
   description: string;
   price: number;
   available: number;
+  capacity?: number;
+  kind?: ZoneKind;
   perks: string[];
 }
 
@@ -13,6 +19,8 @@ export interface EventItem {
   title: string;
   subTitle?: string;
   imageUrl: string;
+  /** Photo attribution required by the image licence. */
+  imageCredit?: string;
   bannerUrl?: string;
   date: string;
   time: string;
@@ -90,6 +98,7 @@ export interface SeatItem {
   id: string;
   label: string;
   zoneId: string;
+  zoneCode?: string;
   zoneName: string;
   row: string;
   number: number;

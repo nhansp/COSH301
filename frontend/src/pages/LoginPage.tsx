@@ -246,14 +246,11 @@ export const LoginPage: React.FC = () => {
 
           {/* Header */}
           <div className="mb-6">
-            <div className="size-10 rounded-lg bg-kumo-recessed ring ring-kumo-line grid place-items-center mb-4 text-kumo-default">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-kumo-strong tracking-tight">
-              Đăng nhập / Xác thực OTP
+            <h1 className="font-display text-3xl font-bold tracking-tight text-kumo-strong [font-stretch:118%] sm:text-4xl">
+              Đăng nhập
             </h1>
             <p className="text-kumo-subtle mt-1">
-              Bảo mật tài khoản và lưu trữ vé điện tử chính hãng của bạn
+              Nhận mã 6 số qua tin nhắn hoặc email. Không cần mật khẩu.
             </p>
           </div>
 
@@ -400,7 +397,9 @@ export const LoginPage: React.FC = () => {
                 {otpValues.map((digit, idx) => (
                   <input
                     key={idx}
-                    ref={el => (otpInputsRef.current[idx] = el)}
+                    ref={el => {
+                      otpInputsRef.current[idx] = el;
+                    }}
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"

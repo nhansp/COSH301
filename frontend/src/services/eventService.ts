@@ -1,4 +1,5 @@
 import { EventItem, SeatItem } from '../types';
+import { zoneKindOf } from './venue';
 
 export const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80';
 export const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1600&q=80';
@@ -27,6 +28,7 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
       title: ev.title || ev.name,
       subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
       imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
+      imageCredit: ev.imageCredit || undefined,
       bannerUrl: ev.imageUrl || DEFAULT_BANNER_IMAGE,
       date: d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
       time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -59,8 +61,17 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
   });
 }
 
+/** Compact price for dense places such as the schedule and 3D labels: "9,8 tr". */
+export function formatPriceShort(amount: number): string {
+  if (amount >= 1_000_000) {
+    return `${(amount / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`;
+  }
+  if (amount >= 1_000) return `${Math.round(amount / 1_000)}k`;
+  return `${amount}₫`;
+}
+
 export function formatPrice(amount: number, currency: string = '₹'): string {
-  if (amount === 0) return 'Free Onwards';
+  if (amount === 0) return 'Miễn phí';
   if (currency === '₫') {
     return `${amount.toLocaleString('vi-VN')}₫`;
   }
@@ -109,6 +120,7 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
       title: ev.name || ev.title,
       subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
       imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
+      imageCredit: ev.imageCredit || undefined,
       bannerUrl: ev.imageUrl || DEFAULT_BANNER_IMAGE,
       date: d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
       time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -141,7 +153,10 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
       ],
       ticketTiers: zones.map((z: any) => ({
         id: z.zoneId,
+        code: z.zoneCode,
         name: z.zoneName,
+        kind: zoneKindOf(z.zoneName || ''),
+        capacity: z.capacity,
         description: `Khu vực ${z.zoneName} (${z.zoneCode})${z.floor ? ` - ${z.floor}` : ''}`,
         price: z.basePrice,
         available: availableByZone?.get(z.zoneId) ?? z.capacity,
@@ -162,6 +177,7 @@ export async function apiFetchSeats(eventId: string): Promise<SeatItem[] | null>
       id: item.seatId || item.label,
       label: item.label || `${item.row}${item.number}`,
       zoneId: item.zoneId,
+      zoneCode: item.zoneCode,
       zoneName: item.zoneName,
       row: item.row,
       number: parseInt(item.number) || 1,

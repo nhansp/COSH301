@@ -11,6 +11,7 @@ import { LoginPage } from './pages/LoginPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { MyTicketsPage } from './pages/MyTicketsPage';
 import { OrganizerPage } from './pages/OrganizerPage';
+import { TicketSelectionPage } from './pages/TicketSelectionPage';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/event/:id" element={<EventDetailPage />} />
               <Route path="/events/:id" element={<EventDetailPage />} />
+              <Route path="/events/:id/tickets" element={<TicketSelectionPage />} />
               <Route path="/login" element={<LoginPage />} />
   
               {/* Protected Routes requiring Authentication */}

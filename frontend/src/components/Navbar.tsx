@@ -1,124 +1,75 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, ChevronDown, LogOut, Ticket, Check, Menu, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown, LogOut, Menu, Ticket, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useEvents } from '../context/EventContext';
 import { useFeatures } from '../context/FeatureContext';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 
-const CITIES = ['All Cities', 'Mumbai', 'Hồ Chí Minh', 'Hà Nội', 'Bangkok', 'Delhi', 'Bengaluru'];
-
-const menuPanel =
-  'absolute right-0 mt-2 rounded-xl bg-kumo-raised ring ring-kumo-line shadow-lg shadow-black/5 py-1.5 z-50';
-const menuItem =
-  'w-[calc(100%-0.75rem)] text-left px-3 py-1.5 mx-1.5 rounded-md text-base transition-colors flex items-center gap-2';
+const menuPanel = 'absolute right-0 mt-2 rounded-xl bg-kumo-raised py-1.5 shadow-lg ring ring-kumo-line z-50';
+const menuItem = 'mx-1.5 flex w-[calc(100%-0.75rem)] items-center gap-2 rounded-md px-3 py-2 text-left text-base transition-colors';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout, bookings } = useAuth();
-  const { filterState, setCity } = useEvents();
   const { isEnabled } = useFeatures();
   const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const showOrganizerLink = isOrganizer && isEnabled('organizer_console');
-  const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const activeTickets = bookings.filter(b => b.status === 'confirmed').length;
 
   useEffect(() => {
     setShowMobileMenu(false);
     setShowUserMenu(false);
-    setShowCityDropdown(false);
   }, [location.pathname]);
 
-  const handleLoginClick = () => {
-    navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
-  };
-
-  const selectCity = (city: string) => {
-    setCity(city);
-    setShowCityDropdown(false);
-    setShowMobileMenu(false);
-  };
-
-  const cityLabel = filterState.city === 'All Cities' ? 'Mumbai' : filterState.city;
+  const goToLogin = () => navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
 
   const navLink = (active: boolean) =>
-    `h-8 px-2.5 rounded-md flex items-center gap-1.5 transition-colors ${
-      active
-        ? 'text-kumo-strong bg-kumo-tint'
-        : 'text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint'
+    `flex h-9 items-center gap-1.5 rounded-md px-3 transition-colors ${
+      active ? 'bg-kumo-tint text-kumo-strong' : 'text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-default'
+    }`;
+  const mobileLink = (active: boolean) =>
+    `-mx-3 flex h-12 items-center gap-2 rounded-lg px-3 text-lg transition-colors ${
+      active ? 'bg-kumo-tint font-medium text-kumo-strong' : 'text-kumo-default hover:bg-kumo-tint'
     }`;
 
-  const mobileLink = (active: boolean) =>
-    `h-11 px-3 -mx-3 rounded-lg flex items-center gap-2 text-lg transition-colors ${
-      active ? 'text-kumo-strong bg-kumo-tint font-medium' : 'text-kumo-default hover:bg-kumo-tint'
-    }`;
+  const links = (
+    <>
+      <Link to="/" className={navLink(location.pathname === '/')}>
+        Lịch diễn
+      </Link>
+      {isAuthenticated && (
+        <Link to="/my-tickets" className={navLink(location.pathname === '/my-tickets')}>
+          Vé của tôi
+          {activeTickets > 0 && (
+            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-kumo-contrast px-1.5 text-xs font-medium tabular-nums text-kumo-inverse">
+              {activeTickets}
+            </span>
+          )}
+        </Link>
+      )}
+      {showOrganizerLink && (
+        <Link to="/organizer" className={navLink(location.pathname === '/organizer')}>
+          Quản lý sự kiện
+        </Link>
+      )}
+    </>
+  );
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-kumo-hairline bg-kumo-canvas/85 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-6 min-w-0">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
+        <div className="flex min-w-0 items-center gap-6">
           <Logo />
-
-          <nav className="hidden md:flex items-center gap-1 text-base font-medium">
-            <Link to="/" className={navLink(location.pathname === '/')}>
-              Concerts & Events
-            </Link>
-            {isAuthenticated && (
-              <Link to="/my-tickets" className={navLink(location.pathname === '/my-tickets')}>
-                <Ticket className="size-4" />
-                <span>My Tickets</span>
-                {bookings.length > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 grid place-items-center rounded-full bg-kumo-brand text-kumo-on-brand text-xs font-medium tabular-nums">
-                    {bookings.length}
-                  </span>
-                )}
-              </Link>
-            )}
-            {showOrganizerLink && (
-              <Link to="/organizer" className={navLink(location.pathname === '/organizer')}>
-                Quản lý sự kiện
-              </Link>
-            )}
+          <nav aria-label="Điều hướng chính" className="hidden items-center gap-1 text-base font-medium md:flex">
+            {links}
           </nav>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="relative hidden md:block">
-            <button
-              onClick={() => setShowCityDropdown(!showCityDropdown)}
-              aria-expanded={showCityDropdown}
-              className="h-8 flex items-center gap-1.5 px-2.5 rounded-lg bg-kumo-base ring ring-kumo-line hover:bg-kumo-tint text-sm font-medium text-kumo-default transition-colors"
-            >
-              <MapPin className="size-3.5 text-kumo-subtle" />
-              <span>{cityLabel}</span>
-              <ChevronDown className="size-3.5 text-kumo-subtle" />
-            </button>
-
-            {showCityDropdown && (
-              <div className={`${menuPanel} w-48`}>
-                <p className="px-3 pt-1 pb-1.5 text-xs font-medium text-kumo-subtle">Chọn địa điểm</p>
-                {CITIES.map(c => {
-                  const active = filterState.city === c;
-                  return (
-                    <button
-                      key={c}
-                      onClick={() => selectCity(c)}
-                      className={`${menuItem} justify-between hover:bg-kumo-tint ${
-                        active ? 'text-kumo-strong font-medium' : 'text-kumo-default'
-                      }`}
-                    >
-                      {c}
-                      {active && <Check className="size-3.5 text-kumo-strong" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
           <div className="hidden md:block">
             <ThemeToggle />
           </div>
@@ -126,39 +77,29 @@ export const Navbar: React.FC = () => {
           {isAuthenticated && user ? (
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 aria-expanded={showUserMenu}
                 aria-label="Tài khoản"
-                className="h-11 md:h-8 flex items-center gap-2 pl-1 pr-1.5 md:pr-2 rounded-lg hover:bg-kumo-tint transition-colors"
+                className="flex h-11 items-center gap-2 rounded-lg pr-1.5 pl-1 transition-colors hover:bg-kumo-tint md:h-9 md:pr-2"
               >
-                <img
-                  src={user.avatar}
-                  alt=""
-                  className="size-7 md:size-6 rounded-full bg-kumo-fill ring ring-kumo-line"
-                />
-                <span className="hidden md:block text-sm font-medium text-kumo-default max-w-[90px] truncate">
-                  {user.name}
-                </span>
-                <ChevronDown className="hidden md:block size-3.5 text-kumo-subtle" />
+                <img src={user.avatar} alt="" className="size-7 rounded-full bg-kumo-fill ring ring-kumo-line" />
+                <span className="hidden max-w-[110px] truncate text-sm font-medium text-kumo-default md:block">{user.name}</span>
+                <ChevronDown className="hidden size-3.5 text-kumo-subtle md:block" />
               </button>
 
               {showUserMenu && (
-                <div className={`${menuPanel} w-56`}>
-                  <div className="px-3 pt-1 pb-2.5 mb-1 border-b border-kumo-hairline">
-                    <p className="text-xs text-kumo-subtle">Đã đăng nhập</p>
-                    <p className="text-base font-semibold text-kumo-strong truncate">{user.name}</p>
-                    <p className="text-sm text-kumo-subtle truncate">{user.phone || user.email}</p>
+                <div className={`${menuPanel} w-60`}>
+                  <div className="mb-1 border-b border-kumo-hairline px-3 pt-1 pb-2.5">
+                    <p className="truncate text-base font-semibold text-kumo-strong">{user.name}</p>
+                    <p className="truncate text-sm text-kumo-subtle">{user.phone || user.email}</p>
                   </div>
-                  <Link
-                    to="/my-tickets"
-                    onClick={() => setShowUserMenu(false)}
-                    className={`${menuItem} text-kumo-default hover:bg-kumo-tint`}
-                  >
+                  <Link to="/my-tickets" className={`${menuItem} text-kumo-default hover:bg-kumo-tint`}>
                     <Ticket className="size-4 text-kumo-subtle" />
                     Vé của tôi
-                    <span className="ml-auto text-sm text-kumo-subtle tabular-nums">{bookings.length}</span>
                   </Link>
                   <button
+                    type="button"
                     onClick={() => {
                       logout();
                       setShowUserMenu(false);
@@ -171,22 +112,25 @@ export const Navbar: React.FC = () => {
                 </div>
               )}
             </div>
-          ) : isEnabled('otp_login') && (
-            <button
-              onClick={handleLoginClick}
-              className="h-11 md:h-8 px-3 rounded-lg bg-kumo-contrast text-kumo-inverse text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
-            >
-              <span className="md:hidden">Đăng nhập</span>
-              <span className="hidden md:inline">Log in / Sign up</span>
-            </button>
+          ) : (
+            isEnabled('otp_login') && (
+              <button
+                type="button"
+                onClick={goToLogin}
+                className="h-11 rounded-lg bg-kumo-contrast px-4 text-sm font-medium whitespace-nowrap text-kumo-inverse transition-opacity hover:opacity-90 md:h-9"
+              >
+                Đăng nhập
+              </button>
+            )
           )}
 
           <button
+            type="button"
             onClick={() => setShowMobileMenu(!showMobileMenu)}
             aria-expanded={showMobileMenu}
             aria-controls="mobile-menu"
             aria-label={showMobileMenu ? 'Đóng menu' : 'Mở menu'}
-            className="md:hidden grid size-9 place-items-center rounded-lg text-kumo-default hover:bg-kumo-tint transition-colors"
+            className="grid size-11 place-items-center rounded-lg text-kumo-default transition-colors hover:bg-kumo-tint md:hidden"
           >
             {showMobileMenu ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
@@ -196,20 +140,16 @@ export const Navbar: React.FC = () => {
       {showMobileMenu && (
         <div
           id="mobile-menu"
-          className="md:hidden absolute inset-x-0 top-full max-h-[calc(100dvh-3.5rem)] overflow-y-auto bg-kumo-raised border-b border-kumo-hairline shadow-lg shadow-black/10"
+          className="absolute inset-x-0 top-full max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b border-kumo-hairline bg-kumo-raised shadow-lg md:hidden"
         >
-          <nav className="px-4 py-3 flex flex-col" aria-label="Điều hướng">
+          <nav aria-label="Điều hướng" className="flex flex-col px-4 py-3">
             <Link to="/" className={mobileLink(location.pathname === '/')}>
-              Concerts & Events
+              Lịch diễn
             </Link>
             {isAuthenticated && (
               <Link to="/my-tickets" className={mobileLink(location.pathname === '/my-tickets')}>
-                My Tickets
-                {bookings.length > 0 && (
-                  <span className="ml-auto min-w-6 h-6 px-1.5 grid place-items-center rounded-full bg-kumo-brand text-kumo-on-brand text-sm font-medium tabular-nums">
-                    {bookings.length}
-                  </span>
-                )}
+                Vé của tôi
+                {activeTickets > 0 && <span className="ml-auto text-base text-kumo-subtle tabular-nums">{activeTickets}</span>}
               </Link>
             )}
             {showOrganizerLink && (
@@ -218,34 +158,7 @@ export const Navbar: React.FC = () => {
               </Link>
             )}
           </nav>
-
-          <div className="px-4 py-3 border-t border-kumo-hairline">
-            <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-kumo-subtle">
-              <MapPin className="size-3.5" />
-              Địa điểm
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {CITIES.map(c => {
-                const active = filterState.city === c;
-                return (
-                  <button
-                    key={c}
-                    onClick={() => selectCity(c)}
-                    aria-pressed={active}
-                    className={`h-9 px-3 rounded-full text-base transition-colors ${
-                      active
-                        ? 'bg-kumo-contrast text-kumo-inverse font-medium'
-                        : 'bg-kumo-base ring ring-kumo-line text-kumo-default hover:bg-kumo-tint'
-                    }`}
-                  >
-                    {c}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-kumo-hairline flex items-center justify-between">
+          <div className="flex items-center justify-between border-t border-kumo-hairline px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <span className="text-base text-kumo-default">Giao diện</span>
             <ThemeToggle />
           </div>
