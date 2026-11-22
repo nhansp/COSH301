@@ -1,8 +1,8 @@
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown, Minus, X } from 'lucide-react';
 import { SeatItem } from '../../types';
 import { ZoneSummary } from '../../services/venue';
-import { formatPrice, serviceFeeOf, SERVICE_FEE_RATE } from '../../services/eventService';
+import { formatPrice, formatPriceShort, serviceFeeOf, SERVICE_FEE_RATE } from '../../services/eventService';
 import { HoldTimer } from './HoldTimer';
 
 interface SelectionTrayProps {
@@ -14,6 +14,11 @@ interface SelectionTrayProps {
   pending: Set<string>;
   onRelease: (seat: SeatItem) => void;
   onCheckout: () => void;
+  /** Shows a toggle that folds the ticket list away; the totals and checkout stay. */
+  collapsible?: boolean;
+  /** Caps the ticket list; it scrolls on its own past this height. */
+  listClassName?: string;
+  className?: string;
 }
 
 export interface OrderTotals {
@@ -29,11 +34,49 @@ export function orderTotals(mine: SeatItem[]): OrderTotals {
   return { subtotal, fee, total: subtotal + fee };
 }
 
-/** The order as it stands: what is held per category, what it costs, and the way to checkout. */
-export const SelectionTray: React.FC<SelectionTrayProps> = ({ mine, zones, limit, remaining, secondsLeft, pending, onRelease, onCheckout }) => {
+const byLabel = (a: SeatItem, b: SeatItem) => a.label.localeCompare(b.label, undefined, { numeric: true });
+
+/**
+ * The order as it stands. Only the ticket list grows with the order: the header (count, hold timer)
+ * and the footer (totals, checkout) keep their size, and the list scrolls inside whatever height the
+ * container leaves it.
+ */
+export const SelectionTray: React.FC<SelectionTrayProps> = ({
+  mine,
+  zones,
+  limit,
+  remaining,
+  secondsLeft,
+  pending,
+  onRelease,
+  onCheckout,
+  collapsible = false,
+  listClassName = '',
+  className = ''
+}) => {
+  const [listOpen, setListOpen] = useState(true);
+  const listId = useId();
+  const listRef = useRef<HTMLDivElement>(null);
+  const known = useRef(new Set(mine.map(s => s.id)));
+
+  // A newly held seat may land below the fold of the list: bring it into view there, without
+  // scrolling the page.
+  useEffect(() => {
+    const added = mine.find(s => !known.current.has(s.id));
+    known.current = new Set(mine.map(s => s.id));
+    const list = listRef.current;
+    if (!added || !list) return;
+    const item = list.querySelector<HTMLElement>(`[data-seat-id="${CSS.escape(added.id)}"]`);
+    if (!item) return;
+    const top = item.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+    if (top < list.scrollTop || top + item.offsetHeight > list.scrollTop + list.clientHeight) {
+      list.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
+    }
+  }, [mine]);
+
   if (mine.length === 0) {
     return (
-      <p className="text-base text-kumo-subtle">
+      <p className={`text-base text-kumo-subtle ${className}`}>
         {remaining > 0
           ? `Chọn hạng vé rồi chọn ghế. Mỗi tài khoản được mua tối đa ${limit} vé cho sự kiện này.`
           : `Bạn đã mua đủ ${limit} vé tối đa cho sự kiện này.`}
@@ -45,81 +88,152 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({ mine, zones, limit
     mine.reduce((acc, seat) => acc.set(seat.zoneId, [...(acc.get(seat.zoneId) ?? []), seat]), new Map<string, SeatItem[]>()).values()
   );
   const { subtotal, fee, total } = orderTotals(mine);
+  const showList = !collapsible || listOpen;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="font-display text-lg font-semibold text-kumo-strong [font-stretch:108%]">
-          Đơn của bạn <span className="font-sans text-sm font-normal text-kumo-subtle">· {mine.length}/{limit} vé</span>
-        </h2>
+    <div className={`flex min-h-0 flex-col ${className}`}>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 pb-2">
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => setListOpen(open => !open)}
+            aria-expanded={listOpen}
+            aria-controls={listId}
+            className="-ml-2 flex min-h-10 items-center gap-1.5 rounded-md px-2 text-left hover:bg-kumo-tint"
+          >
+            <ChevronDown className={`size-4 shrink-0 text-kumo-subtle transition-transform ${listOpen ? '' : '-rotate-90'}`} />
+            <OrderHeading count={mine.length} limit={limit} />
+          </button>
+        ) : (
+          <OrderHeading count={mine.length} limit={limit} />
+        )}
         {secondsLeft !== null && <HoldTimer secondsLeft={secondsLeft} />}
       </div>
 
-      <ul className="space-y-3">
-        {groups.map(group => {
-          const zone = zones.get(group[0].zoneId);
-          const standing = zone?.kind === 'standing';
-          const prices = new Set(group.map(s => s.price));
-          const lineTotal = group.reduce((sum, s) => sum + s.price, 0);
-          return (
-            <li key={group[0].zoneId}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="leading-snug font-medium text-kumo-strong">{group[0].zoneName}</p>
-                  <p className="text-sm text-kumo-subtle tabular-nums">
-                    {group.length} × {prices.size === 1 ? formatPrice(group[0].price, '₫') : 'giá theo từng ghế'}
-                    {standing && ' · vé đứng'}
-                  </p>
-                </div>
-                <span className="shrink-0 font-display text-base font-semibold tabular-nums text-kumo-strong [font-stretch:75%]">
-                  {formatPrice(lineTotal, '₫')}
-                </span>
-              </div>
-              {!standing && (
-                <ul className="mt-2 flex flex-wrap gap-1.5">
-                  {group.map(seat => (
-                    <li key={seat.id} className="flex items-center gap-0.5 rounded-lg bg-spot py-0.5 pr-0.5 pl-2 text-spot-ink">
-                      <span className="font-display text-base font-bold tabular-nums [font-stretch:68%]">{seat.label}</span>
-                      <button
-                        type="button"
-                        onClick={() => onRelease(seat)}
-                        disabled={pending.has(seat.id)}
-                        aria-label={`Trả ghế ${seat.label}`}
-                        className="grid size-8 place-items-center rounded-md hover:bg-black/10 disabled:opacity-50"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {showList ? (
+        <div
+          ref={listRef}
+          id={listId}
+          className={`-mx-1 min-h-0 shrink overflow-y-auto overscroll-contain border-y border-kumo-hairline px-1 py-1 ${listClassName}`}
+        >
+          <ul className="divide-y divide-kumo-hairline">
+            {groups.map(group => (
+              <TicketGroup
+                key={group[0].zoneId}
+                seats={[...group].sort(byLabel)}
+                zone={zones.get(group[0].zoneId)}
+                pending={pending}
+                onRelease={onRelease}
+              />
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p id={listId} className="shrink-0 border-y border-kumo-hairline py-2 text-sm text-kumo-subtle">
+          {groups.map(g => `${g[0].zoneName} × ${g.length}`).join(', ')}
+        </p>
+      )}
 
-      <dl className="space-y-1.5 border-t border-kumo-hairline pt-3 text-sm">
-        <div className="flex justify-between gap-3">
-          <dt className="text-kumo-subtle">Tạm tính</dt>
-          <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, '₫')}</dd>
+      <div className="shrink-0 pt-3">
+        {remaining === 0 && <p className="mb-2 text-sm text-kumo-subtle">Đã chọn đủ {limit} vé tối đa cho sự kiện này.</p>}
+        <dl className="space-y-0.5 text-sm">
+          <div className="flex justify-between gap-3">
+            <dt className="text-kumo-subtle">Tạm tính</dt>
+            <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, '₫')}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-kumo-subtle">Phí dịch vụ ({Math.round(SERVICE_FEE_RATE * 100)}%)</dt>
+            <dd className="tabular-nums text-kumo-default">{formatPrice(fee, '₫')}</dd>
+          </div>
+        </dl>
+        {/* Total beside the button: one row less, so the list keeps more of the height. */}
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="min-w-0">
+            <span className="block text-sm font-medium text-kumo-strong">Tổng cộng</span>
+            <span className="block font-display text-2xl leading-tight font-bold tabular-nums text-kumo-strong [font-stretch:75%]">
+              {formatPrice(total, '₫')}
+            </span>
+          </p>
+          <button
+            type="button"
+            onClick={onCheckout}
+            className="flex h-12 shrink-0 items-center justify-center rounded-lg bg-kumo-contrast px-5 font-semibold text-kumo-inverse transition-opacity hover:opacity-90"
+          >
+            Tiếp tục thanh toán
+          </button>
         </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-kumo-subtle">Phí dịch vụ ({Math.round(SERVICE_FEE_RATE * 100)}%)</dt>
-          <dd className="tabular-nums text-kumo-default">{formatPrice(fee, '₫')}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-3 pt-1">
-          <dt className="font-medium text-kumo-strong">Tổng cộng</dt>
-          <dd className="font-display text-2xl font-bold tabular-nums text-kumo-strong [font-stretch:75%]">{formatPrice(total, '₫')}</dd>
-        </div>
-      </dl>
-
-      <button
-        type="button"
-        onClick={onCheckout}
-        className="flex h-12 w-full items-center justify-center rounded-lg bg-kumo-contrast px-5 font-semibold text-kumo-inverse transition-opacity hover:opacity-90"
-      >
-        Tiếp tục thanh toán
-      </button>
+      </div>
     </div>
+  );
+};
+
+const OrderHeading: React.FC<{ count: number; limit: number }> = ({ count, limit }) => (
+  <h2 className="font-display text-lg font-semibold text-kumo-strong [font-stretch:108%]">
+    Đơn của bạn <span className="font-sans text-sm font-normal text-kumo-subtle tabular-nums">· {count}/{limit} vé</span>
+  </h2>
+);
+
+interface TicketGroupProps {
+  seats: SeatItem[];
+  zone: ZoneSummary | undefined;
+  pending: Set<string>;
+  onRelease: (seat: SeatItem) => void;
+}
+
+/** One category: a single summary line, then each seat with its own remove button. */
+const TicketGroup: React.FC<TicketGroupProps> = ({ seats, zone, pending, onRelease }) => {
+  const standing = zone?.kind === 'standing';
+  const samePrice = new Set(seats.map(s => s.price)).size === 1;
+  const lineTotal = seats.reduce((sum, s) => sum + s.price, 0);
+  const last = seats[seats.length - 1];
+
+  return (
+    <li className="py-2.5">
+      <div className="flex items-baseline gap-2">
+        <span aria-hidden="true" className="size-2.5 shrink-0 translate-y-px rounded-full" style={{ background: zone?.color }} />
+        <p className="min-w-0 flex-1 truncate font-medium text-kumo-strong">{seats[0].zoneName}</p>
+        <span className="shrink-0 font-display text-base font-semibold tabular-nums text-kumo-strong [font-stretch:75%]">
+          {formatPrice(lineTotal, '₫')}
+        </span>
+      </div>
+      <p className="pl-4.5 text-sm text-kumo-subtle tabular-nums">
+        {seats.length} × {samePrice ? formatPrice(seats[0].price, '₫') : 'giá theo từng ghế'}
+        {standing && ' · vé đứng'}
+      </p>
+
+      {standing ? (
+        // Standing tickets have no seat to point at; they come off one at a time.
+        <div className="mt-1.5 pl-4.5">
+          <button
+            type="button"
+            data-seat-id={last.id}
+            onClick={() => onRelease(last)}
+            disabled={pending.has(last.id)}
+            className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-sm text-kumo-default ring ring-kumo-line hover:bg-kumo-tint disabled:opacity-50"
+          >
+            <Minus className="size-3.5" />
+            Bớt 1 vé
+          </button>
+        </div>
+      ) : (
+        <ul className="mt-1.5 flex flex-wrap gap-1.5 pl-4.5">
+          {seats.map(seat => (
+            <li key={seat.id} data-seat-id={seat.id} className="flex items-center gap-0.5 rounded-lg bg-spot py-0.5 pr-0.5 pl-2 text-spot-ink">
+              <span className="font-display text-base font-bold tabular-nums [font-stretch:68%]">{seat.label}</span>
+              {!samePrice && <span className="text-xs tabular-nums opacity-75">{formatPriceShort(seat.price)}</span>}
+              <button
+                type="button"
+                onClick={() => onRelease(seat)}
+                disabled={pending.has(seat.id)}
+                aria-label={`Trả ghế ${seat.label}`}
+                className="grid size-8 place-items-center rounded-md hover:bg-black/10 disabled:opacity-50"
+              >
+                <X className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 };

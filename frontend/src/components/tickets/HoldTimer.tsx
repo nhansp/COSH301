@@ -11,10 +11,12 @@ interface HoldTimerProps {
   className?: string;
   /** `stage` sits on the dark venue background. */
   tone?: 'page' | 'stage';
+  /** Words before the clock; tight spots use a shorter one. */
+  label?: string;
 }
 
 /** Hold countdown. Announces once when a minute is left, not every tick. */
-export const HoldTimer: React.FC<HoldTimerProps> = ({ secondsLeft, className = '', tone = 'page' }) => {
+export const HoldTimer: React.FC<HoldTimerProps> = ({ secondsLeft, className = '', tone = 'page', label = 'Giữ chỗ còn' }) => {
   const urgent = secondsLeft < 60;
   const [announcement, setAnnouncement] = useState('');
   const announced = useRef(false);
@@ -30,7 +32,7 @@ export const HoldTimer: React.FC<HoldTimerProps> = ({ secondsLeft, className = '
   const base = tone === 'stage' ? 'text-stage-ink' : 'text-kumo-strong';
   return (
     <span className={`inline-flex items-baseline gap-1.5 ${className}`}>
-      <span className={`text-sm ${tone === 'stage' ? 'text-stage-muted' : 'text-kumo-subtle'}`}>Giữ chỗ còn</span>
+      <span className={`text-sm ${tone === 'stage' ? 'text-stage-muted' : 'text-kumo-subtle'}`}>{label}</span>
       <span
         className={`font-display text-xl font-bold tabular-nums [font-stretch:68%] ${urgent ? 'text-seat-held' : base}`}
         aria-label={`${Math.floor(secondsLeft / 60)} phút ${secondsLeft % 60} giây`}

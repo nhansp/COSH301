@@ -127,6 +127,15 @@ export const TicketSelectionPage: React.FC = () => {
   // Category under the pointer in the side panel; the map lights it up without moving the camera.
   const [listHoverZoneId, setListHoverZoneId] = useState<string | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  useEffect(() => {
+    if (mine.length === 0) setSummaryOpen(false);
+  }, [mine.length]);
+  useEffect(() => {
+    if (!summaryOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSummaryOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [summaryOpen]);
 
   const chooseView = (next: '3d' | '2d') => {
     setView(next);
@@ -342,7 +351,7 @@ export const TicketSelectionPage: React.FC = () => {
       <Navbar />
       <NoticeToast notice={inventory.notice} onDismiss={inventory.dismissNotice} />
 
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pt-4 pb-10 sm:px-6 lg:px-10">
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pt-4 pb-10 sm:px-6 lg:px-10 lg:pb-6">
         <header className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">
             <Link
@@ -416,7 +425,7 @@ export const TicketSelectionPage: React.FC = () => {
               </button>
             </p>
           )}
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
             <section
               ref={frameRef}
               aria-label={shown === '3d' ? 'Sơ đồ sân khấu 3D' : 'Sơ đồ 2D nhìn từ trên xuống'}
@@ -467,8 +476,10 @@ export const TicketSelectionPage: React.FC = () => {
               )}
             </section>
 
-            <aside className="flex flex-col gap-5 lg:sticky lg:top-20 lg:h-[max(520px,calc(100dvh-14rem))] lg:self-start">
-              <div className="min-h-0 overflow-hidden overflow-y-auto overscroll-contain rounded-2xl bg-kumo-base ring ring-kumo-line lg:flex-1">
+            {/* The aside matches the venue frame. The category panel keeps at least 13rem; the order
+                summary takes what it needs up to a cap, and past that only its ticket list scrolls. */}
+            <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:h-[max(520px,calc(100dvh-14rem))] lg:self-start">
+              <div className="min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-kumo-base ring ring-kumo-line lg:min-h-52 lg:flex-1">
                 {inventory.loadState === 'loading' ? (
                   <p className="p-4 text-kumo-subtle">Đang tải sơ đồ vé…</p>
                 ) : (
@@ -476,8 +487,11 @@ export const TicketSelectionPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="hidden shrink-0 rounded-2xl bg-kumo-base p-4 ring ring-kumo-line lg:block">
+              <div className="hidden min-h-0 flex-col rounded-2xl bg-kumo-base p-4 ring ring-kumo-line lg:flex">
                 <SelectionTray
+                  collapsible
+                  className="min-h-0"
+                  listClassName="max-h-[min(18rem,32dvh)]"
                   mine={mine}
                   zones={zoneById}
                   limit={limit}
@@ -498,8 +512,9 @@ export const TicketSelectionPage: React.FC = () => {
       {mine.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-raised/95 backdrop-blur lg:hidden">
           {summaryOpen && (
-            <div id="order-sheet" className="max-h-[60dvh] overflow-y-auto border-b border-kumo-hairline px-4 py-4">
+            <div id="order-sheet" className="mx-auto flex max-h-[min(60dvh,34rem)] max-w-2xl flex-col border-b border-kumo-hairline px-4 pt-4 pb-3">
               <SelectionTray
+                className="min-h-0"
                 mine={mine}
                 zones={zoneById}
                 limit={limit}
@@ -521,18 +536,22 @@ export const TicketSelectionPage: React.FC = () => {
             >
               <ChevronUp className={`size-5 shrink-0 text-kumo-subtle transition-transform ${summaryOpen ? '' : 'rotate-180'}`} />
               <span className="min-w-0">
-                <span className="block font-display text-xl font-bold tabular-nums text-kumo-strong [font-stretch:75%]">
-                  {formatPrice(totals.total, '₫')}
+                <span className="flex items-baseline gap-1.5">
+                  <span className="font-display text-xl font-bold tabular-nums text-kumo-strong [font-stretch:75%]">
+                    {formatPrice(totals.total, '₫')}
+                  </span>
+                  <span className="text-xs text-kumo-subtle">đã gồm phí</span>
                 </span>
-                {inventory.secondsLeft !== null ? (
-                  <HoldTimer secondsLeft={inventory.secondsLeft} className="text-sm" />
-                ) : (
-                  <span className="text-sm text-kumo-subtle">{mine.length} vé, đã gồm phí</span>
-                )}
+                <span className="flex flex-wrap items-baseline gap-x-2 text-sm text-kumo-subtle">
+                  <span className="tabular-nums">
+                    {mine.length}/{limit} vé
+                  </span>
+                  {inventory.secondsLeft !== null && <HoldTimer secondsLeft={inventory.secondsLeft} label="Giữ chỗ" className="text-sm" />}
+                </span>
               </span>
             </button>
             {!summaryOpen && (
-              <button type="button" onClick={goToCheckout} className="h-12 shrink-0 rounded-lg bg-kumo-contrast px-5 font-semibold text-kumo-inverse">
+              <button type="button" onClick={goToCheckout} className="h-12 shrink-0 rounded-lg bg-kumo-contrast px-4 font-semibold text-kumo-inverse">
                 Thanh toán
               </button>
             )}
