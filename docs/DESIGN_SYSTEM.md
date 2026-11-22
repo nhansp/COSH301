@@ -1,8 +1,106 @@
 # Hệ thống thiết kế
 
 Hệ thống thiết kế cho hướng **B — Đêm diễn** trong [`CREATIVE_DIRECTION.md`](CREATIVE_DIRECTION.md).
-Đây là bản nháp chờ duyệt.
-Nếu chọn hướng khác, tài liệu này sẽ được viết lại.
+Mục 0 là bản cập nhật theo hướng **Hybrid Editorial**.
+Phần nào mục 0 nói khác thì mục 0 thắng; các mục còn lại vẫn áp dụng.
+
+## 0. Bản cập nhật: Hybrid Editorial
+
+### 0.1 Hai giọng, một bộ token
+
+| Giọng | Trang | Nền |
+|---|---|---|
+| Editorial | Trang chủ, lịch diễn, trang sự kiện, quản lý sự kiện | Giấy ấm, theo lựa chọn sáng tối của người dùng |
+| Stage | Chọn vé, thanh toán, vé của tôi, đăng nhập | Luôn tối |
+
+- Giọng do `PageShell` (`frontend/src/components/layout/PageShell.tsx`) quyết định.
+- Trang `stage` đặt `data-mode="dark"` trên khung trang, nên mọi token `kumo-*` bên trong tự chuyển sang bảng tối.
+- Trang `stage` ẩn nút đổi giao diện, vì trang luôn tối.
+- Chân trang và dải giới thiệu sơ đồ 3D ở trang chủ luôn tối, kể cả trên trang editorial.
+
+### 0.2 Màu
+
+| Token | Giá trị | Vai trò |
+|---|---|---|
+| `midnight` | `#11121A` | Nền tối, chữ trên nút coral |
+| `plum` | `#201D30` | Bề mặt tối: bảng giá, tấm vé |
+| `surface` | `#282735` | Menu, hộp thoại ở nền tối |
+| `paper` | `#F4F0EA` | Nền sáng |
+| `muted` | `#777687` | Màu trung tính phụ |
+| `violet` | `#9B7BFF` | Ngày diễn, trạng thái đang chọn, viền focus trên nền tối |
+| `violet-ink` | `#5B3FD9` sáng, `#B9A3FF` tối | Chữ và viền focus màu tím, đạt 4.5:1 trên nền |
+| `coral` | `#FF8D73` | Chỉ dùng cho hành động đẩy việc mua vé đi tiếp |
+
+- Token `kumo-*` giữ nguyên tên, chỉ đổi giá trị sang bảng trên.
+- Màu lỗi (`kumo-danger`) đỏ hơn coral, để lỗi không bị nhầm thành nút.
+- Màu nhấn lấy từ ảnh (mục 2.3) giờ chỉ còn để trang trí, ví dụ dải màu trên tấm vé.
+  Nút hành động luôn dùng coral.
+- `stage`, `spot`, màu trạng thái ghế và thang màu bậc giá không đổi, vì khung 3D được chỉnh theo chúng.
+
+### 0.3 Chữ
+
+| Họ chữ | Vai trò |
+|---|---|
+| Space Grotesk | Tiêu đề, ngày diễn, giá, mã vé, mã vị trí |
+| Be Vietnam Pro | Nội dung, nhãn, nút, biểu mẫu |
+
+- Space Grotesk trên Google Fonts có subset `vietnamese`.
+  Đã kiểm tra hiển thị đúng các chữ "Đêm", "Mỹ", "Chông".
+- Archivo bị bỏ.
+  Các lớp `font-stretch` còn lại trong `FloorPlan2D` và `VenueOverlay` không còn tác dụng; hai file này được giữ nguyên có chủ đích.
+- Thang tiêu đề: `display-2xl`, `display-xl`, `display-lg`, `display-md`, `display-sm`, `title`.
+  Hai bậc lớn nhất co giãn theo bề ngang màn hình.
+- Nội dung: 16 px trên điện thoại, 15 px từ 768 px trở lên.
+
+### 0.4 Hình khối và thành phần dùng chung
+
+- Nút luôn bo tròn hẳn (`rounded-full`).
+  Bảng và ảnh thì không, nên nhìn hình là biết đâu là nút.
+- Ảnh trong lịch diễn không bo góc.
+- Lớp dùng chung trong `index.css`:
+  - `btn` với `btn-primary`, `btn-ink`, `btn-secondary`, `btn-quiet`, `btn-danger`, `btn-icon`;
+  - `field` và `field-label` cho ô nhập;
+  - `chip` cho bộ lọc;
+  - `panel` cho bề mặt giao dịch;
+  - `link`, `type-display`, `type-figure`, `skeleton`.
+- Thành phần React mới:
+  - `PageShell`: khung trang và giọng;
+  - `EventFeatureCard`: thẻ lớn đầu nhóm nổi bật, ảnh phủ kín, có nút chọn vé;
+  - `EventTile`: thẻ chuẩn, ảnh 16:10, ngày diễn, thể loại, nơi diễn, giá từ;
+  - `Carousel`: hàng cuộn ngang có điểm dừng và nút chuyển trang;
+  - `Reveal` cùng hook `useReveal`: hiện khối khi cuộn tới;
+  - `EmptyState`: trạng thái rỗng và lỗi.
+- Lớp chồng (`z-index`) đặt bằng biến `--z-sticky`, `--z-sheet`, `--z-nav`, `--z-modal`, `--z-toast`.
+
+### 0.4a Trang chủ
+
+Thứ tự từ trên xuống:
+
+1. Dải tìm kiếm tối: từ khoá, thành phố, tháng diễn, nút Tìm.
+2. Nổi bật: một thẻ lớn và bốn thẻ nhỏ.
+   Đêm diễn sắp tới xếp trước, sau đó là đêm vừa diễn ra gần nhất.
+3. Khám phá nhanh: ô thể loại và ô thành phố, lấy từ dữ liệu thật, kèm số đêm diễn.
+4. Lịch diễn: hàng cuộn ngang, xếp theo ngày diễn.
+5. Dải giới thiệu sơ đồ chọn vé.
+
+- Khi có bộ lọc, mục 2 đến 5 được thay bằng lưới kết quả và các chip bộ lọc có thể bỏ từng cái.
+- Bộ lọc tháng chỉ liệt kê những tháng có đêm diễn.
+- Không có mục "Thịnh hành" hay "Phổ biến tuần này".
+  API chưa trả số liệu bán vé hay lượt xem; cờ `isTrending` và `isPopular` ở frontend luôn là `true`, nên không dùng được.
+
+### 0.5 Chuyển động
+
+- Mỗi trang mờ dần vào một lần (`page-enter`).
+- Ảnh trong lịch diễn mở như rèm khi cuộn tới.
+  Lớp cắt nằm trên phần tử con: phần tử bị cắt hết thì `IntersectionObserver` không bao giờ báo là đang hiện.
+- Nội dung đã nằm trong màn hình lúc tải trang thì không bị ẩn.
+- Khi bật giảm chuyển động, mọi hiệu ứng hiện khối bị tắt.
+
+### 0.6 Khung 3D
+
+- Không sửa gì trong `frontend/src/venue3d/`, `FloorPlan2D` và `VenueOverlay`.
+- Khung sân khấu giữ đúng công thức kích thước cũ.
+  Tiêu đề trang chọn vé được thu nhỏ một bậc để trang vẫn vừa màn hình khi thanh điều hướng cao hơn.
 
 ## 1. Nguyên tắc
 

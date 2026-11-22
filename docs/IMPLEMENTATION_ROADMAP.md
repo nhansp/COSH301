@@ -158,6 +158,7 @@ Các chỉ số chưa đạt được ghi vào PR.
 | 4c. Hoàn thiện chọn vé | Xong | Ghế và khán đài chi tiết hơn, bảng hạng vé mới, tóm tắt đơn có phí và tổng, rê chuột đồng bộ sơ đồ |
 | 4d. Nâng cấp hình ảnh sân khấu 3D | Xong | Sân khấu, LED động, sương, phản chiếu, ghế trung tính, ba mức chất lượng; bóng đổ vẽ một lần giảm thời gian khung từ 12,9 ms xuống 7,0 ms |
 | 4e. Tóm tắt đơn gọn | Xong | Tóm tắt đơn giữ cố định đầu (số vé, đồng hồ) và cuối (tạm tính, phí, tổng, nút thanh toán); chỉ danh sách vé cuộn và thu gọn được. Bảng hạng vé luôn còn ít nhất 13rem, khung sân khấu không đổi kích thước |
+| 4f. Thiết kế lại Hybrid Editorial | Xong | Trang khám phá nền giấy, trang giao dịch nền tối; Space Grotesk thay Archivo; không sửa khung 3D. Xem mục 0 của `DESIGN_SYSTEM.md` |
 | 5. Các trang còn lại | Xong | Trang Ban Tổ chức chỉ nhận token mới |
 | 6. Kiểm thử và tinh chỉnh | Chưa xong | Mới thử trên Chrome máy tính và khung 390 px; chưa thử thiết bị thật, trình đọc màn hình |
 
