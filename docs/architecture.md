@@ -170,7 +170,7 @@ Có ba loại thông báo:
 | `FEATURE_<TÊN>` | — | Bật/tắt riêng một cờ, ví dụ `FEATURE_TICKET_LIMIT=on` |
 | `OTP_DEMO` | `false` | `true` thì trả mã OTP của khách hàng ngay trong phản hồi |
 | `COOKIE_SECURE` | `false` | `true` khi chạy qua HTTPS |
-| `APP_ENV` | `development` | Môi trường chạy |
+| `APP_ENV` | `development` | Môi trường chạy. `production` thì tắt `/api/auth/demo-login` và `/api/tickets/reset-demo` |
 | `FRONTEND_PORT` | `3001` | Cổng trên máy chủ |
 | `COMPOSE_PROFILES`, `TUNNEL_TOKEN` | — | Đặt `tunnel` và token để mở ra Internet |
 

@@ -20,6 +20,9 @@ JOIN venues v ON e.venue_id = v.id
 WHERE e.id = $1
 LIMIT 1;
 
+-- name: EventExists :one
+SELECT EXISTS (SELECT 1 FROM events WHERE id = $1);
+
 -- name: ListEventZonesWithPrices :many
 SELECT ez.*, vz.code, vz.name AS zone_name, vz.floor, vz.capacity
 FROM event_zones ez

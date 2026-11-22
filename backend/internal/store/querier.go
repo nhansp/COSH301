@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ClampZoneSeatPrices(ctx context.Context, arg ClampZoneSeatPricesParams) (int64, error)
 	// ConsumeOTPAttempt counts one verification attempt against the newest usable code
 	// and returns it, so concurrent guesses cannot exceed the attempt limit.
 	ConsumeOTPAttempt(ctx context.Context, arg ConsumeOTPAttemptParams) (OtpVerification, error)
@@ -23,7 +24,12 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteSession(ctx context.Context, tokenHash string) error
 	DeleteUserSessions(ctx context.Context, userID pgtype.UUID) error
+	EventExists(ctx context.Context, id pgtype.UUID) (bool, error)
+	EventSeatExists(ctx context.Context, arg EventSeatExistsParams) (bool, error)
 	ExpireStaleSeatHolds(ctx context.Context) ([]ExpireStaleSeatHoldsRow, error)
+	// FindOwnedEventSeats resolves a seat reference (UUID or label) among the seats
+	// of an event that the user currently holds or has a ticket for.
+	FindOwnedEventSeats(ctx context.Context, arg FindOwnedEventSeatsParams) ([]FindOwnedEventSeatsRow, error)
 	GetEventByID(ctx context.Context, id pgtype.UUID) (GetEventByIDRow, error)
 	GetEventBySlug(ctx context.Context, slug string) (GetEventBySlugRow, error)
 	GetEventOrganizer(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
@@ -41,11 +47,16 @@ type Querier interface {
 	ListEventZonesWithPrices(ctx context.Context, eventID pgtype.UUID) ([]ListEventZonesWithPricesRow, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]ListOrganizerEventsRow, error)
 	ListPublishedEvents(ctx context.Context) ([]ListPublishedEventsRow, error)
+	ListStaffAuditLogs(ctx context.Context, arg ListStaffAuditLogsParams) ([]ListStaffAuditLogsRow, error)
+	// Cancellations recorded before the user's latest demo reset are hidden.
+	ListUserCancelledTickets(ctx context.Context, actorUserID pgtype.UUID) ([]ListUserCancelledTicketsRow, error)
 	LockUserEventAdvisory(ctx context.Context, arg LockUserEventAdvisoryParams) error
 	MarkOTPVerified(ctx context.Context, id pgtype.UUID) (int64, error)
 	NotifyChannel(ctx context.Context, arg NotifyChannelParams) error
 	ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) (SeatHold, error)
+	ReleaseUserActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ReleaseUserActiveHoldsRow, error)
 	RepriceAvailableZoneSeats(ctx context.Context, arg RepriceAvailableZoneSeatsParams) (int64, error)
+	ResetCancelledSeat(ctx context.Context, arg ResetCancelledSeatParams) error
 	ResetSeatToAvailable(ctx context.Context, arg ResetSeatToAvailableParams) error
 	SetEmailVerified(ctx context.Context, id pgtype.UUID) error
 	SetPhoneVerified(ctx context.Context, id pgtype.UUID) error
@@ -53,6 +64,7 @@ type Querier interface {
 	TryStealExpiredSeatHold(ctx context.Context, arg TryStealExpiredSeatHoldParams) (EventSeat, error)
 	UpdateEventZonePricing(ctx context.Context, arg UpdateEventZonePricingParams) (EventZone, error)
 	UpdateUserLastLogin(ctx context.Context, id pgtype.UUID) error
+	VoidUserSeatTicket(ctx context.Context, arg VoidUserSeatTicketParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

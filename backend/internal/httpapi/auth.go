@@ -123,6 +123,10 @@ func (h *AuthHandler) HandleDemoLogin(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&payload)
 
 	token, user, err := h.authService.DemoLogin(r.Context(), payload.Role, clientIP(r), r.UserAgent())
+	if errors.Is(err, service.ErrAccountInactive) {
+		writeError(w, http.StatusForbidden, err.Error())
+		return
+	}
 	if err != nil {
 		internalError(w, r, err)
 		return

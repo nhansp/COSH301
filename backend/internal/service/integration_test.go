@@ -149,3 +149,53 @@ func TestVerifyOTP_LocksAfterMaxAttempts(t *testing.T) {
 		t.Fatalf("correct code after lockout: got %v, want ErrOTPInvalid", err)
 	}
 }
+
+func TestCancel_OnlyReleasesOwnHolds(t *testing.T) {
+	pool, q := testDB(t)
+	ctx := context.Background()
+
+	var eventID, seatID pgtype.UUID
+	var seatLabel string
+	err := pool.QueryRow(ctx, `
+		SELECT es.event_id, es.seat_id, s.seat_label FROM event_seats es
+		JOIN events e ON e.id = es.event_id
+		JOIN seats s ON s.id = es.seat_id
+		WHERE es.status = 'AVAILABLE' AND e.status = 'ON_SALE'
+		LIMIT 1`).Scan(&eventID, &seatID, &seatLabel)
+	if err != nil {
+		t.Fatalf("pick seat: %v", err)
+	}
+
+	owner, other := createCustomer(t, q, 1), createCustomer(t, q, 2)
+	seats := NewSeatService(pool, q, false)
+	if _, err := seats.HoldSeat(ctx, eventID, seatID, owner); err != nil {
+		t.Fatalf("hold: %v", err)
+	}
+	t.Cleanup(func() { _ = seats.ReleaseSeat(ctx, eventID, seatID, owner) })
+
+	tickets := NewTicketService(pool, q)
+	res, err := tickets.Cancel(ctx, other, "", eventID, CancelRequest{Seats: []string{seatLabel}})
+	if err != nil {
+		t.Fatalf("cancel by other user: %v", err)
+	}
+	if len(res.ReleasedSeats) != 0 {
+		t.Fatalf("other user released %v", res.ReleasedSeats)
+	}
+
+	res, err = tickets.Cancel(ctx, owner, "", eventID, CancelRequest{Seats: []string{store.UUIDToString(seatID)}})
+	if err != nil {
+		t.Fatalf("cancel by owner: %v", err)
+	}
+	if len(res.ReleasedSeats) != 1 {
+		t.Fatalf("owner released %v, want one seat", res.ReleasedSeats)
+	}
+
+	var status string
+	if err := pool.QueryRow(ctx, `SELECT status FROM event_seats WHERE event_id = $1 AND seat_id = $2`,
+		eventID, seatID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status != "AVAILABLE" {
+		t.Fatalf("seat status = %s, want AVAILABLE", status)
+	}
+}

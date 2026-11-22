@@ -37,11 +37,12 @@ func (h *StreamHandler) HandleEventStream(w http.ResponseWriter, r *http.Request
 		http.Error(w, "invalid path", http.StatusBadRequest)
 		return
 	}
-	rawID := parts[2]
-	eventID := rawID
-	if uid, err := h.eventService.ResolveEventID(r.Context(), rawID); err == nil {
-		eventID = store.UUIDToString(uid)
+	uid, err := h.eventService.ResolveEventID(r.Context(), parts[2])
+	if err != nil {
+		writeError(w, http.StatusNotFound, "event_not_found")
+		return
 	}
+	eventID := store.UUIDToString(uid)
 
 	// SSE Headers
 	w.Header().Set("Content-Type", "text/event-stream")

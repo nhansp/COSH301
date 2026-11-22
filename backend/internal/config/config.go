@@ -17,7 +17,10 @@ type Config struct {
 	// Staff codes are only ever written to the server log.
 	OTPDemo      bool
 	CookieSecure bool
-	Features     *FeatureManager
+	// DemoMode exposes one-click demo login and demo data reset.
+	// It is off when APP_ENV=production.
+	DemoMode bool
+	Features *FeatureManager
 }
 
 func Load() *Config {
@@ -50,6 +53,7 @@ func Load() *Config {
 		CORSAllowedOrigins: origins,
 		OTPDemo:            os.Getenv("OTP_DEMO") == "true",
 		CookieSecure:       os.Getenv("COOKIE_SECURE") == "true",
+		DemoMode:           appEnv != "production",
 		Features:           NewFeatureManagerFromEnv(),
 	}
 }

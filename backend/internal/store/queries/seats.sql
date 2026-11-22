@@ -92,6 +92,9 @@ JOIN seats s ON sh.seat_id = s.id
 JOIN venue_zones vz ON s.zone_id = vz.id
 WHERE sh.event_id = $1 AND sh.user_id = $2 AND sh.status = 'ACTIVE' AND sh.expires_at > now();
 
+-- name: EventSeatExists :one
+SELECT EXISTS (SELECT 1 FROM event_seats WHERE event_id = $1 AND seat_id = $2);
+
 -- name: NotifyChannel :exec
 SELECT pg_notify($1, $2);
 

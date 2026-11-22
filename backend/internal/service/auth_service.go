@@ -266,6 +266,8 @@ func (s *AuthService) DemoLogin(ctx context.Context, role, ipAddress, userAgent 
 		}
 	} else if err != nil {
 		return "", nil, fmt.Errorf("lookup demo user: %w", err)
+	} else if user.Status != store.UserStatusACTIVE {
+		return "", nil, ErrAccountInactive
 	}
 
 	if err := s.queries.UpdateUserLastLogin(ctx, user.ID); err != nil {

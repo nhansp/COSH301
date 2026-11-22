@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrSeatNotAvailable   = errors.New("seat_not_available")
+	ErrSeatNotFound       = errors.New("seat_not_found")
 	ErrTicketLimitReached = errors.New("ticket_limit_reached")
 	ErrHoldNotFound       = errors.New("hold_not_found")
 	ErrEventNotOnSale     = errors.New("event_not_on_sale")
@@ -193,17 +194,8 @@ func (s *SeatService) HoldSeat(ctx context.Context, eventID, seatID, userID pgty
 		}
 	}
 
-	if _, err := qtx.TryLockSeat(ctx, store.TryLockSeatParams{EventID: eventID, SeatID: seatID}); err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("lock seat: %w", err)
-		}
-		// The seat may still be marked HELD by a hold the reaper has not expired yet.
-		if _, err := qtx.TryStealExpiredSeatHold(ctx, store.TryStealExpiredSeatHoldParams{EventID: eventID, SeatID: seatID}); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, ErrSeatNotAvailable
-			}
-			return nil, fmt.Errorf("take expired hold: %w", err)
-		}
+	if err := s.lockSeat(ctx, qtx, eventID, seatID); err != nil {
+		return nil, err
 	}
 
 	holdToken, err := GenerateToken()
@@ -241,6 +233,43 @@ func (s *SeatService) HoldSeat(ctx context.Context, eventID, seatID, userID pgty
 		return nil, fmt.Errorf("commit hold: %w", err)
 	}
 	return &hold, nil
+}
+
+// lockSeat marks the seat HELD inside the caller's transaction.
+func (s *SeatService) lockSeat(ctx context.Context, qtx *store.Queries, eventID, seatID pgtype.UUID) error {
+	params := store.TryLockSeatParams{EventID: eventID, SeatID: seatID}
+	if _, err := qtx.TryLockSeat(ctx, params); !errors.Is(err, pgx.ErrNoRows) {
+		if err != nil {
+			return fmt.Errorf("lock seat: %w", err)
+		}
+		return nil
+	}
+
+	// The seat may still be marked HELD by a hold the reaper has not expired yet.
+	_, err := qtx.TryStealExpiredSeatHold(ctx, store.TryStealExpiredSeatHoldParams{EventID: eventID, SeatID: seatID})
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("take expired hold: %w", err)
+	}
+
+	// The reaper may have freed the seat while the steal was waiting on its row lock.
+	if _, err := qtx.TryLockSeat(ctx, params); !errors.Is(err, pgx.ErrNoRows) {
+		if err != nil {
+			return fmt.Errorf("lock seat: %w", err)
+		}
+		return nil
+	}
+
+	exists, err := qtx.EventSeatExists(ctx, store.EventSeatExistsParams{EventID: eventID, SeatID: seatID})
+	if err != nil {
+		return fmt.Errorf("check seat: %w", err)
+	}
+	if !exists {
+		return ErrSeatNotFound
+	}
+	return ErrSeatNotAvailable
 }
 
 // ReleaseSeat releases an active hold on a seat by user.
@@ -291,6 +320,7 @@ func (s *SeatService) ExpireStaleHolds(ctx context.Context) ([]store.ExpireStale
 		return nil, err
 	}
 
+	var errs []error
 	for _, row := range expiredRows {
 		if err := notify(ctx, s.queries, SeatUpdateMessage{
 			Type:      "seat_expired",
@@ -299,9 +329,9 @@ func (s *SeatService) ExpireStaleHolds(ctx context.Context) ([]store.ExpireStale
 			Status:    "AVAILABLE",
 			Timestamp: time.Now(),
 		}); err != nil {
-			return expiredRows, fmt.Errorf("notify seat expired: %w", err)
+			errs = append(errs, fmt.Errorf("notify seat expired: %w", err))
 		}
 	}
 
-	return expiredRows, nil
+	return expiredRows, errors.Join(errs...)
 }

@@ -19,6 +19,7 @@ type RouterDependencies struct {
 	SeatService  *service.SeatService
 	RealtimeHub  *service.RealtimeHub
 	Organizer    *service.OrganizerService
+	Tickets      *service.TicketService
 }
 
 func NewRouter(deps RouterDependencies) http.Handler {
@@ -32,7 +33,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	eventHandler := NewEventHandler(deps.EventService)
 	seatHandler := NewSeatHandler(deps.SeatService, deps.AuthService, deps.EventService)
 	streamHandler := NewStreamHandler(deps.RealtimeHub, deps.EventService)
-	ticketHandler := NewTicketHandler(deps.DBPool, deps.Store, deps.AuthService, deps.EventService, deps.SeatService, deps.RealtimeHub)
+	ticketHandler := NewTicketHandler(deps.Tickets, deps.EventService)
+	anyRole := []store.UserRole{store.UserRoleCUSTOMER, store.UserRoleORGANIZER, store.UserRoleADMIN}
 
 	// 1. System Endpoints
 	mux.HandleFunc("GET /api/health", sysHandler.HandleHealth)
@@ -41,7 +43,9 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	// 2. Authentication Endpoints (gated by otp_login feature flag)
 	mux.HandleFunc("POST /api/auth/otp/request", RequireFeature(fm, config.FlagOtpLogin, otpLimiter.Wrap(authHandler.HandleRequestOTP)))
 	mux.HandleFunc("POST /api/auth/otp/verify", RequireFeature(fm, config.FlagOtpLogin, otpLimiter.Wrap(authHandler.HandleVerifyOTP)))
-	mux.HandleFunc("POST /api/auth/demo-login", authHandler.HandleDemoLogin)
+	if deps.Config.DemoMode {
+		mux.HandleFunc("POST /api/auth/demo-login", authHandler.HandleDemoLogin)
+	}
 	mux.HandleFunc("GET /api/auth/me", authHandler.HandleMe)
 	mux.HandleFunc("POST /api/auth/logout", authHandler.HandleLogout)
 
@@ -63,11 +67,17 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	mux.HandleFunc("PUT /api/organizer/events/{id}/zones/{zoneId}/pricing", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireFeature(fm, config.FlagZonePricing, RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateZonePricing))))
 
-	// 7. Ticket Cancellation & Audit Logs
-	mux.HandleFunc("POST /api/tickets/cancel", ticketHandler.HandleCancelTicket)
-	mux.HandleFunc("POST /api/tickets/reset-demo", ticketHandler.HandleResetDemoTickets)
-	mux.HandleFunc("GET /api/tickets/audit-logs", ticketHandler.HandleListAuditLogs)
-	mux.HandleFunc("GET /api/tickets/cancelled", ticketHandler.HandleListUserCancelledTickets)
+	// 7. Ticket cancellation acts on seat holds; audit logs belong to the organizer console.
+	mux.HandleFunc("POST /api/tickets/cancel", RequireFeature(fm, config.FlagSeatHold,
+		RequireRole(authHandler, anyRole, ticketHandler.HandleCancelTicket)))
+	mux.HandleFunc("GET /api/tickets/cancelled", RequireFeature(fm, config.FlagSeatHold,
+		RequireRole(authHandler, anyRole, ticketHandler.HandleListUserCancelledTickets)))
+	mux.HandleFunc("GET /api/tickets/audit-logs", RequireFeature(fm, config.FlagOrganizerConsole,
+		RequireRole(authHandler, organizerRoles, ticketHandler.HandleListAuditLogs)))
+	if deps.Config.DemoMode {
+		mux.HandleFunc("POST /api/tickets/reset-demo", RequireFeature(fm, config.FlagSeatHold,
+			RequireRole(authHandler, anyRole, ticketHandler.HandleResetDemoTickets)))
+	}
 
 	// Wrap with middlewares
 	handler := LoggingMiddleware(mux)

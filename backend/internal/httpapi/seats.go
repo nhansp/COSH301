@@ -113,6 +113,11 @@ func (h *SeatHandler) HandleHolds(w http.ResponseWriter, r *http.Request) {
 				_ = json.NewEncoder(w).Encode(map[string]string{"error": "seat_not_available"})
 				return
 			}
+			if errors.Is(err, service.ErrSeatNotFound) {
+				w.WriteHeader(http.StatusNotFound)
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": "seat_not_found"})
+				return
+			}
 			if errors.Is(err, service.ErrTicketLimitReached) {
 				w.WriteHeader(http.StatusBadRequest) // 400 Bad Request
 				_ = json.NewEncoder(w).Encode(map[string]string{"error": "ticket_limit_reached"})

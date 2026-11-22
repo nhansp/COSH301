@@ -74,6 +74,22 @@ func (q *Queries) CreateSeatHold(ctx context.Context, arg CreateSeatHoldParams) 
 	return i, err
 }
 
+const eventSeatExists = `-- name: EventSeatExists :one
+SELECT EXISTS (SELECT 1 FROM event_seats WHERE event_id = $1 AND seat_id = $2)
+`
+
+type EventSeatExistsParams struct {
+	EventID pgtype.UUID `json:"event_id"`
+	SeatID  pgtype.UUID `json:"seat_id"`
+}
+
+func (q *Queries) EventSeatExists(ctx context.Context, arg EventSeatExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, eventSeatExists, arg.EventID, arg.SeatID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const expireStaleSeatHolds = `-- name: ExpireStaleSeatHolds :many
 WITH expired AS (
     UPDATE seat_holds

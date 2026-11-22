@@ -66,6 +66,7 @@ func main() {
 		SeatService:  seatService,
 		RealtimeHub:  realtimeHub,
 		Organizer:    organizerService,
+		Tickets:      service.NewTicketService(dbPool, queries),
 	})
 
 	server := &http.Server{

@@ -128,9 +128,16 @@ func (s *EventService) GetEventDetail(ctx context.Context, identifier string) (*
 	return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.ImageCredit, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
 }
 
-// ResolveEventID resolves an identifier (UUID or slug) to a pgtype.UUID.
+// ResolveEventID resolves an existing event's UUID or slug to its UUID.
 func (s *EventService) ResolveEventID(ctx context.Context, identifier string) (pgtype.UUID, error) {
 	if uid, err := store.StringToUUID(identifier); err == nil {
+		exists, err := s.queries.EventExists(ctx, uid)
+		if err != nil {
+			return pgtype.UUID{}, fmt.Errorf("check event: %w", err)
+		}
+		if !exists {
+			return pgtype.UUID{}, fmt.Errorf("event not found: %s", identifier)
+		}
 		return uid, nil
 	}
 	e, err := s.queries.GetEventBySlug(ctx, identifier)
