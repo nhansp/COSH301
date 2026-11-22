@@ -29,7 +29,7 @@ export const SeatGrid: React.FC<SeatGridProps> = ({ seats, pending, onSeatClick 
 
   // Seats share the panel width; on touch screens they keep a 36px minimum and the grid scrolls.
   return (
-    <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1 py-2 [--seat-min:2.25rem] lg:[--seat-min:1.5rem]">
+    <div className="-mx-1 overflow-x-auto overscroll-x-contain px-1 py-2 [--seat-min:2.25rem] lg:[--seat-min:1.35rem]">
       <div role="grid" aria-label="Ghế trong khu" className="flex min-w-max flex-col gap-1 lg:min-w-0">
         {rows.map(row => (
           <div

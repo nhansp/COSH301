@@ -9,7 +9,7 @@ import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
 import { useFeatures } from '../context/FeatureContext';
 import { readHoldExpiries } from '../hooks/useSeatInventory';
-import { apiFetchSeats, formatPrice, ticketLimitOf } from '../services/eventService';
+import { apiFetchSeats, formatPrice, serviceFeeOf, ticketLimitOf } from '../services/eventService';
 import { ticketLabelOf, zoneKindOf } from '../services/venue';
 import { Booking, SeatItem, TicketTier } from '../types';
 
@@ -154,7 +154,7 @@ export const CheckoutPage: React.FC = () => {
 
   const ticketPrice = selectedTier?.price || 0;
   const subtotal = isSeatBooking ? selectedSeats.reduce((sum, seat) => sum + seat.price, 0) : ticketPrice * quantity;
-  const bookingFee = subtotal > 0 ? Math.round(subtotal * 0.03) : 0;
+  const bookingFee = serviceFeeOf(subtotal);
   const totalAmount = subtotal + bookingFee;
   const canConfirm =
     !isProcessing && !exceedsLimit && (isSeatBooking ? seatsReady && selectedSeats.length > 0 : !!selectedTier);

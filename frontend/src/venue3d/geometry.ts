@@ -138,11 +138,109 @@ export function zoneStrips(layout: VenueLayout) {
 
 /** Seat with pan, backrest and pedestal; base at y = 0, backrest towards local -Z (away from the stage). */
 export function chairGeometry() {
+  // Seat pan tipped up at the front, backrest reclined away from the stage, two armrests.
+  const pan = box(0.5, 0.08, 0.46, 0, 0, 0).rotateX(-0.08).translate(0, 0.27, 0.03);
+  const back = box(0.5, 0.46, 0.06, 0, 0.23, 0).rotateX(-0.2).translate(0, 0.3, -0.2);
   return mergeGeometries([
-    box(0.12, 0.2, 0.12, 0, 0.1, 0.02),
-    box(0.58, 0.1, 0.5, 0, 0.25, 0.02),
-    box(0.58, 0.48, 0.08, 0, 0.46, -0.22)
+    box(0.1, 0.24, 0.1, 0, 0.12, 0.02),
+    pan,
+    back,
+    box(0.05, 0.05, 0.4, -0.27, 0.42, 0.02),
+    box(0.05, 0.05, 0.4, 0.27, 0.42, 0.02)
   ])!;
+}
+
+const stairConcrete = new THREE.Color('#2a3058');
+
+/**
+ * Staircases in the aisles between neighbouring zones of a ring (two steps per row),
+ * plus a glass balustrade and handrail along the front of each ring.
+ */
+export function tierCirculation(layout: VenueLayout) {
+  const tiers = layout.zones.filter((z): z is TierGeometry => z.kind === 'tier');
+  const rings = new Map<number, TierGeometry[]>();
+  for (const t of tiers) {
+    const key = Math.round(t.innerRadius * 100);
+    rings.set(key, [...(rings.get(key) ?? []), t]);
+  }
+
+  const steps: THREE.BufferGeometry[] = [];
+  const glass: THREE.BufferGeometry[] = [];
+  const rails: THREE.BufferGeometry[] = [];
+  for (const ring of rings.values()) {
+    ring.sort((a, b) => a.startAngle - b.startAngle);
+    const first = ring[0];
+    const rows = Math.max(1, Math.round(first.rise / ROW_RISE));
+    for (let i = 0; i < ring.length - 1; i++) {
+      const a0 = ring[i].endAngle;
+      const a1 = ring[i + 1].startAngle;
+      if (a1 <= a0) continue;
+      for (let r = 0; r < rows; r++) {
+        for (let k = 0; k < 2; k++) {
+          const inner = first.innerRadius + r * ROW_DEPTH + (k * ROW_DEPTH) / 2;
+          const outer = r === rows - 1 && k === 1 ? first.outerRadius : inner + ROW_DEPTH / 2;
+          const top = first.baseHeight + r * ROW_RISE + ((k + 1) * ROW_RISE) / 2;
+          steps.push(sectorGeometry(inner, outer, a0, a1, top).translate(first.origin[0], 0, first.origin[2]).toNonIndexed());
+        }
+      }
+    }
+    const last = ring[ring.length - 1];
+    const front = first.baseHeight + ROW_RISE;
+    glass.push(
+      sectorGeometry(first.innerRadius - 0.03, first.innerRadius, first.startAngle, last.endAngle, 0.85, front)
+        .translate(first.origin[0], 0, first.origin[2])
+        .toNonIndexed()
+    );
+    rails.push(
+      sectorGeometry(first.innerRadius - 0.06, first.innerRadius + 0.03, first.startAngle, last.endAngle, 0.05, front + 0.85)
+        .translate(first.origin[0], 0, first.origin[2])
+        .toNonIndexed()
+    );
+  }
+
+  const merge = (parts: THREE.BufferGeometry[]) => {
+    const merged = parts.length > 0 ? mergeGeometries(parts)! : new THREE.BufferGeometry();
+    parts.forEach(p => p.dispose());
+    return merged;
+  };
+  const stairs = merge(steps);
+  if (stairs.getAttribute('position')) paint(stairs, stairConcrete.clone().multiplyScalar(1.35), stairConcrete, 0, tallestTier(layout));
+  return { stairs, glass: merge(glass), rails: merge(rails) };
+}
+
+/**
+ * Dim bowl of the wider arena beyond the outer wall: no seats, just scale. Open at the
+ * back, like the cut-away shell, so it never stands between the camera and the stands.
+ */
+export function arenaShell(layout: VenueLayout) {
+  const front = layout.stage.center[2] + layout.stage.depth / 2;
+  return { radius: shellRadius(layout) + 15, height: 15, origin: [0, 0, front] as const, thetaStart: 40 * DEG, thetaLength: 280 * DEG };
+}
+
+/** LED wall placement, shared by the screen mesh and its frame. */
+export function ledWall(layout: VenueLayout) {
+  const { width: W, depth: D, height: H, center } = layout.stage;
+  return { width: W * 0.8, height: 5.4, x: center[0], y: H + 3.3, z: center[2] - D / 2 + 0.35 };
+}
+
+/** Drum riser at the back of the deck, lower wings either side, and a flight of steps at each front corner. */
+export function stageExtras(layout: VenueLayout) {
+  const { width: W, depth: D, height: H, center } = layout.stage;
+  const wingH = H * 0.6;
+  const parts: THREE.BufferGeometry[] = [
+    box(W * 0.36, 0.45, D * 0.34, center[0], H + 0.225, center[2] - D * 0.22),
+    box(3, wingH, D * 0.8, center[0] - (W / 2 + 2.9), wingH / 2, center[2] - D * 0.08),
+    box(3, wingH, D * 0.8, center[0] + (W / 2 + 2.9), wingH / 2, center[2] - D * 0.08)
+  ];
+  for (const sign of [-1, 1]) {
+    for (let i = 0; i < 4; i++) {
+      const h = (H * (i + 1)) / 4;
+      parts.push(box(1.1, h, 0.42, center[0] + sign * (W / 2 + 0.75), h / 2, center[2] + D / 2 - 0.3 - i * 0.42));
+    }
+  }
+  const merged = mergeGeometries(parts)!;
+  parts.forEach(p => p.dispose());
+  return paint(merged, new THREE.Color('#2b3062'), new THREE.Color('#161a38'), 0, H + 0.45);
 }
 
 export interface Placed {
@@ -233,6 +331,14 @@ export function architecture(layout: VenueLayout) {
   for (const x of [-(tx + 1.4), tx + 1.4]) boxes.push({ position: [x, 6.4, front - 0.8], scale: [1.1, 3.4, 1.1] });
   // Side screen frames.
   for (const sign of [-1, 1]) boxes.push({ position: [sign * (tx + 3.4), 1.6, center[2] + 0.6], scale: [0.25, 3.2, 0.25] });
+  // Frame round the LED wall.
+  const led = ledWall(layout);
+  boxes.push(
+    { position: [led.x, led.y + led.height / 2 + 0.12, led.z - 0.05], scale: [led.width + 0.5, 0.24, 0.2] },
+    { position: [led.x, led.y - led.height / 2 - 0.12, led.z - 0.05], scale: [led.width + 0.5, 0.24, 0.2] },
+    { position: [led.x - led.width / 2 - 0.13, led.y, led.z - 0.05], scale: [0.24, led.height + 0.48, 0.2] },
+    { position: [led.x + led.width / 2 + 0.13, led.y, led.z - 0.05], scale: [0.24, led.height + 0.48, 0.2] }
+  );
   // Crowd barrier in front of the stage and round each standing area.
   const rail = (x: number, z: number, w: number, d: number) => boxes.push({ position: [x, 0.55, z], scale: [w, 1.1, d] });
   rail(0, front + 0.25, W + 3, 0.08);

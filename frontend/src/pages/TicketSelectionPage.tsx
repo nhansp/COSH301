@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Box, Eye, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Box, ChevronUp, Eye, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,7 @@ import { buildVenueLayout, povFor, summarizeZones } from '../services/venue';
 import { SeatItem } from '../types';
 import { NoticeToast } from '../components/tickets/NoticeToast';
 import { ZoneDetail, ZoneList } from '../components/tickets/ZonePanel';
-import { SelectionTray } from '../components/tickets/SelectionTray';
+import { SelectionTray, orderTotals } from '../components/tickets/SelectionTray';
 import { HoldTimer } from '../components/tickets/HoldTimer';
 import { formatPrice } from '../services/eventService';
 import { SceneBoundary } from '../venue3d/SceneBoundary';
@@ -111,8 +111,22 @@ export const TicketSelectionPage: React.FC = () => {
   const [povResetKey, setPovResetKey] = useState(0);
   const povView = useMemo(() => (pov ? povFor(layout, pov.zoneId, pov.seatId) : null), [pov, layout]);
   useEffect(() => {
-    if (pov && pov.zoneId !== activeZoneId) setPov(null);
-  }, [activeZoneId, pov]);
+    if (!pov || pov.zoneId === activeZoneId) return;
+    if (!activeZoneId) {
+      setPov(null);
+      return;
+    }
+    const zone = zoneById.get(activeZoneId);
+    const seat =
+      zone?.kind === 'seated'
+        ? mine.filter(s => s.zoneId === activeZoneId).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))[0]
+        : undefined;
+    setPov({ zoneId: activeZoneId, seatId: seat?.id });
+  }, [activeZoneId, pov, zoneById, mine]);
+
+  // Category under the pointer in the side panel; the map lights it up without moving the camera.
+  const [listHoverZoneId, setListHoverZoneId] = useState<string | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   const chooseView = (next: '3d' | '2d') => {
     setView(next);
@@ -211,7 +225,7 @@ export const TicketSelectionPage: React.FC = () => {
   }
 
   const seatMapOff = !isEnabled('seat_map_realtime');
-  const total = mine.reduce((sum, s) => sum + s.price, 0);
+  const totals = orderTotals(mine);
 
   // A held seat gives a seat-level view; otherwise the view comes from the middle of the zone.
   const heldHere = activeZone
@@ -257,10 +271,27 @@ export const TicketSelectionPage: React.FC = () => {
         <div className="min-w-0">
           <h2 className="font-display text-xl font-semibold text-kumo-strong [font-stretch:112%]">{activeZone.name}</h2>
           <p className="text-sm text-kumo-subtle">
-            {activeZone.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'} · {activeZone.available === 0 ? 'Hết vé' : `còn ${activeZone.available} vé`}
+            {activeZone.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'} · {activeZone.available === 0 ? 'Hết vé' : `còn ${activeZone.available} vé`} ·{' '}
+            {formatPrice(activeZone.priceFrom, '₫')}
           </p>
         </div>
       </div>
+      {/* Hop to another category without going back to the list; an open seat view follows along. */}
+      <label className="mb-4 flex items-center gap-2 text-sm text-kumo-subtle">
+        Đổi hạng vé
+        <select
+          value={activeZone.id}
+          onChange={e => setActiveZoneId(e.target.value)}
+          className="h-9 min-w-0 flex-1 rounded-lg bg-kumo-control px-2 text-sm text-kumo-default ring ring-kumo-line focus:outline-none focus-visible:ring-2 focus-visible:ring-kumo-contrast"
+        >
+          {zones.map(z => (
+            <option key={z.id} value={z.id}>
+              {z.name} · {formatPrice(z.priceFrom, '₫')}
+              {z.available === 0 ? ' · hết vé' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
       {povTarget && (
         <div className="mb-4 rounded-xl bg-kumo-tint p-3">
           {povView ? (
@@ -299,7 +330,7 @@ export const TicketSelectionPage: React.FC = () => {
       />
     </section>
   ) : (
-    <ZoneList zones={zones} activeZoneId={activeZoneId} heldByZone={heldByZone} onSelect={setActiveZoneId} />
+    <ZoneList zones={zones} activeZoneId={activeZoneId} heldByZone={heldByZone} onSelect={setActiveZoneId} onHover={setListHoverZoneId} />
   );
 
   return (
@@ -410,6 +441,7 @@ export const TicketSelectionPage: React.FC = () => {
                         onResetPov={() => setPovResetKey(k => k + 1)}
                         onExitPov={() => setPov(null)}
                         paused={shown !== '3d'}
+                        highlightZoneId={listHoverZoneId}
                       />
                     </Suspense>
                   </SceneBoundary>
@@ -428,6 +460,7 @@ export const TicketSelectionPage: React.FC = () => {
                       reducedMotion={reducedMotion}
                       onZoneSelect={setActiveZoneId}
                       onSeatClick={handleSeat}
+                      highlightZoneId={listHoverZoneId}
                     />
                   )}
                 </div>
@@ -443,7 +476,7 @@ export const TicketSelectionPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="shrink-0 rounded-2xl bg-kumo-base p-4 ring ring-kumo-line">
+              <div className="hidden shrink-0 rounded-2xl bg-kumo-base p-4 ring ring-kumo-line lg:block">
                 <SelectionTray
                   mine={mine}
                   zones={zoneById}
@@ -461,27 +494,48 @@ export const TicketSelectionPage: React.FC = () => {
         )}
       </main>
 
-      {/* Phones keep the total and the way out in reach. */}
+      {/* Phones keep the order in reach: a sticky bar that opens into the full summary. */}
       {mine.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-raised/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="font-display text-xl font-bold tabular-nums text-kumo-strong [font-stretch:75%]">
-                {formatPrice(total, '₫')}
-              </div>
-              {inventory.secondsLeft !== null ? (
-                <HoldTimer secondsLeft={inventory.secondsLeft} className="text-sm" />
-              ) : (
-                <span className="text-sm text-kumo-subtle">{mine.length} vé</span>
-              )}
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-raised/95 backdrop-blur lg:hidden">
+          {summaryOpen && (
+            <div id="order-sheet" className="max-h-[60dvh] overflow-y-auto border-b border-kumo-hairline px-4 py-4">
+              <SelectionTray
+                mine={mine}
+                zones={zoneById}
+                limit={limit}
+                remaining={remaining}
+                secondsLeft={inventory.secondsLeft}
+                pending={pending}
+                onRelease={seat => inventory.release(seat)}
+                onCheckout={goToCheckout}
+              />
             </div>
+          )}
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <button
               type="button"
-              onClick={goToCheckout}
-              className="h-12 shrink-0 rounded-lg bg-kumo-contrast px-5 font-semibold text-kumo-inverse"
+              onClick={() => setSummaryOpen(open => !open)}
+              aria-expanded={summaryOpen}
+              aria-controls="order-sheet"
+              className="-ml-2 flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-kumo-tint"
             >
-              Thanh toán
+              <ChevronUp className={`size-5 shrink-0 text-kumo-subtle transition-transform ${summaryOpen ? '' : 'rotate-180'}`} />
+              <span className="min-w-0">
+                <span className="block font-display text-xl font-bold tabular-nums text-kumo-strong [font-stretch:75%]">
+                  {formatPrice(totals.total, '₫')}
+                </span>
+                {inventory.secondsLeft !== null ? (
+                  <HoldTimer secondsLeft={inventory.secondsLeft} className="text-sm" />
+                ) : (
+                  <span className="text-sm text-kumo-subtle">{mine.length} vé, đã gồm phí</span>
+                )}
+              </span>
             </button>
+            {!summaryOpen && (
+              <button type="button" onClick={goToCheckout} className="h-12 shrink-0 rounded-lg bg-kumo-contrast px-5 font-semibold text-kumo-inverse">
+                Thanh toán
+              </button>
+            )}
           </div>
         </div>
       )}

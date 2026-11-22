@@ -27,25 +27,23 @@ export function hatchTexture(base: string) {
   });
 }
 
-/** LED wall: a slow blue-to-magenta wash seen through a dot-matrix grille. */
-export function ledTexture() {
-  return canvasTexture(512, 256, ctx => {
-    const wash = ctx.createLinearGradient(0, 0, 512, 256);
-    wash.addColorStop(0, '#0b1a5c');
-    wash.addColorStop(0.45, '#3b1d8f');
-    wash.addColorStop(1, '#8a1f78');
-    ctx.fillStyle = wash;
-    ctx.fillRect(0, 0, 512, 256);
-    // A soft horizon of light across the middle, like a show visual between songs.
-    const glow = ctx.createRadialGradient(256, 150, 10, 256, 150, 220);
-    glow.addColorStop(0, 'rgba(120, 170, 255, 0.55)');
-    glow.addColorStop(1, 'rgba(120, 170, 255, 0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, 512, 256);
-    ctx.fillStyle = 'rgba(4, 6, 20, 0.55)';
-    for (let x = 0; x < 512; x += 4) ctx.fillRect(x, 0, 1, 256);
-    for (let y = 0; y < 256; y += 4) ctx.fillRect(0, y, 512, 1);
+/** Concourse lights on the far bowl: sparse warm and cool dots in bands. */
+export function windowsTexture() {
+  const texture = canvasTexture(512, 128, ctx => {
+    ctx.fillStyle = '#0a0d26';
+    ctx.fillRect(0, 0, 512, 128);
+    for (let band = 0; band < 3; band++) {
+      const y = 26 + band * 34;
+      for (let x = 4; x < 512; x += 9) {
+        if (Math.sin(x * 12.9898 + band * 78.233) > 0.15) continue;
+        ctx.fillStyle = (x + band) % 5 === 0 ? 'rgba(255, 214, 160, 0.7)' : 'rgba(140, 160, 255, 0.55)';
+        ctx.fillRect(x, y, 3, 2);
+      }
+    }
   });
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.repeat.set(4, 1);
+  return texture;
 }
 
 /** White at the lamp, fading to nothing: multiplied by each beam's colour. */

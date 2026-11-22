@@ -61,6 +61,13 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
   });
 }
 
+/** Booking fee the checkout adds on top of the tickets (a frontend rule until orders exist server-side). */
+export const SERVICE_FEE_RATE = 0.03;
+
+export function serviceFeeOf(subtotal: number): number {
+  return subtotal > 0 ? Math.round(subtotal * SERVICE_FEE_RATE) : 0;
+}
+
 /** Compact price for dense places such as the schedule and 3D labels: "9,8 tr". */
 export function formatPriceShort(amount: number): string {
   if (amount >= 1_000_000) {

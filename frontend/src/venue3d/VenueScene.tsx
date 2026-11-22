@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { Canvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { SeatItem } from '../types';
 import { PovView, SeatPlacement, VenueLayout, ZoneGeometry, ZoneSummary, zoneStats } from '../services/venue';
 import {
@@ -9,18 +10,24 @@ import {
   Placed,
   STAGE_TRUSS_HEIGHT,
   architecture,
+  arenaShell,
   chairGeometry,
   composeMatrix,
+  ledWall,
   pitGeometry,
+  stageExtras,
+  tierCirculation,
   tierGeometry,
   zoneStrips
 } from './geometry';
-import { beamTexture, floorTexture, hatchTexture, hazeTexture, ledTexture } from './textures';
+import { beamTexture, floorTexture, hatchTexture, hazeTexture, windowsTexture } from './textures';
 import { LogOut, RotateCcw } from 'lucide-react';
 import { VenueOverlay } from '../components/tickets/VenueOverlay';
 
 const SPOT = '#ffe2a8';
-const SEAT_COLORS = { available: '#2fa86b', held: '#e8a23a', sold: '#4a4e62' } as const;
+const SEAT_COLORS = { available: '#2fa86b', held: '#e8a23a', sold: '#3a3e52' } as const;
+/** Upholstery the category tint is mixed into, so seats read as fabric, not plastic. */
+const FABRIC = new THREE.Color('#2b3050');
 const SOLD_OUT_TINT = '#4a4d60';
 /** Pointer travel (px) above which a press is a camera drag, not a click. */
 const CLICK_SLOP = 6;
@@ -47,6 +54,8 @@ export interface VenueSceneProps {
   onExitPov: () => void;
   /** True while the 2D map is shown: the scene stays mounted but stops drawing. */
   paused: boolean;
+  /** Category hovered in the side panel: lit up here, without moving the camera. */
+  highlightZoneId: string | null;
 }
 
 type ZoneState = 'idle' | 'hover' | 'active' | 'dimmed';
@@ -80,20 +89,98 @@ function useDisposable<T extends { dispose: () => void }>(factory: () => T, deps
 
 const BEAM_COLORS = [PALETTE.electric, PALETTE.magenta, PALETTE.violet];
 
-const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ layout, shadows }) => {
+/**
+ * Three tiers, picked once from the frame and the device:
+ * high: 2048 shadows, animated LED; medium: 1024 shadows, animated LED; low: no shadows, still LED.
+ */
+type Quality = 'high' | 'medium' | 'low';
+
+function pickQuality(width: number, reducedMotion: boolean): Quality {
+  const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? 8 : 8;
+  if ((width > 0 && width < 640) || cores <= 4) return 'low';
+  if (width > 0 && width < 1100) return 'medium';
+  return reducedMotion ? 'medium' : 'high';
+}
+
+const LED_VERTEX = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+// Slow blue-violet-magenta wash with a travelling band, seen through a dot-matrix grille.
+const LED_FRAGMENT = `
+uniform float uTime;
+uniform vec2 uGrid;
+varying vec2 vUv;
+void main() {
+  float t = uTime * 0.25;
+  vec3 blue = vec3(0.10, 0.22, 0.85);
+  vec3 violet = vec3(0.34, 0.16, 0.80);
+  vec3 magenta = vec3(0.72, 0.10, 0.48);
+  float wave = 0.5 + 0.5 * sin(vUv.x * 5.0 + t * 2.0 + sin(vUv.y * 3.0 + t));
+  vec3 col = mix(mix(blue, violet, vUv.x), magenta, wave * 0.55);
+  float band = smoothstep(0.22, 0.0, abs(vUv.y - 0.5 - 0.16 * sin(vUv.x * 8.0 + t * 3.0)));
+  col += band * vec3(0.35, 0.40, 0.65);
+  col *= 0.65 + 0.35 * vUv.y;
+  vec2 cell = fract(vUv * uGrid) - 0.5;
+  col *= mix(0.62, 1.0, smoothstep(0.45, 0.2, length(cell)));
+  gl_FragColor = vec4(col, 1.0);
+  #include <colorspace_fragment>
+}`;
+
+/** One shader shared by every screen; it only animates when asked, at a capped rate. */
+function useLedMaterial(animate: boolean) {
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 }, uGrid: { value: new THREE.Vector2(90, 40) } },
+        vertexShader: LED_VERTEX,
+        fragmentShader: LED_FRAGMENT,
+        toneMapped: false
+      }),
+    []
+  );
+  useEffect(() => () => material.dispose(), [material]);
+  const invalidate = useThree(s => s.invalidate);
+  useFrame(({ clock }) => {
+    if (animate) material.uniforms.uTime.value = clock.elapsedTime;
+  });
+  useEffect(() => {
+    if (!animate) return;
+    // The scene renders on demand; 24 frames a second is plenty for a background visual.
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') invalidate();
+    }, 1000 / 24);
+    return () => clearInterval(timer);
+  }, [animate, invalidate]);
+  return material;
+}
+
+const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean; animateLed: boolean }> = ({ layout, shadows, animateLed }) => {
   const arch = useMemo(() => architecture(layout), [layout]);
+  const circulation = useMemo(() => tierCirculation(layout), [layout]);
+  const extras = useMemo(() => stageExtras(layout), [layout]);
+  const ledPlace = ledWall(layout);
   useEffect(
     () => () => {
       arch.wall.dispose();
       arch.canopy.dispose();
       arch.accents.dispose();
+      circulation.stairs.dispose();
+      circulation.glass.dispose();
+      circulation.rails.dispose();
+      extras.dispose();
     },
-    [arch]
+    [arch, circulation, extras]
   );
   const { W, D, H, center, front, back } = arch.stage;
 
-  const led = useDisposable(ledTexture, []);
+  const led = useLedMaterial(animateLed);
   const haze = useDisposable(hazeTexture, []);
+  const windows = useDisposable(windowsTexture, []);
+  const shell = arenaShell(layout);
   const beam = useDisposable(beamTexture, []);
   const floor = useDisposable(() => {
     const t = floorTexture();
@@ -111,14 +198,24 @@ const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ lay
   useInstances(columnsRef, arch.columns);
   useInstances(fixturesRef, arch.fixtures);
 
-  // Front-truss lamps throw beams down and back onto the stage, fanned slightly.
+  // Front-truss lamps wash the stage; back-truss lamps fan up and out over the audience into the haze.
   const beams = useMemo(() => {
-    const lamps = arch.fixtures.filter(f => f.position[2] > center[2]);
-    return lamps.map((f, i) => ({
-      position: f.position,
-      tilt: (i - (lamps.length - 1) / 2) * 0.09,
-      color: BEAM_COLORS[i % BEAM_COLORS.length]
-    }));
+    const frontLamps = arch.fixtures.filter(f => f.position[2] > center[2]);
+    const backLamps = arch.fixtures.filter(f => f.position[2] < center[2]);
+    return [
+      ...frontLamps.map((f, i) => ({
+        position: f.position,
+        pitch: 0.32,
+        tilt: (i - (frontLamps.length - 1) / 2) * 0.09,
+        color: BEAM_COLORS[i % BEAM_COLORS.length]
+      })),
+      ...backLamps.map((f, i) => ({
+        position: [f.position[0], f.position[1] + 0.5, f.position[2]] as [number, number, number],
+        pitch: -2.45,
+        tilt: (i - (backLamps.length - 1) / 2) * -0.22,
+        color: BEAM_COLORS[(i + 1) % BEAM_COLORS.length]
+      }))
+    ];
   }, [arch.fixtures, center]);
   const invalidate = useThree(s => s.invalidate);
   useLayoutEffect(() => {
@@ -128,7 +225,7 @@ const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ lay
     const q = new THREE.Quaternion();
     const one = new THREE.Vector3(1, 1, 1);
     beams.forEach((b, i) => {
-      q.setFromEuler(new THREE.Euler(0.32, 0, b.tilt));
+      q.setFromEuler(new THREE.Euler(b.pitch, 0, b.tilt));
       mesh.setMatrixAt(i, m.compose(new THREE.Vector3(...b.position), q, one));
       mesh.setColorAt(i, new THREE.Color(b.color));
     });
@@ -159,27 +256,42 @@ const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ lay
         <boxGeometry args={[W, 0.06, 0.06]} />
         <meshBasicMaterial color={PALETTE.electric} toneMapped={false} />
       </mesh>
+      {/* A low LED fascia along the deck front, so the stage face reads from the stands. */}
+      <mesh position={[center[0], 0.36 + (H - 0.36) / 2, front + 0.012]} material={led} raycast={() => null}>
+        <planeGeometry args={[W - 0.4, (H - 0.36) * 0.6]} />
+      </mesh>
 
       {/* LED wall behind the band and two angled side screens. */}
-      <mesh position={[center[0], H + 3.3, back + 0.35]} raycast={() => null}>
-        <planeGeometry args={[W * 0.8, 5.4]} />
-        <meshBasicMaterial map={led} toneMapped={false} />
+      <mesh position={[ledPlace.x, ledPlace.y, ledPlace.z]} material={led} raycast={() => null}>
+        <planeGeometry args={[ledPlace.width, ledPlace.height]} />
       </mesh>
       {[-1, 1].map(sign => (
-        <mesh
-          key={sign}
-          position={[sign * (W / 2 + 3.9), 4.6, center[2] + 0.6]}
-          rotation={[0, -sign * 0.35, 0]}
-          raycast={() => null}
-        >
-          <planeGeometry args={[3.4, 2.6]} />
-          <meshBasicMaterial map={led} toneMapped={false} />
-        </mesh>
+        <React.Fragment key={sign}>
+          {/* Tall LED columns flanking the main wall. */}
+          <mesh position={[ledPlace.x + sign * (ledPlace.width / 2 + 1.05), ledPlace.y, ledPlace.z + 0.05]} material={led} raycast={() => null}>
+            <planeGeometry args={[1.5, ledPlace.height + 0.6]} />
+          </mesh>
+          {/* Side screens for the back of the house, angled towards the stands. */}
+          <mesh position={[sign * (W / 2 + 3.9), 5.4, center[2] + 0.6]} rotation={[0, -sign * 0.35, 0]} material={led} raycast={() => null}>
+            <planeGeometry args={[3.6, 4.2]} />
+          </mesh>
+        </React.Fragment>
       ))}
 
       <mesh position={[center[0], 7, back - 1.2]} raycast={() => null}>
         <planeGeometry args={[W * 3, 16]} />
         <meshBasicMaterial map={haze} transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </mesh>
+      {/* Low haze hanging over the floor in front of the stage, where the beams land. */}
+      <mesh position={[center[0], 2.6, front + 5]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+        <planeGeometry args={[W * 2.2, 18]} />
+        <meshBasicMaterial map={haze} transparent opacity={0.22} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </mesh>
+
+      {/* The wider arena beyond the wall, for scale only: fogged, dim, never pickable. */}
+      <mesh position={[shell.origin[0], shell.height / 2, shell.origin[2]]} raycast={() => null}>
+        <cylinderGeometry args={[shell.radius, shell.radius + 4, shell.height, 72, 1, true, shell.thetaStart, shell.thetaLength]} />
+        <meshStandardMaterial map={windows} color="#ffffff" emissive="#ffffff" emissiveMap={windows} emissiveIntensity={0.6} roughness={0.9} side={THREE.BackSide} />
       </mesh>
 
       <instancedMesh ref={boxesRef} args={[undefined, undefined, arch.boxes.length]} castShadow={shadows} receiveShadow raycast={() => null}>
@@ -202,6 +314,22 @@ const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ lay
         />
       </instancedMesh>
 
+      {/* Drum riser and corner steps give the stage its levels. */}
+      <mesh geometry={extras} castShadow={shadows} receiveShadow raycast={() => null}>
+        <meshStandardMaterial vertexColors roughness={0.45} metalness={0.4} />
+      </mesh>
+
+      {/* Aisle stairs between zones, and a glass balustrade with handrail along each ring's front. */}
+      <mesh geometry={circulation.stairs} receiveShadow raycast={() => null}>
+        <meshStandardMaterial vertexColors roughness={0.9} />
+      </mesh>
+      <mesh geometry={circulation.glass} renderOrder={1} raycast={() => null}>
+        <meshStandardMaterial color="#9fb4ff" transparent opacity={0.16} roughness={0.1} metalness={0.2} depthWrite={false} />
+      </mesh>
+      <mesh geometry={circulation.rails} raycast={() => null}>
+        <meshStandardMaterial color="#8a93c4" roughness={0.35} metalness={0.8} />
+      </mesh>
+
       {/* Outer shell: wall behind the top tier, columns, canopy. */}
       <mesh geometry={arch.wall} castShadow={shadows} receiveShadow raycast={() => null}>
         <meshStandardMaterial vertexColors roughness={0.9} />
@@ -222,7 +350,7 @@ const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ lay
 };
 
 /** Key light with soft shadows, a magenta rim from behind the stage and two warm stage spots. */
-const Lighting: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ layout, shadows }) => {
+const Lighting: React.FC<{ layout: VenueLayout; shadows: boolean; shadowSize: number }> = ({ layout, shadows, shadowSize }) => {
   const { width: W, depth: D, center } = layout.stage;
   const r = layout.extent;
   const stageTarget = useMemo(() => {
@@ -233,13 +361,13 @@ const Lighting: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ layout,
 
   return (
     <>
-      <hemisphereLight args={['#aab3ff', '#0a0b1c', 1.1]} />
+      <hemisphereLight args={['#aab3ff', '#0a0b1c', 0.85]} />
       <directionalLight
         position={[-r * 0.55, r * 1.1, r * 0.9]}
         intensity={1.6}
         color="#e4e9ff"
         castShadow={shadows}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[shadowSize, shadowSize]}
         shadow-bias={-0.0004}
         shadow-normalBias={0.03}
         shadow-camera-left={-r * 1.2}
@@ -258,7 +386,7 @@ const Lighting: React.FC<{ layout: VenueLayout; shadows: boolean }> = ({ layout,
           target={stageTarget}
           angle={0.55}
           penumbra={0.7}
-          intensity={60}
+          intensity={75}
           distance={30}
           decay={1.6}
           color="#ffe9c4"
@@ -360,10 +488,21 @@ interface SeatLayerProps {
   onZoneSelect: (zoneId: string) => void;
   onHoverSeat: (seat: SeatItem | null) => void;
   onHoverZone: (zoneId: string | null) => void;
+  /** Category colour per zone, for the subtle tint on free seats. */
+  zoneColors: Map<string, string>;
 }
 
 /** One instanced mesh per seat state: four draw calls for every seat in the venue. */
-const SeatLayer: React.FC<SeatLayerProps> = ({ placements, seatsById, activeZoneId, onSeatClick, onZoneSelect, onHoverSeat, onHoverZone }) => {
+const SeatLayer: React.FC<SeatLayerProps> = ({
+  placements,
+  seatsById,
+  activeZoneId,
+  onSeatClick,
+  onZoneSelect,
+  onHoverSeat,
+  onHoverZone,
+  zoneColors
+}) => {
   const invalidate = useThree(s => s.invalidate);
   const refs: Record<SeatBucket, React.RefObject<THREE.InstancedMesh | null>> = {
     available: useRef<THREE.InstancedMesh>(null),
@@ -387,6 +526,8 @@ const SeatLayer: React.FC<SeatLayerProps> = ({ placements, seatsById, activeZone
     const scale = new THREE.Vector3();
     const up = new THREE.Vector3(0, 1, 0);
     const buckets: Record<SeatBucket, string[]> = { available: [], held: [], sold: [], selected: [] };
+    const tint = new THREE.Color();
+    const green = new THREE.Color(SEAT_COLORS.available);
     let rings = 0;
 
     for (const p of placements) {
@@ -399,6 +540,12 @@ const SeatLayer: React.FC<SeatLayerProps> = ({ placements, seatsById, activeZone
       rotation.setFromAxisAngle(up, p.rotationY);
       scale.set(1, height, 1);
       refs[bucket].current?.setMatrixAt(buckets[bucket].length, matrix.compose(position, rotation, scale));
+      if (bucket === 'available') {
+        // Free seats are upholstery tinted by their category; inside the zone being chosen they
+        // switch to the clear "free" green from the seat legend.
+        tint.copy(seat.zoneId === activeZoneId ? green : FABRIC.clone().lerp(new THREE.Color(zoneColors.get(seat.zoneId) ?? '#888'), 0.38));
+        refs.available.current?.setColorAt(buckets.available.length, tint);
+      }
       buckets[bucket].push(seat.id);
 
       if (bucket === 'selected' && ringRef.current) {
@@ -412,6 +559,7 @@ const SeatLayer: React.FC<SeatLayerProps> = ({ placements, seatsById, activeZone
       if (!mesh) return;
       mesh.count = buckets[key].length;
       mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       mesh.computeBoundingSphere();
     });
     if (ringRef.current) {
@@ -421,7 +569,7 @@ const SeatLayer: React.FC<SeatLayerProps> = ({ placements, seatsById, activeZone
     }
     ids.current = buckets;
     invalidate();
-  }, [placements, seatsById, invalidate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [placements, seatsById, activeZoneId, zoneColors, invalidate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const seatFrom = (bucket: SeatBucket, e: ThreeEvent<PointerEvent | MouseEvent>) => {
     const id = e.instanceId === undefined ? undefined : ids.current[bucket][e.instanceId];
@@ -454,13 +602,13 @@ const SeatLayer: React.FC<SeatLayerProps> = ({ placements, seatsById, activeZone
   return (
     <group>
       <instancedMesh ref={refs.available} args={[chair, undefined, capacity]} receiveShadow {...handlers('available')}>
-        <meshStandardMaterial color={SEAT_COLORS.available} roughness={0.55} />
+        <meshStandardMaterial color="#ffffff" roughness={0.85} />
       </instancedMesh>
       <instancedMesh ref={refs.held} args={[chair, undefined, capacity]} receiveShadow {...handlers('held')}>
         <meshStandardMaterial map={hatch} roughness={0.7} />
       </instancedMesh>
       <instancedMesh ref={refs.sold} args={[chair, undefined, capacity]} receiveShadow {...handlers('sold')}>
-        <meshStandardMaterial color={SEAT_COLORS.sold} roughness={0.9} />
+        <meshStandardMaterial color={SEAT_COLORS.sold} roughness={0.95} />
       </instancedMesh>
       <instancedMesh ref={refs.selected} args={[chair, undefined, capacity]} {...handlers('selected')}>
         <meshStandardMaterial color={SPOT} emissive={SPOT} emissiveIntensity={0.7} roughness={0.4} />
@@ -580,7 +728,15 @@ const CameraRig: React.FC<CameraRigProps> = ({ layout, focus, pov, povResetKey, 
 
     if (!focus) {
       // Three-quarter view from behind the audience on the left: stage height and tier rake both read.
-      const centre = new THREE.Vector3(0, 1.5, layout.stage.center[2] + layout.extent * 0.42);
+      const centre = new THREE.Vector3(0, 1.5, layout.stage.center[2] + layout.extent * 0.38);
+      if (!settled.current && animate) {
+        // Opening move: start high and wide, then settle into the overview in about a second.
+        c.setLookAt(-layout.extent * 1.4, layout.extent * 2.4, centre.z + layout.extent * 2.6, centre.x, centre.y, centre.z, false);
+        c.smoothTime = 0.9;
+        setTimeout(() => {
+          c.smoothTime = 0.55;
+        }, 1800);
+      }
       c.setTarget(centre.x, centre.y, centre.z, animate);
       c.rotateTo((portrait ? -8 : -24) * DEG, (portrait ? 46 : 50) * DEG, animate);
       c.fitToSphere(new THREE.Sphere(centre, layout.extent * (portrait ? 0.74 : 0.62)), animate);
@@ -623,6 +779,51 @@ const CameraRig: React.FC<CameraRigProps> = ({ layout, focus, pov, povResetKey, 
   );
 };
 
+/**
+ * A dim studio environment so metal, glass and the glossy deck pick up reflections.
+ * Generated on the GPU from three's RoomEnvironment: no HDR file to download.
+ */
+const Reflections: React.FC = () => {
+  const gl = useThree(s => s.gl);
+  const scene = useThree(s => s.scene);
+  useEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const room = new RoomEnvironment();
+    const target = pmrem.fromScene(room, 0.04);
+    scene.environment = target.texture;
+    scene.environmentIntensity = 0.18;
+    pmrem.dispose();
+    room.dispose();
+    return () => {
+      scene.environment = null;
+      target.dispose();
+    };
+  }, [gl, scene]);
+  return null;
+};
+
+/**
+ * Nothing that casts a shadow ever moves, so the shadow map is drawn once (and again when the
+ * venue changes) instead of on every frame.
+ */
+const StaticShadows: React.FC<{ layout: VenueLayout; enabled: boolean }> = ({ layout, enabled }) => {
+  const gl = useThree(s => s.gl);
+  const invalidate = useThree(s => s.invalidate);
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false;
+    if (!enabled) return;
+    const refresh = () => {
+      gl.shadowMap.needsUpdate = true;
+      invalidate();
+    };
+    refresh();
+    // Meshes mount over a few frames; one more pass once they are all in.
+    const late = setTimeout(refresh, 400);
+    return () => clearTimeout(late);
+  }, [gl, layout, enabled, invalidate]);
+  return null;
+};
+
 /** Draws one frame when the scene is shown again after the 2D map. */
 const Wake: React.FC<{ paused: boolean }> = ({ paused }) => {
   const invalidate = useThree(s => s.invalidate);
@@ -662,12 +863,15 @@ const VenueScene: React.FC<VenueSceneProps> = ({
   povResetKey,
   onResetPov,
   onExitPov,
-  paused
+  paused,
+  highlightZoneId
 }) => {
   const frame = useRef<HTMLDivElement>(null);
   const width = useElementWidth(frame);
-  // Phones skip shadow maps; the vertex-baked darkening still gives the stands depth.
-  const shadows = width === 0 || width >= 640;
+  // Phones and weak devices skip shadow maps; the vertex-baked darkening still gives the stands depth.
+  const quality = pickQuality(width, reducedMotion);
+  const shadows = quality !== 'low';
+  const zoneColors = useMemo(() => new Map(zones.map(z => [z.id, z.color])), [zones]);
 
   const zoneById = useMemo(() => new Map(zones.map(z => [z.id, z])), [zones]);
   const seatsById = useMemo(() => new Map(seats.map(s => [s.id, s])), [seats]);
@@ -683,9 +887,10 @@ const VenueScene: React.FC<VenueSceneProps> = ({
     };
   }, [hoverZoneId, hoverSeat]);
 
+  const hoveredZoneId = hoverZoneId ?? highlightZoneId;
   const stateOf = (zoneId: string): ZoneState => {
     if (zoneId === activeZoneId) return 'active';
-    if (zoneId === hoverZoneId) return 'hover';
+    if (zoneId === hoveredZoneId) return 'hover';
     return activeZoneId ? 'dimmed' : 'idle';
   };
 
@@ -700,7 +905,7 @@ const VenueScene: React.FC<VenueSceneProps> = ({
     }
   }, [live]);
 
-  const infoZoneId = hoverZoneId ?? activeZoneId;
+  const infoZoneId = hoveredZoneId ?? activeZoneId;
   const infoZone = infoZoneId ? zoneById.get(infoZoneId) ?? null : null;
   const freshSeat = hoverSeat ? seatsById.get(hoverSeat.id) ?? hoverSeat : null;
 
@@ -712,7 +917,7 @@ const VenueScene: React.FC<VenueSceneProps> = ({
         aria-hidden="true"
         frameloop={paused ? 'never' : 'demand'}
         shadows={shadows}
-        dpr={[1, width > 0 && width < 640 ? 1.5 : 1.75]}
+        dpr={[1, quality === 'low' ? 1.5 : 1.75]}
         camera={{ fov: 38, near: 0.5, far: 400, position: [-layout.extent * 0.8, layout.extent * 1.2, layout.extent * 1.4] }}
         gl={{ antialias: true, powerPreference: 'default' }}
         onCreated={({ gl }) => {
@@ -729,8 +934,10 @@ const VenueScene: React.FC<VenueSceneProps> = ({
       >
         <color attach="background" args={[PALETTE.background]} />
         <fog attach="fog" args={[PALETTE.background, layout.extent * 2.6, layout.extent * 5.5]} />
-        <Lighting layout={layout} shadows={shadows} />
-        <Architecture layout={layout} shadows={shadows} />
+        <Reflections />
+        <StaticShadows layout={layout} enabled={shadows} />
+        <Lighting layout={layout} shadows={shadows} shadowSize={quality === 'high' ? 2048 : 1024} />
+        <Architecture layout={layout} shadows={shadows} animateLed={quality !== 'low' && !reducedMotion && !paused} />
 
         {layout.zones.map(geometry => {
           const zone = zoneById.get(geometry.zoneId);
@@ -756,6 +963,7 @@ const VenueScene: React.FC<VenueSceneProps> = ({
           onZoneSelect={live ? onZoneSelect : noop}
           onHoverSeat={live ? setHoverSeat : noop}
           onHoverZone={live ? setHoverZoneId : noop}
+          zoneColors={zoneColors}
         />
         {live && <Followspot target={spotTarget} />}
         <CameraRig layout={layout} focus={focus} pov={pov} povResetKey={povResetKey} reducedMotion={reducedMotion} />

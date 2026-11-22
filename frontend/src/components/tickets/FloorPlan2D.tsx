@@ -133,9 +133,20 @@ export interface FloorPlan2DProps {
   reducedMotion: boolean;
   onZoneSelect: (zoneId: string | null) => void;
   onSeatClick: (seat: SeatItem) => void;
+  /** Category hovered in the side panel, lit up here as well. */
+  highlightZoneId: string | null;
 }
 
-export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({ layout, zones, seats, activeZoneId, reducedMotion, onZoneSelect, onSeatClick }) => {
+export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
+  layout,
+  zones,
+  seats,
+  activeZoneId,
+  reducedMotion,
+  onZoneSelect,
+  onSeatClick,
+  highlightZoneId
+}) => {
   const zoneById = useMemo(() => new Map(zones.map(z => [z.id, z])), [zones]);
   const seatsById = useMemo(() => new Map(seats.map(s => [s.id, s])), [seats]);
   const stats = useMemo(() => zoneStats(seats), [seats]);
@@ -305,7 +316,8 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({ layout, zones, seats, 
     if (seat) setHoverZoneId(seat.zoneId);
   }, []);
 
-  const infoZoneId = hoverZoneId ?? activeZoneId;
+  const hoveredZoneId = hoverZoneId ?? highlightZoneId;
+  const infoZoneId = hoveredZoneId ?? activeZoneId;
   const infoZone = infoZoneId ? zoneById.get(infoZoneId) ?? null : null;
   const infoSeat = hoverSeat && hoverSeat.zoneId === activeZoneId ? seatsById.get(hoverSeat.id) ?? hoverSeat : null;
   // Map units to screen pixels, matching preserveAspectRatio="xMidYMid meet".
@@ -364,7 +376,7 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({ layout, zones, seats, 
           const zone = zoneById.get(z.zoneId);
           if (!zone) return null;
           const active = z.zoneId === activeZoneId;
-          const hover = z.zoneId === hoverZoneId;
+          const hover = z.zoneId === hoveredZoneId;
           const dim = activeZoneId !== null && !active;
           const soldOut = zone.available === 0;
           const tint = soldOut ? SOLD_OUT : zone.color;

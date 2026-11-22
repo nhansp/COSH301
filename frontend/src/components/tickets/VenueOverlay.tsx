@@ -120,7 +120,7 @@ export const VenueOverlay: React.FC<VenueOverlayProps> = ({ mode, zone, isActive
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="size-3 rounded-full bg-seat-available" />
-                    Ghế còn trống
+                    {mode === '3d' ? 'Ghế còn trống (mang màu khu, chuyển xanh khi bạn chọn khu)' : 'Ghế còn trống'}
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="size-3 rounded-full bg-spot ring-2 ring-spot/40" />
