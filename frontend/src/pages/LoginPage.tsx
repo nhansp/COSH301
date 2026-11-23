@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Phone, Mail, ShieldCheck, ArrowLeft, Sparkles, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
+import { Phone, Mail, ArrowLeft, Sparkles, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEvents } from '../context/EventContext';
 import { useFeatures } from '../context/FeatureContext';
@@ -14,7 +14,7 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, requestOtp, verifyOtp, demoLogin } = useAuth();
   const { getEventById, events } = useEvents();
-  const { isEnabled, isLoading: featuresLoading } = useFeatures();
+  const { isEnabled, demoLogin: demoLoginEnabled, isLoading: featuresLoading } = useFeatures();
 
   // Extract event info if redirecting to checkout
   const checkoutEventId = redirectUrl.startsWith('/checkout/')
@@ -194,7 +194,7 @@ export const LoginPage: React.FC = () => {
         <div className="relative flex h-full min-h-dvh flex-col justify-between p-10 xl:p-14">
           <Logo />
           <div className="max-w-xl">
-            <p className="type-display text-display-lg">Vé của bạn, ngay trên điện thoại.</p>
+            <p className="type-display text-display-lg">Đăng nhập để giữ chỗ ngồi của bạn.</p>
             <p className="mt-5 text-lg text-kumo-default">Đăng nhập bằng mã 6 số gửi qua tin nhắn hoặc email. Không cần mật khẩu.</p>
             {poster && <ImageCredit credit={poster.imageCredit} className="mt-10 text-kumo-subtle" />}
           </div>
@@ -232,7 +232,7 @@ export const LoginPage: React.FC = () => {
                 <div className="text-kumo-subtle line-clamp-1">{targetEvent.venue}</div>
                 <div className="text-kumo-warning text-xs font-medium mt-1 flex items-center gap-1">
                   <Lock className="w-3 h-3" />
-                  <span>Cần xác thực để tiếp tục đặt vé sự kiện này</span>
+                  <span>Đăng nhập để xem ghế đang giữ cho sự kiện này</span>
                 </div>
               </div>
             </div>
@@ -349,12 +349,6 @@ export const LoginPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Simulated Firebase Phone reCAPTCHA Notice */}
-              <div className="flex items-center gap-2 text-xs text-kumo-subtle">
-                <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Được bảo vệ bởi Firebase Auth &amp; Google reCAPTCHA v3</span>
-              </div>
-
               <button type="submit" disabled={isSending} className={primaryButtonClass}>
                 {isSending ? (
                   <div className="size-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -439,28 +433,25 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* Quick Demo Test Helper Banner */}
-          <div className="mt-6 pt-5 border-t border-kumo-hairline">
-            <button
-              type="button"
-              onClick={handleQuickDemoLogin}
-              disabled={isSending}
-              className="btn btn-secondary w-full"
-            >
-              <Sparkles className="w-4 h-4 text-kumo-warning" />
-              <span>Đăng nhập thử nhanh (Demo 1-Click)</span>
-            </button>
-            <p className="text-xs text-kumo-subtle mt-2 text-center">Đăng nhập bằng tài khoản khán giả mẫu, không cần mã OTP.</p>
-          </div>
+          {demoLoginEnabled && (
+            <div className="mt-6 pt-5 border-t border-kumo-hairline">
+              <button
+                type="button"
+                onClick={handleQuickDemoLogin}
+                disabled={isSending}
+                className="btn btn-secondary w-full"
+              >
+                <Sparkles className="w-4 h-4 text-kumo-warning" />
+                <span>Đăng nhập thử nhanh (Demo 1-Click)</span>
+              </button>
+              <p className="text-xs text-kumo-subtle mt-2 text-center">Chỉ có ở máy chủ thử nghiệm, dùng tài khoản khán giả mẫu.</p>
+            </div>
+          )}
         </div>
       </div>
 
       </div>
 
-      {/* Footer copyright */}
-      <div className="text-center text-xs text-kumo-subtle">
-        SortMyScene Authentication System, Firebase OTP Architecture
-      </div>
       </div>
     </PageShell>
   );

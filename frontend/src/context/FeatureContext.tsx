@@ -11,6 +11,8 @@ export type FeatureFlag =
 
 interface FeatureContextType {
   isLoading: boolean;
+  /** True only when the server exposes POST /api/auth/demo-login. */
+  demoLogin: boolean;
   isEnabled: (flag: FeatureFlag) => boolean;
 }
 
@@ -18,6 +20,7 @@ const FeatureContext = createContext<FeatureContextType | undefined>(undefined);
 
 export const FeatureProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [features, setFeatures] = useState<Record<string, boolean>>({});
+  const [demoLogin, setDemoLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetched once; while loading or on failure every gated feature stays off.
@@ -26,7 +29,9 @@ export const FeatureProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetch('/api/features')
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
-        if (isMounted && data?.features) setFeatures(data.features);
+        if (!isMounted || !data) return;
+        if (data.features) setFeatures(data.features);
+        setDemoLogin(data.demoLogin === true);
       })
       .catch(() => {})
       .finally(() => {
@@ -39,7 +44,7 @@ export const FeatureProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const isEnabled = (flag: FeatureFlag) => features[flag] === true;
 
-  return <FeatureContext.Provider value={{ isLoading, isEnabled }}>{children}</FeatureContext.Provider>;
+  return <FeatureContext.Provider value={{ isLoading, demoLogin, isEnabled }}>{children}</FeatureContext.Provider>;
 };
 
 export const useFeatures = () => {
