@@ -8,10 +8,10 @@ Tài liệu này chi tiết hóa tiến độ thực hiện dự án theo mô h�
 
 ```mermaid
 flowchart LR
-    S1["Sprint 1\nKhảo sát & Phân tích SA\n(Đã hoàn thành)"] --> S2["Sprint 2 (Giữa kỳ)\nProfile: sprint2\nOTP, Giữ ghế, Realtime"]
-    S2 --> S3["Sprint 3\nProfile: sprint3\nPhòng chờ, Chống Bot, QR 30s"]
-    S3 --> S4["Sprint 4\nProfile: sprint4\nThanh toán MoMo/VNPAY, Vé Email"]
-    S4 --> S5["Sprint 5 (Cuối kỳ)\nProfile: final\nSoát vé Offline, CEO Dashboard, Gợi ý Thông minh"]
+    S1["Sprint 1<br/>Khảo sát và phân tích SA<br/>(Đã hoàn thành)"] --> S2["Sprint 2 (Giữa kỳ)<br/>Profile: sprint2<br/>OTP, Giữ ghế, Realtime"]
+    S2 --> S3["Sprint 3<br/>Profile: sprint3<br/>Phòng chờ, Chống Bot, QR 30s"]
+    S3 --> S4["Sprint 4<br/>Profile: sprint4<br/>Thanh toán MoMo/VNPAY, Vé Email"]
+    S4 --> S5["Sprint 5 (Cuối kỳ)<br/>Profile: final<br/>Soát vé Offline, CEO Dashboard, Định giá động"]
 ```
 
 ---
@@ -57,7 +57,7 @@ flowchart LR
 | T05 | Lập kịch bản và thực hiện kiểm thử thủ công giữ ghế theo tiêu chí chấp nhận của US-03 | Thành (`Th4nhDT716`) | 10 | `docs/checks/fr-06.md` |
 | T06 | Thiết kế Sequence Diagram cho quy trình chống bán trùng ghế đa luồng | Phúc (`phukzz`) | 8 | `docs/sequences/double-booking.md` (FR-07) |
 | T07 | Xây dựng sơ đồ luồng dữ liệu (DFD) mức ngữ cảnh, mức 0 và mức 1 | Phúc (`phukzz`) | 12 | `docs/dfd.md` |
-| T08 | Phản biện Dynamic Pricing & Thiết kế giải thuật Hệ thống Gợi ý Thông minh (Recommendation Engine) | Dũng (`Lan-0924`) | 16 | `docs/dynamic-pricing.md` (FR-22) |
+| T08 | Bài toán và thiết kế Định giá động: mô hình, công thức, ví dụ tính tay | Dũng (`Lan-0924`) | 16 | `docs/dynamic-pricing.md` (FR-22) |
 | T09 | Lập ma trận truy vết yêu cầu (Traceability Matrix) cho 23 FR và 13 NFR | Thành (`Th4nhDT716`) | 8 | `docs/spec.md` |
 | T10 | Xây dựng sơ đồ Use Case tổng thể và viết đặc tả chi tiết các ca sử dụng | Đức Anh | 12 | `docs/use-cases.md` |
 | T11 | Thiết kế kịch bản kiểm thử trải nghiệm và mẫu khảo sát người dùng thực tế | Đức Anh | 10 | `docs/testing.md` |
@@ -133,7 +133,7 @@ flowchart LR
 |---|---|---|:---:|---|
 | WBS-5.1 | Xây dựng giao diện Web/PWA soát vé camera, xác thực chữ ký QR tại cổng | Phúc (`phukzz`) | 16 | `gate_checkin` (FR-16) |
 | WBS-5.2 | Cơ chế tải trước manifest vé, lưu SQLite/IndexedDB trên máy quét và giải quyết xung đột `OFFLINE_CONFLICT` | Huy (`vdhwy`) | 18 | `offline_checkin` (FR-18, NFR-06) |
-| WBS-5.3 | Hệ thống Gợi ý Thông minh (Recommendation Engine) chạy nền, tính Priority Score đa tiêu chí và API gợi ý sự kiện/ghế | Dũng (`Lan-0924`) | 20 | `recommendation_engine` (FR-22) |
+| WBS-5.3 | Job định giá động chạy 5 phút một lần, sinh đề xuất trong `[giá sàn, giá trần]` và endpoint duyệt, từ chối đề xuất | Dũng (`Lan-0924`) | 20 | `dynamic_pricing` (FR-22, W-01) |
 | WBS-5.4 | Xây dựng màn hình CEO Dashboard cập nhật trực tiếp qua SSE và xuất báo cáo CSV/XLSX | Nhân (`nhansp`) | 16 | `ceo_dashboard`, `reports_export` (FR-19, FR-21) |
 | WBS-5.5 | Giao diện quản trị nhật ký giá `price_log` và đề xuất chương trình khuyến mãi | Thành (`Th4nhDT716`) | 12 | `price_log`, `promo_suggestions` (FR-20, FR-23) |
 | WBS-5.6 | Tổng kiểm thử nghiệm thu toàn diện (UAT) với 10 người dùng thật và hoàn tất báo cáo cuối kỳ | Đức Anh | 16 | T11, Báo cáo tổng kết |
@@ -149,7 +149,7 @@ Phụ trách chính lấy theo `docs/TASKS.md`. Riêng T12 được chia nhỏ: 
 |---|---|:---:|:---:|:---:|:---:|:---:|
 | Huy (`vdhwy`) | ERD, sơ đồ lớp, kế hoạch Sprint, giữ ghế và realtime (T12.3, T12.4) | 56 | 18 | 14 | 18 | **106** |
 | Nhân (`nhansp`) | Hạ tầng, OTP, frontend, API Ban Tổ chức (T12.1, T12.2, T12.5, T12.6), sequence OTP, kiến trúc và API | 66 | 10 | 20 | 16 | **112** |
-| Dũng (`Lan-0924`) | Recommendation Engine cá nhân hóa, khung tiêu chí Priority Scoring, Sequence giữ ghế | 24 | 14 | 16 | 20 | **74** |
+| Dũng (`Lan-0924`) | Bài toán và thiết kế Định giá động, job định giá, Sequence giữ ghế | 24 | 14 | 16 | 20 | **74** |
 | Phúc (`phukzz`) | Sequence chống bán trùng, DFD | 20 | 8 | 8 | 16 | **52** |
 | Thành (`Th4nhDT716`) | Bảng đặc tả 23 FR/13 NFR, ma trận truy vết yêu cầu, kiểm thử thủ công FR-06, nhật ký giá | 18 | 14 | 10 | 12 | **54** |
 | Đức Anh | Use Case, kiểm thử người dùng | 22 | 10 | 12 | 16 | **60** |
