@@ -6,7 +6,8 @@ export type FeatureFlag =
   | 'seat_hold'
   | 'zone_pricing'
   | 'organizer_console'
-  | 'ticket_limit';
+  | 'ticket_limit'
+  | 'payments';
 
 interface FeatureContextType {
   isLoading: boolean;

@@ -63,31 +63,18 @@ export interface User {
 
 export type UserRole = 'CUSTOMER' | 'ORGANIZER' | 'CEO' | 'GATE_STAFF' | 'ADMIN';
 
-export interface Booking {
-  id: string;
+/** A seat the signed-in user is currently holding, as reported by GET /api/holds. */
+export interface Hold {
   eventId: string;
-  eventTitle: string;
-  eventDate: string;
-  eventTime: string;
-  venue: string;
-  city: string;
-  imageUrl: string;
-  tierId: string;
-  tierName: string;
-  quantity: number;
-  totalAmount: number;
-  attendeeName: string;
-  attendeePhone: string;
-  attendeeEmail: string;
-  bookingCode: string;
-  purchasedAt: string;
-  paymentMethod: string;
-  status: 'confirmed' | 'cancelled';
-  userId?: string;
-  /** Seat IDs, used to talk to the API. */
-  selectedSeats?: string[];
-  /** Human-readable seat labels ("A1"), shown to the user. */
-  seatLabels?: string[];
+  eventSlug: string;
+  eventName: string;
+  startsAt: string;
+  venueName: string;
+  seatId: string;
+  seatLabel: string;
+  zoneName: string;
+  price: number;
+  expiresAt: string;
 }
 
 export type SeatStatus = 'available' | 'sold' | 'held' | 'selected';
@@ -103,16 +90,6 @@ export interface SeatItem {
   price: number;
   status: 'available' | 'sold' | 'held' | 'selected';
   tierId: string;
-}
-
-export interface SeatZoneConfig {
-  id: string;
-  name: string;
-  colorName: string;
-  rows: string[];
-  seatsPerRow: number;
-  tierId: string;
-  price: number;
 }
 
 export interface FilterState {

@@ -176,7 +176,7 @@ export const HomePage: React.FC = () => {
             <p className="mt-2 text-kumo-subtle">
               {isLoading || loadError
                 ? 'Tìm theo nghệ sĩ, thành phố và thời gian.'
-                : `${events.length} đêm diễn ở ${cities.length} thành phố. Chọn chỗ ngồi trên sơ đồ sân khấu trước khi mua.`}
+                : `${events.length} đêm diễn ở ${cities.length} thành phố. Chọn chỗ ngồi trên sơ đồ sân khấu.`}
             </p>
 
             <form

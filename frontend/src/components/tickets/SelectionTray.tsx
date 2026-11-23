@@ -155,7 +155,7 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
             </span>
           </p>
           <button type="button" onClick={onCheckout} className="btn btn-primary h-12 shrink-0">
-            Tiếp tục thanh toán
+            Xem ghế đã giữ
           </button>
         </div>
       </div>

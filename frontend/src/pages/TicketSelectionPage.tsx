@@ -58,7 +58,7 @@ export const TicketSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { getEventById, loadEventDetail, isLoading } = useEvents();
-  const { isAuthenticated, isLoading: authLoading, sessionExpired, ticketsBookedFor } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, sessionExpired } = useAuth();
   const { isEnabled } = useFeatures();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -76,7 +76,7 @@ export const TicketSelectionPage: React.FC = () => {
   }, [id, needsDetail, loadEventDetail]);
 
   const limit = event ? ticketLimitOf(event) : 0;
-  const maxSeats = event ? Math.max(0, limit - ticketsBookedFor(event.id)) : 0;
+  const maxSeats = limit;
   const inventory = useSeatInventory({ eventId: event?.id, maxSeats, holdEnabled: isEnabled('seat_hold') });
   const { seats, mine, pending } = inventory;
   const remaining = Math.max(0, maxSeats - mine.length);
@@ -213,7 +213,7 @@ export const TicketSelectionPage: React.FC = () => {
 
   const goToCheckout = () => {
     if (!event) return;
-    navigate(`/checkout/${event.id}?seats=${encodeURIComponent(mine.map(s => s.id).join(','))}`);
+    navigate(`/checkout/${event.id}`);
   };
 
   const accent = useEventAccent(event?.imageUrl);
@@ -408,12 +408,9 @@ export const TicketSelectionPage: React.FC = () => {
 
         {seatMapOff ? (
           <div className="max-w-xl rounded-2xl bg-kumo-base p-6 ring ring-kumo-line">
-            <p className="text-kumo-default">Sơ đồ chọn vé đang tạm đóng. Bạn vẫn có thể mua vé theo hạng.</p>
-            <Link
-              to={`/checkout/${event.id}`}
-              className="btn btn-primary mt-4"
-            >
-              Mua vé theo hạng
+            <p className="text-kumo-default">Sơ đồ chọn vé đang tạm đóng.</p>
+            <Link to={`/event/${event.id}`} className="btn btn-primary mt-4">
+              Về trang sự kiện
             </Link>
           </div>
         ) : inventory.loadState === 'error' ? (
@@ -563,7 +560,7 @@ export const TicketSelectionPage: React.FC = () => {
             </button>
             {!summaryOpen && (
               <button type="button" onClick={goToCheckout} className="btn btn-primary h-12 shrink-0 px-5">
-                Thanh toán
+                Xem ghế đã giữ
               </button>
             )}
           </div>

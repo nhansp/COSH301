@@ -1,4 +1,4 @@
-import { EventItem, SeatItem } from '../types';
+import { EventItem, Hold, SeatItem } from '../types';
 import { zoneKindOf } from './venue';
 
 export const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80';
@@ -233,4 +233,14 @@ export async function apiReleaseSeat(eventId: string, seatId: string): Promise<b
   }
 }
 
-
+/** The caller's active holds across all events, or null when signed out or unavailable. */
+export async function apiFetchHolds(): Promise<Hold[] | null> {
+  try {
+    const res = await fetch('/api/holds', { credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
