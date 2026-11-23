@@ -45,7 +45,7 @@ export const CheckoutPage: React.FC = () => {
     body = (
       <EmptyState
         title="Bạn chưa giữ ghế nào cho sự kiện này"
-        body="Ghế quá 5 phút chưa thanh toán sẽ tự được trả lại. Chọn lại ghế trên sơ đồ để tiếp tục."
+        body="Ghế giữ quá 5 phút sẽ tự được trả lại. Chọn lại ghế trên sơ đồ để tiếp tục."
         action={
           <Link to={seatsUrl} className="btn btn-primary">
             Chọn ghế
