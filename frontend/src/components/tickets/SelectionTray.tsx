@@ -8,7 +8,8 @@ import { HoldTimer } from './HoldTimer';
 interface SelectionTrayProps {
   mine: SeatItem[];
   zones: Map<string, ZoneSummary>;
-  limit: number;
+  /** Null when no ticket limit applies. */
+  limit: number | null;
   remaining: number;
   secondsLeft: number | null;
   pending: Set<string>;
@@ -78,8 +79,8 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
     return (
       <p className={`text-base text-kumo-subtle ${className}`}>
         {remaining > 0
-          ? `Chọn hạng vé rồi chọn ghế. Mỗi tài khoản được mua tối đa ${limit} vé cho sự kiện này.`
-          : `Bạn đã mua đủ ${limit} vé tối đa cho sự kiện này.`}
+          ? `Chọn hạng vé rồi chọn ghế.${limit !== null ? ` Mỗi tài khoản được giữ tối đa ${limit} vé cho sự kiện này.` : ''}`
+          : `Bạn đã giữ đủ ${limit} vé tối đa cho sự kiện này.`}
       </p>
     );
   }
@@ -163,9 +164,9 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
   );
 };
 
-const OrderHeading: React.FC<{ count: number; limit: number }> = ({ count, limit }) => (
+const OrderHeading: React.FC<{ count: number; limit: number | null }> = ({ count, limit }) => (
   <h2 className="type-display text-lg">
-    Đơn của bạn <span className="font-sans text-sm font-normal text-kumo-subtle tabular-nums">· {count}/{limit} vé</span>
+    Đơn của bạn <span className="font-sans text-sm font-normal text-kumo-subtle tabular-nums">· {count}{limit !== null && `/${limit}`} vé</span>
   </h2>
 );
 

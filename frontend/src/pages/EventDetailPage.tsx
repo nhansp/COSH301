@@ -193,7 +193,7 @@ export const EventDetailPage: React.FC = () => {
               <h2 id="prices" className="type-display text-title">
                 Giá vé
               </h2>
-              <p className="text-sm text-kumo-subtle">Tối đa {ticketLimitOf(event)} vé mỗi tài khoản</p>
+              {isEnabled('ticket_limit') && <p className="text-sm text-kumo-subtle">Tối đa {ticketLimitOf(event)} vé mỗi tài khoản</p>}
             </div>
             <ul className="mt-5 divide-y divide-kumo-hairline">
               {zones.map(zone => {

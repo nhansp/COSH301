@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SeatItem } from '../types';
-import { apiFetchSeats, apiHoldSeat, apiReleaseSeat, formatPrice } from '../services/eventService';
+import { apiFetchHolds, apiFetchSeats, apiHoldSeat, apiReleaseSeat, formatPrice } from '../services/eventService';
 
 export type InventoryNotice = { id: number; text: string; tone: 'error' | 'info' | 'success' };
 
@@ -12,29 +12,9 @@ export interface HoldOutcome {
 
 interface Options {
   eventId: string | undefined;
-  /** Tickets the user may still take for this event, holds included. */
+  /** Most seats the user may hold at once; `Infinity` while the server enforces no ticket limit. */
   maxSeats: number;
   holdEnabled: boolean;
-}
-
-const EXPIRY_KEY = (eventId: string) => `sms_hold_expiry:${eventId}`;
-
-/** Server-issued hold expiries (epoch ms) by seat, kept for the checkout page. */
-export function readHoldExpiries(eventId: string): Record<string, number> {
-  try {
-    const raw = sessionStorage.getItem(EXPIRY_KEY(eventId));
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeHoldExpiries(eventId: string, expiries: Record<string, number>) {
-  try {
-    sessionStorage.setItem(EXPIRY_KEY(eventId), JSON.stringify(expiries));
-  } catch {
-    // Storage can be unavailable (private mode); the countdown just falls back to the default.
-  }
 }
 
 const HOLD_ERRORS: Record<string, (seat: SeatItem) => string> = {
@@ -69,33 +49,34 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
   const mineRef = useRef(mine);
   mineRef.current = mine;
 
-  const updateExpiries = useCallback(
-    (update: (prev: Record<string, number>) => Record<string, number>) => {
-      setExpiries(prev => {
-        const next = update(prev);
-        if (eventId) writeHoldExpiries(eventId, next);
-        return next;
-      });
+  /** `silent` keeps the current map on screen if the reload fails (used after a reconnect). */
+  const load = useCallback(
+    async (silent = false) => {
+      if (!eventId) return;
+      const result = await apiFetchSeats(eventId);
+      if (!result || result.length === 0) {
+        if (!silent) setLoadState('error');
+        return;
+      }
+      setSeats(result);
+      setLoadState('ready');
+      // Hold expiries come from the server, so the countdown also survives a reload or another tab.
+      if (result.some(s => s.status === 'selected')) {
+        const holds = await apiFetchHolds();
+        if (holds) {
+          setExpiries(Object.fromEntries(holds.filter(h => h.eventId === eventId).map(h => [h.seatId, Date.parse(h.expiresAt)])));
+        }
+      } else {
+        setExpiries({});
+      }
     },
     [eventId]
   );
-
-  const load = useCallback(async () => {
-    if (!eventId) return;
-    const result = await apiFetchSeats(eventId);
-    if (!result || result.length === 0) {
-      setLoadState('error');
-      return;
-    }
-    setSeats(result);
-    setLoadState('ready');
-    // Keep only expiries for holds the server still reports as ours and that have not passed:
-    // if the server lags behind our clock, the hold stays shown but the countdown goes away.
-    const held = new Set(result.filter(s => s.status === 'selected').map(s => s.id));
-    const stored = readHoldExpiries(eventId);
-    const now = Date.now();
-    updateExpiries(() => Object.fromEntries(Object.entries(stored).filter(([id, at]) => held.has(id) && at > now)));
-  }, [eventId, updateExpiries]);
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  // Set when the stream drops, so the next successful open reloads what was missed.
+  const needsResync = useRef(false);
+  const updateExpiries = setExpiries;
 
   useEffect(() => {
     setLoadState('loading');
@@ -105,9 +86,19 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
   useEffect(() => {
     if (!eventId) return;
     const sse = new EventSource(`/api/events/${eventId}/stream`);
-    sse.addEventListener('connected', () => setLiveState('connected'));
-    sse.onopen = () => setLiveState('connected');
-    sse.onerror = () => setLiveState('disconnected');
+    const markConnected = () => {
+      setLiveState('connected');
+      if (needsResync.current) {
+        needsResync.current = false;
+        loadRef.current(true);
+      }
+    };
+    sse.addEventListener('connected', markConnected);
+    sse.onopen = markConnected;
+    sse.onerror = () => {
+      needsResync.current = true;
+      setLiveState('disconnected');
+    };
     sse.addEventListener('update', (e: MessageEvent) => {
       try {
         const { type, seatId, status } = JSON.parse(e.data);
@@ -198,12 +189,17 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
     [eventId, holdEnabled, maxSeats, notify, updateExpiries]
   );
 
+  /** Frees a seat locally only once the server confirms it; resolves to whether it did. */
   const release = useCallback(
-    async (seat: SeatItem, { quiet = false } = {}) => {
-      if (!eventId) return;
+    async (seat: SeatItem, { quiet = false } = {}): Promise<boolean> => {
+      if (!eventId) return false;
       markPending(seat.id, true);
-      await apiReleaseSeat(eventId, seat.id).catch(() => false);
+      const released = await apiReleaseSeat(eventId, seat.id);
       markPending(seat.id, false);
+      if (!released) {
+        notify(`Chưa trả được ghế ${seat.label}. Thử lại sau giây lát.`, 'error');
+        return false;
+      }
       setStatus(seat.id, 'available');
       mineRef.current = mineRef.current.filter(s => s.id !== seat.id);
       updateExpiries(prev => {
@@ -211,6 +207,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
         return rest;
       });
       if (!quiet) notify(`Đã trả ghế ${seat.label}.`, 'info');
+      return true;
     },
     [eventId, notify, updateExpiries]
   );
@@ -223,7 +220,9 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
     async (zoneId: string, zoneName: string, count: number): Promise<HoldOutcome> => {
       const held = mineRef.current.filter(s => s.zoneId === zoneId);
       if (count < held.length) {
-        for (const seat of held.slice(count)) await release(seat, { quiet: true });
+        for (const seat of held.slice(count)) {
+          if (!(await release(seat, { quiet: true }))) return { ok: false };
+        }
         notify(`Còn giữ ${count} vé đứng ở ${zoneName}.`, 'info');
         return { ok: true };
       }

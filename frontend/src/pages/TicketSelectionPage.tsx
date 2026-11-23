@@ -76,7 +76,9 @@ export const TicketSelectionPage: React.FC = () => {
   }, [id, needsDetail, loadEventDetail]);
 
   const limit = event ? ticketLimitOf(event) : 0;
-  const maxSeats = limit;
+  // The cap is the server's rule; without the ticket_limit flag the client imposes none.
+  const limitEnabled = isEnabled('ticket_limit');
+  const maxSeats = limitEnabled ? limit : Infinity;
   const inventory = useSeatInventory({ eventId: event?.id, maxSeats, holdEnabled: isEnabled('seat_hold') });
   const { seats, mine, pending } = inventory;
   const remaining = Math.max(0, maxSeats - mine.length);
@@ -504,7 +506,7 @@ export const TicketSelectionPage: React.FC = () => {
                   listClassName="max-h-[min(18rem,32dvh)]"
                   mine={mine}
                   zones={zoneById}
-                  limit={limit}
+                  limit={limitEnabled ? limit : null}
                   remaining={remaining}
                   secondsLeft={inventory.secondsLeft}
                   pending={pending}
@@ -527,7 +529,7 @@ export const TicketSelectionPage: React.FC = () => {
                 className="min-h-0"
                 mine={mine}
                 zones={zoneById}
-                limit={limit}
+                limit={limitEnabled ? limit : null}
                 remaining={remaining}
                 secondsLeft={inventory.secondsLeft}
                 pending={pending}
@@ -552,7 +554,7 @@ export const TicketSelectionPage: React.FC = () => {
                 </span>
                 <span className="flex flex-wrap items-baseline gap-x-2 text-sm text-kumo-subtle">
                   <span className="tabular-nums">
-                    {mine.length}/{limit} vé
+                    {mine.length}{limitEnabled && `/${limit}`} vé
                   </span>
                   {inventory.secondsLeft !== null && <HoldTimer secondsLeft={inventory.secondsLeft} label="Giữ chỗ" className="text-sm" />}
                 </span>
