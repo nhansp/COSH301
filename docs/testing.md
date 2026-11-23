@@ -1,6 +1,10 @@
-# Kế hoạch và Báo cáo kiểm thử với người dùng (User Usability Testing)
+# Kế hoạch kiểm thử với người dùng (User Usability Testing)
 
-Tài liệu đặc tả kế hoạch kiểm thử khả năng sử dụng (Usability Testing), kịch bản thực hiện, bộ câu hỏi khảo sát chuẩn SUS (System Usability Scale), tổng hợp kết quả kiểm thử trên nhóm 8 người dùng thực tế và các đề xuất cải tiến giao diện/trải nghiệm (UI/UX) cho hệ thống **EventTicketing**.
+Tài liệu gồm kế hoạch kiểm thử khả năng sử dụng (Usability Testing), kịch bản, form khảo sát SUS (System Usability Scale) và mẫu bảng ghi kết quả cho hệ thống **EventTicketing**.
+
+**Trạng thái: chưa thực hiện.**
+Chưa có buổi kiểm thử nào với người dùng thật.
+Các mục 4, 5 và 6 là mẫu trống, chờ điền sau khi kiểm thử.
 
 ---
 
@@ -15,21 +19,23 @@ Tài liệu đặc tả kế hoạch kiểm thử khả năng sử dụng (Usabi
 ### 1.2. Phương pháp
 - **Hình thức:** Kiểm thử trực tiếp 1-1 (Moderated Usability Testing) có giám sát và ghi lại thao tác màn hình.
 - **Kỹ thuật:** Think-aloud protocol (người dùng vừa thao tác vừa nói suy nghĩ của mình).
-- **Quy mô mẫu:** 8 người dùng thực tế đại diện cho các nhóm khán giả mục tiêu.
+- **Quy mô mẫu dự kiến:** 5–10 người dùng thật, đại diện cho khán giả mục tiêu (theo `docs/TASKS.md`, T11).
 
 ---
 
 ## 2. Kịch bản kiểm thử (Test Scripts & Tasks)
 
-Mỗi người tham gia được yêu cầu hoàn thành lần lượt 5 nhiệm vụ cụ thể trên môi trường thật:
+Mỗi người tham gia hoàn thành lần lượt 5 nhiệm vụ trên bản đang chạy.
+Bản triển khai hiện dùng profile `sprint2`: cờ `payments` và `rotating_qr` đang tắt.
+Nhiệm vụ 5 chỉ thực hiện được khi cờ `payments` bật, nếu không thì bỏ qua và ghi rõ trong kết quả.
 
 | Mã nhiệm vụ | Tên nhiệm vụ | Hướng dẫn cho người dùng | Tiêu chí thành công |
 |---|---|---|---|
 | **Task 1** | Đăng nhập tài khoản | "Bạn hãy đăng nhập vào hệ thống bằng số điện thoại hoặc email của bạn và nhập mã OTP được gửi về." | Đăng nhập thành công, thấy tên/thông tin ở góc phải màn hình trong $\le 60$ giây. |
-| **Task 2** | Khám phá sự kiện | "Hãy tìm sự kiện ca nhạc 'Mở bán Vé Ca nhạc' và mở trang chi tiết." | Truy cập đúng trang sự kiện, bấm được vào nút 'Mua vé' trong $\le 30$ giây. |
-| **Task 3** | Chọn 2 ghế liền kề | "Hãy chọn 2 ghế cạnh nhau ở khu vực VIP có màu xanh lá." | Chọn được 2 ghế, nhận thông báo giữ chỗ màu tím, thấy đồng hồ 5:00 đếm ngược. |
-| **Task 4** | Xử lý khi ghế bị giữ | "Hãy thử bấm vào một chiếc ghế màu vàng (đang có người khác giữ) trên sơ đồ." | Thấy thông báo từ chối rõ ràng, hiểu rằng ghế đó đang có người giữ trong 5 phút. |
-| **Task 5** | Tiến hành thanh toán | "Bấm tiến hành thanh toán, chọn cổng MoMo/VNPAY và hoàn tất quy trình mua vé." | Hoàn tất đơn hàng và thấy vé điện tử hiển thị mã QR trong mục 'Vé của tôi'. |
+| **Task 2** | Khám phá sự kiện | "Hãy tìm một sự kiện ca nhạc trong danh sách và mở trang chi tiết." | Truy cập đúng trang sự kiện, bấm được vào nút 'Mua vé' trong $\le 30$ giây. |
+| **Task 3** | Chọn 2 ghế liền kề | "Hãy chọn 2 ghế cạnh nhau ở một khu vực còn ghế trống." | Chọn được 2 ghế, ghế chuyển sang trạng thái "mình đang giữ", thấy đồng hồ 5:00 đếm ngược. |
+| **Task 4** | Xử lý khi ghế bị giữ | "Hãy thử bấm vào một chiếc ghế người khác đang giữ (màu vàng cam, sọc chéo) trên sơ đồ." | Thấy thông báo từ chối rõ ràng, hiểu rằng ghế đó đang có người giữ trong 5 phút. |
+| **Task 5** | Tiến hành thanh toán (cần cờ `payments`) | "Bấm tiến hành thanh toán, chọn cổng MoMo/VNPAY và hoàn tất quy trình mua vé." | Hoàn tất đơn hàng và thấy vé điện tử trong mục 'Vé của tôi'. |
 
 ---
 
@@ -52,66 +58,62 @@ Sau khi hoàn thành 5 nhiệm vụ, người dùng trả lời bảng khảo s�
 
 ## 4. Danh sách người dùng tham gia thử nghiệm
 
-| STT | Họ và tên | Độ tuổi | Nghề nghiệp | Tần suất mua vé sự kiện | Thiết bị sử dụng |
+Chưa thực hiện.
+Điền sau mỗi buổi kiểm thử. Không ghi thông tin định danh nếu người tham gia không đồng ý.
+
+| STT | Mã người tham gia | Độ tuổi | Nghề nghiệp | Tần suất mua vé sự kiện | Thiết bị sử dụng |
 |:---:|---|:---:|---|---|---|
-| 1 | Nguyễn Minh Tuấn | 22 | Sinh viên ĐH Bách Khoa | Thường xuyên săn vé concert (4-6 lần/năm) | Laptop MacBook Air (macOS) |
-| 2 | Trần Thu Thảo | 25 | Chuyên viên Marketing | Thỉnh thoảng đi ca nhạc (1-2 lần/năm) | Điện thoại iPhone 15 Pro |
-| 3 | Lê Hoàng Long | 29 | Lập trình viên Backend | Thường xuyên tham gia festival âm nhạc | Laptop Windows 11 (Chrome) |
-| 4 | Phạm Bích Ngọc | 21 | Sinh viên ĐH Kinh tế | Fan K-pop, hay gặp sự cố sập web mua vé | iPad Air (Safari) |
-| 5 | Vũ Đình Nam | 34 | Quản lý bán hàng | Thỉnh thoảng đi xem kịch/hòa nhạc | Laptop Dell Latitude (Chrome) |
-| 6 | Đỗ Phương Ly | 27 | Thiết kế đồ họa (UI Designer) | Rất quan tâm đến giao diện và màu sắc | Laptop MacBook Pro (macOS) |
-| 7 | Hoàng Gia Bảo | 19 | Sinh viên năm nhất | Mới lần đầu tự mua vé trực tuyến | Điện thoại Samsung Galaxy S23 |
-| 8 | Trịnh Mai Hương | 42 | Giáo viên trung học | Ít khi thao tác ứng dụng công nghệ | Laptop HP Pavilion (Edge) |
+| 1 | | | | | |
+| 2 | | | | | |
+| 3 | | | | | |
+| 4 | | | | | |
+| 5 | | | | | |
 
 ---
 
-## 5. Kết quả kiểm thử & Điểm số SUS
+## 5. Kết quả kiểm thử và điểm SUS
 
-### 5.1. Tỷ lệ hoàn thành nhiệm vụ và Thời gian thao tác trung bình
+Chưa thực hiện. Các bảng dưới đây để trống.
 
-| Mã nhiệm vụ | Tỷ lệ hoàn thành | Thời gian trung bình (giây) | Ghi chú quan sát |
+### 5.1. Tỷ lệ hoàn thành nhiệm vụ và thời gian thao tác
+
+| Mã nhiệm vụ | Số người hoàn thành | Thời gian trung bình (giây) | Ghi chú quan sát |
 |---|:---:|:---:|---|
-| **Task 1** (Đăng nhập OTP) | **100%** (8/8) | 28s | Đăng nhập bằng OTP rất nhanh, người dùng đánh giá cao việc không phải nhớ mật khẩu. |
-| **Task 2** (Khám phá sự kiện) | **100%** (8/8) | 12s | Giao diện danh sách rõ ràng, ảnh đại diện và thẻ phân loại bắt mắt. |
-| **Task 3** (Chọn 2 ghế VIP) | **100%** (8/8) | 35s | Người dùng rất thích việc ghế đổi sang màu tím của riêng mình và đếm ngược ngay lập tức. |
-| **Task 4** (Thử ghế bị giữ) | **100%** (8/8) | 8s | Toast thông báo xuất hiện tức thì, giải thích rõ ghế đang được người khác giữ. |
-| **Task 5** (Thanh toán & Nhận vé) | **100%** (8/8) | 48s | Quy trình tạo đơn và trả kết quả mượt mà, QR động xoay vòng tạo ấn tượng tin cậy cao. |
+| **Task 1** (Đăng nhập OTP) | | | |
+| **Task 2** (Khám phá sự kiện) | | | |
+| **Task 3** (Chọn 2 ghế liền kề) | | | |
+| **Task 4** (Thử ghế bị giữ) | | | |
+| **Task 5** (Thanh toán, cần cờ `payments`) | | | |
 
-### 5.2. Bảng điểm khảo sát SUS chi tiết
+### 5.2. Bảng điểm khảo sát SUS
 
-Điểm SUS được tính theo công thức chuẩn của Brooke (1996):
-- Điểm câu lẻ (1, 3, 5, 7, 9) = Điểm đánh giá - 1
-- Điểm câu chẵn (2, 4, 6, 8, 10) = 5 - Điểm đánh giá
-- Tổng điểm SUS = (Tổng các điểm câu quy đổi) $\times 2.5$
+Điểm SUS tính theo công thức của Brooke (1996):
+- Câu lẻ (1, 3, 5, 7, 9): điểm quy đổi = điểm đánh giá - 1.
+- Câu chẵn (2, 4, 6, 8, 10): điểm quy đổi = 5 - điểm đánh giá.
+- Điểm SUS = tổng điểm quy đổi × 2.5.
 
 | Người dùng | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Điểm SUS (/100) |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| 1. Minh Tuấn | 5 | 1 | 5 | 1 | 5 | 1 | 5 | 1 | 5 | 1 | **100.0** |
-| 2. Thu Thảo | 4 | 2 | 4 | 1 | 4 | 2 | 5 | 1 | 4 | 1 | **77.5** |
-| 3. Hoàng Long | 5 | 1 | 5 | 1 | 5 | 2 | 5 | 1 | 4 | 1 | **90.0** |
-| 4. Bích Ngọc | 5 | 1 | 5 | 1 | 5 | 1 | 4 | 2 | 5 | 1 | **87.5** |
-| 5. Đình Nam | 4 | 2 | 4 | 2 | 4 | 2 | 4 | 2 | 4 | 2 | **70.0** |
-| 6. Phương Ly | 5 | 1 | 5 | 1 | 5 | 1 | 5 | 2 | 4 | 1 | **90.0** |
-| 7. Gia Bảo | 4 | 2 | 5 | 1 | 4 | 1 | 5 | 1 | 4 | 1 | **82.5** |
-| 8. Mai Hương | 4 | 2 | 4 | 2 | 4 | 2 | 4 | 2 | 4 | 2 | **70.0** |
-| **Trung bình** | | | | | | | | | | | **83.4 / 100** |
-
-> **Đánh giá kết quả SUS:** Điểm trung bình đạt **83.4 / 100**, xếp loại **Hạng A (Excellent)** theo thang phân hạng chuẩn quốc tế, vượt trội so với mức trung bình ngành phần mềm (68 điểm).
+| 1 | | | | | | | | | | | |
+| 2 | | | | | | | | | | | |
+| 3 | | | | | | | | | | | |
+| 4 | | | | | | | | | | | |
+| 5 | | | | | | | | | | | |
+| **Trung bình** | | | | | | | | | | | |
 
 ---
 
-## 6. Phản hồi định tính và Đề xuất cải tiến (Actionable Recommendations)
+## 6. Phản hồi định tính và đề xuất cải tiến
 
-### 6.1. Những điểm được người dùng đánh giá cao nhất
-1. **Quy ước màu ghế cực kỳ trực quan:** 100% người dùng hiểu ngay lập tức ý nghĩa của màu xanh (còn trống), xám (đã bán), vàng (người khác đang giữ) và tím (ghế của mình).
-2. **Đồng hồ đếm ngược 5 phút:** Tạo cảm giác yên tâm, không bị tâm lý hoảng loạn sợ bị "cướp" vé giữa chừng như các nền tảng bán vé hiện nay trên thị trường.
-3. **Mã QR động xoay vòng:** Người dùng cảm thấy tài sản vé của mình an toàn tuyệt đối, không sợ bị chụp lén màn hình.
+Chưa thực hiện.
+Điền sau khi có kết quả kiểm thử.
 
-### 6.2. Phản hồi đóng góp & Đề xuất cải tiến UI/UX
+### 6.1. Điểm người dùng đánh giá cao
+
+Chưa có dữ liệu.
+
+### 6.2. Vấn đề người dùng gặp và đề xuất sửa
 
 | Vấn đề người dùng phản ánh | Tác động | Giải pháp đề xuất | Mức độ ưu tiên |
 |---|---|---|:---:|
-| Khi chọn ghế trên điện thoại, các ô ghế ở hàng xa hơi nhỏ, người lớn tuổi dễ bấm nhầm sang ghế bên cạnh. | Nhẹ / Khả năng tiếp cận | Bổ sung thanh trượt thu phóng (Zoom In/Out) hoặc cho phép kéo giãn sơ đồ ghế linh hoạt trên thiết bị cảm ứng. | **Cao (High)** |
-| Khi đồng hồ còn dưới 1 phút, không có cảnh báo âm thanh hay màu sắc nhấp nháy nên người dùng mải điền thông tin có thể bị quá giờ. | Trung bình | Khi đồng hồ đếm ngược xuống dưới 60 giây, chuyển thanh đếm ngược sang màu đỏ cam và nhấp nháy nhẹ để nhắc nhở người dùng. | **Cao (High)** |
-| Một số người dùng muốn xem vị trí sân khấu thực tế nhìn từ góc ghế họ chọn. | Thấp (Ý kiến cải tiến) | Xem xét bổ sung hình ảnh mô phỏng góc nhìn sân khấu (Stage View) trong các phiên bản cập nhật tiếp theo. | **Trung bình** |
-| Cần hiển thị rõ hơn tổng số tiền vé tạm tính ngay bên dưới sơ đồ ghế trước khi bấm sang trang thanh toán. | Nhẹ | Ghim cố định thanh tóm tắt giỏ vé và tổng tiền ở cạnh dưới màn hình di động. | **Hoàn thành** |
+| | | | |
