@@ -9,4 +9,4 @@ coverage/
 artifacts/
 .venv/
 backend/bin/
-
+.claude/
