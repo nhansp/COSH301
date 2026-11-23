@@ -17,7 +17,6 @@ export interface EventItem {
   id: string;
   slug?: string;
   title: string;
-  subTitle?: string;
   imageUrl: string;
   /** Photo attribution required by the image licence. */
   imageCredit?: string;
@@ -30,22 +29,8 @@ export interface EventItem {
   address: string;
   priceStart: number;
   genre: string;
-  isTrending?: boolean;
-  isPopular?: boolean;
   ticketTiers: TicketTier[];
-  artists: {
-    name: string;
-    role: string;
-    avatar: string;
-  }[];
   description: string;
-  organizer: {
-    name: string;
-    verified: boolean;
-    contact: string;
-  };
-  ageRestriction?: string;
-  spotifyPlaylistUrl?: string;
   /** Only present once the event detail has loaded. */
   maxTicketsPerUser?: number;
 }
@@ -98,7 +83,4 @@ export interface FilterState {
   endDate: string;
   selectedGenres: string[];
   city: string;
-  onlyTrending: boolean;
-  onlyPopular: boolean;
-  priceRange: [number, number];
 }

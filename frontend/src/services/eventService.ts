@@ -26,34 +26,18 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
       id: ev.id,
       slug: ev.slug,
       title: ev.title || ev.name,
-      subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
       imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
       imageCredit: ev.imageCredit || undefined,
       bannerUrl: ev.imageUrl || DEFAULT_BANNER_IMAGE,
       date: d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
       time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       rawDate: ev.date || d.toISOString(),
-      venue: ev.venue || 'Trung tâm Hội nghị Quốc gia',
-      city: ev.city || 'Hà Nội',
-      address: ev.address || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
+      venue: ev.venue || '',
+      city: ev.city || '',
+      address: ev.address || '',
       priceStart: typeof ev.priceFrom === 'number' ? ev.priceFrom : 0,
-      genre: ev.genre || 'Classical & Symphony',
-      isTrending: true,
-      isPopular: true,
-      description: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam, mang đến không gian âm nhạc sống động và đầy cảm xúc.',
-      ageRestriction: '16+',
-      organizer: {
-        name: 'Ban Tổ Chức Mẫu',
-        verified: true,
-        contact: 'organizer@eventticketing.vn'
-      },
-      artists: [
-        {
-          name: 'Dàn nhạc Giao hưởng Quốc gia',
-          role: 'Dàn nhạc chính',
-          avatar: ev.imageUrl || DEFAULT_EVENT_IMAGE
-        }
-      ],
+      genre: ev.genre || '',
+      description: ev.description || '',
       // Zones (tiers) come from the event detail endpoint; see loadEventDetail.
       ticketTiers: []
     };
@@ -86,16 +70,6 @@ export function formatPrice(amount: number): string {
 // Real Backend API Integrations
 // -------------------------------------------------------------
 
-export async function apiFetchEvents(): Promise<EventItem[] | null> {
-  try {
-    const res = await fetch('/api/events');
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
 /** Remaining seats per zone, or null when the seat map is unavailable. */
 async function countAvailableSeatsByZone(eventId: string): Promise<Map<string, number> | null> {
   const seats = await apiFetchSeats(eventId);
@@ -119,38 +93,22 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
       id: ev.id,
       slug: ev.slug,
       title: ev.name || ev.title,
-      subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
       imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
       imageCredit: ev.imageCredit || undefined,
       bannerUrl: ev.imageUrl || DEFAULT_BANNER_IMAGE,
       date: d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
       time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       rawDate: ev.startsAt || d.toISOString(),
-      venue: ev.venueName || 'Trung tâm Hội nghị Quốc gia',
-      city: ev.city || 'Hà Nội',
-      address: ev.venueAddress || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
+      venue: ev.venueName || '',
+      city: ev.city || '',
+      address: ev.venueAddress || '',
       priceStart: zones.length > 0 ? Math.min(...zones.map((z: any) => z.basePrice)) : 0,
       maxTicketsPerUser:
         typeof ev.maxTicketsPerUser === 'number' && ev.maxTicketsPerUser > 0
           ? ev.maxTicketsPerUser
           : DEFAULT_MAX_TICKETS_PER_USER,
-      genre: ev.genre || 'Classical & Symphony',
-      isTrending: true,
-      isPopular: true,
-      description: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
-      ageRestriction: '16+',
-      organizer: {
-        name: 'Ban Tổ Chức Mẫu',
-        verified: true,
-        contact: 'organizer@eventticketing.vn'
-      },
-      artists: [
-        {
-          name: 'Dàn nhạc Giao hưởng Quốc gia',
-          role: 'Dàn nhạc chính',
-          avatar: ev.imageUrl || DEFAULT_EVENT_IMAGE
-        }
-      ],
+      genre: ev.genre || '',
+      description: ev.description || '',
       ticketTiers: zones.map((z: any) => ({
         id: z.zoneId,
         code: z.zoneCode,
