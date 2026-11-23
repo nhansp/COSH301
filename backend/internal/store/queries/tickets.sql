@@ -25,8 +25,12 @@ WHERE event_id = $1 AND seat_id = $2 AND user_id = $3 AND status IN ('ISSUED', '
 
 -- name: ResetCancelledSeat :exec
 UPDATE event_seats
-SET status = 'AVAILABLE', version = version + 1, updated_at = now()
-WHERE event_id = $1 AND seat_id = $2 AND status IN ('HELD', 'SOLD');
+SET status = 'AVAILABLE', current_price = (
+        SELECT ez.base_price FROM event_zones ez JOIN seats z ON z.zone_id = ez.zone_id
+        WHERE ez.event_id = event_seats.event_id AND z.id = event_seats.seat_id
+    ),
+    version = version + 1, updated_at = now()
+WHERE event_seats.event_id = $1 AND event_seats.seat_id = $2 AND event_seats.status IN ('HELD', 'SOLD');
 
 -- name: ReleaseUserActiveHolds :many
 WITH released AS (
@@ -36,7 +40,11 @@ WITH released AS (
     RETURNING event_id AS rel_event_id, seat_id AS rel_seat_id
 )
 UPDATE event_seats
-SET status = 'AVAILABLE', version = event_seats.version + 1, updated_at = now()
+SET status = 'AVAILABLE', current_price = (
+        SELECT ez.base_price FROM event_zones ez JOIN seats z ON z.zone_id = ez.zone_id
+        WHERE ez.event_id = event_seats.event_id AND z.id = event_seats.seat_id
+    ),
+    version = event_seats.version + 1, updated_at = now()
 FROM released
 WHERE event_seats.event_id = released.rel_event_id
   AND event_seats.seat_id = released.rel_seat_id

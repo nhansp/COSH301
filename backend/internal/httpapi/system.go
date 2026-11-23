@@ -8,11 +8,13 @@ import (
 )
 
 type SystemHandler struct {
-	features *config.FeatureManager
+	features  *config.FeatureManager
+	demoLogin bool
 }
 
-func NewSystemHandler(fm *config.FeatureManager) *SystemHandler {
-	return &SystemHandler{features: fm}
+// demoLogin tells clients whether POST /api/auth/demo-login is routed.
+func NewSystemHandler(fm *config.FeatureManager, demoLogin bool) *SystemHandler {
+	return &SystemHandler{features: fm, demoLogin: demoLogin}
 }
 
 func (h *SystemHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +37,8 @@ func (h *SystemHandler) HandleFeatures(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"profile":  h.features.Profile(),
-		"features": h.features.All(),
+		"profile":   h.features.Profile(),
+		"features":  h.features.All(),
+		"demoLogin": h.demoLogin,
 	})
 }
