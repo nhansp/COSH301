@@ -14,13 +14,7 @@ interface EventContextType {
   toggleGenre: (genre: string) => void;
   clearGenres: () => void;
   setCity: (city: string) => void;
-  toggleTrending: () => void;
-  togglePopular: () => void;
   resetFilters: () => void;
-  isFilterOpen: boolean;
-  setIsFilterOpen: (open: boolean) => void;
-  activeViewTab: 'all' | 'popular' | 'trending';
-  setActiveViewTab: (tab: 'all' | 'popular' | 'trending') => void;
   refreshEvents: () => Promise<void>;
   getEventById: (id: string) => EventItem | undefined;
   /** Fetches zones and live availability for one event; cached by id and slug. */
@@ -32,10 +26,7 @@ const initialFilterState: FilterState = {
   startDate: '',
   endDate: '',
   selectedGenres: [],
-  city: 'All Cities',
-  onlyTrending: false,
-  onlyPopular: false,
-  priceRange: [0, 5000000]
+  city: 'All Cities'
 };
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
@@ -46,8 +37,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [loadError, setLoadError] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, EventItem>>({});
   const [filterState, setFilterState] = useState<FilterState>(initialFilterState);
-  const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
-  const [activeViewTab, setActiveViewTab] = useState<'all' | 'popular' | 'trending'>('all');
 
   const loadEvents = async () => {
     setIsLoading(true);
@@ -97,17 +86,8 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setFilterState(prev => ({ ...prev, city }));
   };
 
-  const toggleTrending = () => {
-    setFilterState(prev => ({ ...prev, onlyTrending: !prev.onlyTrending }));
-  };
-
-  const togglePopular = () => {
-    setFilterState(prev => ({ ...prev, onlyPopular: !prev.onlyPopular }));
-  };
-
   const resetFilters = () => {
     setFilterState(initialFilterState);
-    setActiveViewTab('all');
   };
 
   // Filter computation
@@ -120,8 +100,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const matchVenue = event.venue.toLowerCase().includes(query);
         const matchCity = event.city.toLowerCase().includes(query);
         const matchGenre = event.genre.toLowerCase().includes(query);
-        const matchArtist = event.artists.some(a => a.name.toLowerCase().includes(query));
-        if (!matchTitle && !matchVenue && !matchCity && !matchGenre && !matchArtist) {
+        if (!matchTitle && !matchVenue && !matchCity && !matchGenre) {
           return false;
         }
       }
@@ -155,17 +134,9 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
 
-      // View Tab
-      if (activeViewTab === 'popular' && !event.isPopular) {
-        return false;
-      }
-      if (activeViewTab === 'trending' && !event.isTrending) {
-        return false;
-      }
-
       return true;
     });
-  }, [events, filterState, activeViewTab]);
+  }, [events, filterState]);
 
   const getEventById = (id: string) => {
     return details[id] ?? events.find(e => e.id === id || e.slug === id);
@@ -198,13 +169,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toggleGenre,
         clearGenres,
         setCity,
-        toggleTrending,
-        togglePopular,
         resetFilters,
-        isFilterOpen,
-        setIsFilterOpen,
-        activeViewTab,
-        setActiveViewTab,
         refreshEvents: loadEvents,
         loadEventDetail,
         getEventById

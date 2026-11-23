@@ -1,7 +1,7 @@
 # Phân công công việc
 
-Nhánh làm việc chung: `staging` (tên cũ: `rewrite`).
-`main` là bản ổn định, chỉ cập nhật từ `staging`.
+Nhánh làm việc chung: `rewrite`.
+`main` là bản ổn định, chỉ cập nhật từ `rewrite`.
 Thiết kế gốc: [`docs/design/README.md`](design/README.md). Đọc file này trước khi bắt tay vào việc.
 
 ## 1. Bảng phân công
@@ -15,7 +15,7 @@ Thiết kế gốc: [`docs/design/README.md`](design/README.md). Đọc file nà
 | T05 | Kiểm thử thủ công FR-06 theo US-03 | Thành (`Th4nhDT716`) | `docs/checks/fr-06.md` | T12 |
 | T06 | Sequence: chống bán trùng (FR-07) | Phúc (`phukzz`) | `docs/sequences/double-booking.md` | — |
 | T07 | DFD mức ngữ cảnh, mức 0, mức 1 | Phúc (`phukzz`) | `docs/dfd.md` | — |
-| T08 | Phản biện Dynamic Pricing & Thiết kế Hệ thống Gợi ý Thông minh | Dũng (`Lan-0924`) | `docs/dynamic-pricing.md` | — |
+| T08 | Bài toán và thiết kế Định giá động (FR-22) | Dũng (`Lan-0924`) | `docs/dynamic-pricing.md` | — |
 | T09 | Bảng FR/NFR, trạng thái, truy vết | Thành (`Th4nhDT716`) | `docs/spec.md` | — |
 | T10 | Sơ đồ và đặc tả Use Case | Đức Anh | `docs/use-cases.md` | — |
 | T11 | Kiểm thử với người dùng | Đức Anh | `docs/testing.md` | T12 |
@@ -23,7 +23,7 @@ Thiết kế gốc: [`docs/design/README.md`](design/README.md). Đọc file nà
 | T13 | Sequence: đăng nhập OTP (FR-04) | Nhân (`nhansp`) | `docs/sequences/otp-login.md` | — |
 | T14 | Kiến trúc và đặc tả API | Nhân (`nhansp`) | `docs/architecture.md`, `docs/api/openapi.yaml` | T12 |
 
-Việc có phụ thuộc T12 thì chờ backend lên nhánh `staging` rồi mới làm.
+Việc có phụ thuộc T12 thì chờ backend lên nhánh `rewrite` rồi mới làm.
 Các việc còn lại làm được ngay.
 
 ## 2. Yêu cầu từng việc
@@ -53,10 +53,11 @@ Mỗi tiêu chí ghi: các bước, kết quả mong đợi, kết quả thực 
 Dựa trên DFD Level 1 của Sprint 1, cập nhật theo tác nhân và luồng ở mục 2 và 4 của thiết kế.
 Mỗi kho dữ liệu phải ứng với bảng có thật trong ERD.
 
-**T08 — Phản biện Định giá động & Hệ thống Gợi ý Thông minh (Recommendation Engine).**
+**T08 — Định giá động (FR-22).**
 Người làm: Dũng (`Lan-0924`).
-Phản biện bãi bỏ Dynamic Pricing dựa trên các bằng chứng thực tiễn quốc tế (CMA Anh vụ Oasis Live '25, Bruce Springsteen, Harry Styles, rủi ro pháp lý, bất bình đẳng tiếp cận văn hóa) và thực nghiệm của nhóm (tỉ lệ bỏ giỏ hàng tăng 42%).
-Thiết kế giải pháp thay thế: Hệ thống Gợi ý Thông minh (Recommendation Engine - FR-22) với khung 5 tiêu chí Priority Scoring (Affinity 35%, Budget 25%, Geo-Temporal 15%, Seat View 15%, Fill Rate 10%) và phân tầng 3 Tier (Top Picks, Trending, Discovery).
+Đây là phần chấm điểm giữa kỳ.
+Cần có: mô tả bài toán, mô hình giả định, dữ liệu đầu vào, quy tắc đổi giá, ví dụ tính tay.
+Bám mục 6 của thiết kế; muốn đổi quy tắc thì ghi lý do trong PR.
 
 **T09 — Đặc tả.**
 Liệt kê FR-01 … FR-23, NFR-01 … NFR-13 theo đúng mã trong tài liệu SA.
@@ -72,30 +73,29 @@ Mời 5–10 người dùng thật, tổng hợp kết quả và đề xuất s�
 
 ## 3. Quy trình gửi PR
 
-Nhánh `main` và `staging` đã khóa: không ai push thẳng được.
+Nhánh `main` và `rewrite` đã khóa: không ai push thẳng được.
 Mọi thay đổi phải qua Pull Request và được duyệt trước khi merge.
 
 ### Các bước
 
 ```bash
 git fetch origin
-git switch -c <github-user>/<mã-việc> origin/staging   # ví dụ: vdhwy/T03
+git switch -c <github-user>/<mã-việc> origin/rewrite   # ví dụ: vdhwy/T03
 # ... làm việc ...
 git add <các file của việc này>
 git commit --signoff
 git push -u origin HEAD
-gh pr create --base staging                             # hoặc tạo PR trên web, base là staging
+gh pr create --base rewrite                             # hoặc tạo PR trên web, base là rewrite
 ```
 
 ### Quy tắc
 
 - Một PR làm đúng một việc trong bảng phân công.
-- PR luôn nhắm vào `staging`, không nhắm vào `main`.
-- `main` chỉ nhận bản đã chạy ổn trên `staging` (fast-forward).
+- PR luôn nhắm vào `rewrite`, không nhắm vào `main`.
+- `main` chỉ nhận bản đã chạy ổn trên `rewrite` (fast-forward).
 - Chỉ sửa file thuộc việc của mình. Cần sửa file khác thì ghi lý do trong PR.
 - Commit theo [`AGENTS.md`](../AGENTS.md): tiêu đề dạng `docs: Add use case diagram`, tối đa 80 ký tự, luôn có `--signoff`.
-- Nhánh `staging` có thay đổi mới và PR bị xung đột thì `git rebase origin/staging` rồi push lại.
-- Nhánh cũ tạo từ `rewrite` vẫn dùng được: GitHub đã đổi tên, chỉ cần `git fetch --prune` rồi rebase lên `origin/staging`.
+- Nhánh `rewrite` có thay đổi mới và PR bị xung đột thì `git rebase origin/rewrite` rồi push lại.
 - Người duyệt yêu cầu sửa thì sửa trên chính nhánh đó, không mở PR mới.
 
 ### Không đưa lên repo

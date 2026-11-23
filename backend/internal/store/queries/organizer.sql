@@ -28,17 +28,6 @@ WHERE es.seat_id = s.id
   AND s.zone_id = $2
   AND es.status = 'AVAILABLE';
 
--- name: ClampZoneSeatPrices :execrows
-UPDATE event_seats es
-SET current_price = LEAST(GREATEST(es.current_price, sqlc.arg(floor_price)::numeric), sqlc.arg(ceiling_price)::numeric),
-    version = es.version + 1,
-    updated_at = now()
-FROM seats s
-WHERE es.seat_id = s.id
-  AND es.event_id = sqlc.arg(event_id)
-  AND s.zone_id = sqlc.arg(zone_id)
-  AND es.status IN ('AVAILABLE', 'HELD')
-  AND (es.current_price < sqlc.arg(floor_price)::numeric OR es.current_price > sqlc.arg(ceiling_price)::numeric);
 
 -- name: InsertPriceChange :exec
 INSERT INTO price_changes (event_id, zone_id, old_price, new_price, changed_by, reason)

@@ -139,6 +139,7 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
   - 8b. Tài khoản `LOCKED` hoặc `DISABLED`: `403 account_inactive`.
   - 10a. Đăng xuất: `POST /api/auth/logout` xóa dòng `sessions` của phiên.
 - **Ghi chú Sprint 2:** api chưa gọi SMTP hay SMS Gateway. Mã hiện trên màn hình khi `OTP_DEMO=true`, nếu không thì ghi vào log của api.
+- **Đăng nhập thử nhanh:** khi `APP_ENV` khác `production`, `POST /api/auth/demo-login` tạo một tài khoản `CUSTOMER` mới mỗi lần gọi và mở phiên, không cần OTP. Endpoint này không tạo tài khoản Ban Tổ chức. Ở môi trường `production` endpoint không tồn tại.
 - **FR liên quan:** FR-01, FR-04, FR-10.
 
 ### UC-02: Xem danh sách sự kiện
@@ -225,8 +226,10 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
   - 5a. Câu `UPDATE` không đổi dòng nào, tức ghế đã có người giữ hoặc đã bán: `409 seat_not_available`. Giao diện báo lỗi, ghế không vào giỏ.
   - 6a. Unique index trên `seat_holds` từ chối do hai yêu cầu cùng lúc: `409 seat_not_available`. Đây là lớp chặn thứ hai.
   - 9a. Khán giả bỏ chọn: `DELETE /api/holds/{seatId}`, ghế về trống.
+  - 9c. Khán giả xem các lượt giữ còn hiệu lực của mình: `GET /api/holds`.
   - 9b. Quá 5 phút chưa thanh toán: `HoldReaper` chuyển lượt giữ sang `EXPIRED`, ghế về `AVAILABLE`, khán giả nhận thông báo hết hạn.
 - **Ghi chú Sprint 2:** profile `sprint2` chưa bật `ticket_limit`, nên bước 4 và luồng 4a chưa chạy.
+- **Dữ liệu demo:** khi `APP_ENV` khác `production`, `POST /api/tickets/reset-demo` nhả các lượt giữ của người gọi để chạy lại demo.
 - **FR liên quan:** FR-06, FR-07, FR-11.
 
 ### UC-06: Thanh toán và nhận vé
@@ -255,6 +258,8 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
     - Ghế đã bán cho người khác: hoàn tiền, đơn `REFUNDED`.
   - 8a. Gửi email lỗi: vé vẫn có trong "Vé của tôi" (UC-07).
   - 9a. Quá 5 phút chưa thanh toán: ghế về trống, khán giả nhận thông báo hết hạn.
+  - 10a. Khán giả hủy ghế hoặc vé của mình: `POST /api/tickets/cancel`. Hệ thống nhả lượt giữ, hủy vé trên các ghế đó và ghi một dòng `audit_logs`. `GET /api/tickets/cancelled` liệt kê các lần hủy.
+- **Ghi chú:** `POST /api/tickets/cancel` và `GET /api/tickets/cancelled` nằm sau cờ `payments`, nên chưa có ở profile `sprint2`.
 - **FR liên quan:** FR-13, FR-14, FR-15.
 
 ### UC-07: Xem vé và QR xoay vòng
@@ -290,6 +295,7 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
   - Sự kiện của Ban Tổ chức khác: `403 not_event_organizer`.
   - `ends_at` không sau `starts_at`, hoặc `sales_ends_at` không sau `sales_starts_at`: cơ sở dữ liệu từ chối.
 - **Ghi chú Sprint 2:** mới có xem danh sách sự kiện của mình (`GET /api/organizer/events`) và đặt giá khu vực. Các bước 1–5 và 7 chưa có code.
+- **Nhật ký kiểm toán:** Ban Tổ chức xem các dòng `audit_logs` của sự kiện mình qua `GET /api/tickets/audit-logs` (cờ `organizer_console`). `ADMIN` xem toàn bộ.
 - **FR liên quan:** FR-08.
 
 ### UC-09: Đặt giá khu vực

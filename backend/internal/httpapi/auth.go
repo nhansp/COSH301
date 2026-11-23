@@ -109,24 +109,13 @@ func (h *AuthHandler) HandleVerifyOTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type DemoLoginPayload struct {
-	Role string `json:"role"`
-}
-
 func (h *AuthHandler) HandleDemoLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed")
 		return
 	}
 
-	var payload DemoLoginPayload
-	_ = json.NewDecoder(r.Body).Decode(&payload)
-
-	token, user, err := h.authService.DemoLogin(r.Context(), payload.Role, clientIP(r), r.UserAgent())
-	if errors.Is(err, service.ErrAccountInactive) {
-		writeError(w, http.StatusForbidden, err.Error())
-		return
-	}
+	token, user, err := h.authService.DemoLogin(r.Context(), clientIP(r), r.UserAgent())
 	if err != nil {
 		internalError(w, r, err)
 		return
@@ -143,7 +132,6 @@ func (h *AuthHandler) HandleDemoLogin(w http.ResponseWriter, r *http.Request) {
 	})
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"token": token,
 		"user": map[string]string{
 			"id":       store.UUIDToString(user.ID),
 			"phone":    user.Phone.String,

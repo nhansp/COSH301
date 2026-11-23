@@ -20,9 +20,9 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-03 | Sơ đồ ghế 4 màu | `seat_map_realtime` | 2 | Xong | Xanh: trống. Xám: đã bán. Vàng: người khác giữ. Tím: mình giữ |
 | FR-04 | Phiên đăng nhập trên server, đăng xuất | `otp_login` | 2 | Xong | Bảng `sessions`, cookie `session_token`, `GET /api/auth/me` |
 | FR-05 | Sơ đồ ghế cập nhật trực tiếp | `seat_map_realtime` | 2 | Xong | SSE `GET /api/events/{id}/stream`, PostgreSQL `LISTEN/NOTIFY` |
-| FR-06 | Giữ ghế 5 phút | `seat_hold` | 2 | Xong | `POST /api/holds`. `HoldReaper` nhả ghế hết hạn, quét 5 giây một lần |
+| FR-06 | Giữ ghế 5 phút | `seat_hold` | 2 | Xong | `POST /api/holds`, `GET /api/holds` (lượt giữ của người gọi). `HoldReaper` nhả ghế hết hạn, quét 5 giây một lần |
 | FR-07 | Chống bán trùng ghế | `seat_hold` | 2 | Xong | `UPDATE` có điều kiện và unique index trên `seat_holds`. Test 50 người cùng giữ 1 ghế: đúng 1 người thành công |
-| FR-08 | BTC quản lý sự kiện, đặt giá sàn, giá trần theo khu vực | `zone_pricing`, `organizer_console` | 2 | Đang làm | Đã có: xem sự kiện của mình, đặt giá khu vực, ghi `price_changes`. Chưa có: tạo địa điểm, khu vực, sinh ghế, tạo sự kiện, mở/tạm dừng bán |
+| FR-08 | BTC quản lý sự kiện, đặt giá sàn, giá trần theo khu vực | `zone_pricing`, `organizer_console` | 2 | Đang làm | Đã có: xem sự kiện của mình, đặt giá khu vực, ghi `price_changes`, xem `audit_logs` (`GET /api/tickets/audit-logs`). Chưa có: tạo địa điểm, khu vực, sinh ghế, tạo sự kiện, mở/tạm dừng bán |
 | FR-09 | Phòng chờ ảo | `waiting_room` | 3 | Chưa làm | Đã có bảng `queue_entries` |
 | FR-10 | Chặn bot bằng Cloudflare Turnstile | `bot_check` | 3 | Chưa làm | |
 | FR-11 | Giới hạn vé mỗi tài khoản | `ticket_limit` | 3 | Đang làm | api đã khóa theo (người dùng, sự kiện) và đếm ghế giữ cộng vé đã mua. Chưa kiểm thử tải theo mục 8 của thiết kế |
@@ -36,7 +36,7 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-19 | Dashboard doanh thu cho CEO | `ceo_dashboard` | 5 | Chưa làm | |
 | FR-20 | Nhật ký giá | `price_log` | 5 | Đang làm | Mỗi lần BTC đổi giá cơ bản đều ghi `price_changes`. Trigger chặn sửa và xóa. Chưa có trang xem |
 | FR-21 | Xuất báo cáo CSV/XLSX | `reports_export` | 5 | Chưa làm | |
-| FR-22 | Gợi ý sự kiện & chỗ ngồi thông minh | `recommendation_engine` | 5 | Đang làm | Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md) (Dũng phụ trách) |
+| FR-22 | Định giá động: đề xuất giá, BTC duyệt | `dynamic_pricing` | 5 | Chưa làm | Đã có bảng `price_suggestions` và giá sàn, giá trần theo khu vực (FR-08). Chưa có job tính đề xuất và endpoint duyệt. Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md) |
 | FR-23 | Gợi ý khuyến mãi | `promo_suggestions` | 5 | Chưa làm | |
 
 ## 2. Yêu cầu phi chức năng
@@ -79,3 +79,8 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-22 | — | [`dynamic-pricing.md`](dynamic-pricing.md) |
 
 Đường dẫn code tính từ `backend/internal/`, trừ dòng có `frontend/`.
+
+Endpoint hỗ trợ, không gắn với một FR riêng:
+- `POST /api/auth/demo-login` và `POST /api/tickets/reset-demo` chỉ có khi `APP_ENV` khác `production`. Demo-login tạo một tài khoản `CUSTOMER` mới mỗi lần gọi.
+- `POST /api/tickets/cancel` và `GET /api/tickets/cancelled` nằm sau cờ `payments`, nên đang tắt ở `sprint2`.
+- `GET /api/tickets/audit-logs` nằm sau cờ `organizer_console`.

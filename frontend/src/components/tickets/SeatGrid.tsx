@@ -52,7 +52,7 @@ export const SeatGrid: React.FC<SeatGridProps> = ({ seats, pending, onSeatClick 
                       onClick={() => onSeatClick(seat)}
                       disabled={busy}
                       aria-pressed={seat.status === 'selected'}
-                      aria-label={`Ghế ${seat.label}, ${seat.zoneName}, ${formatPrice(seat.price, '₫')}, ${STATUS_LABEL[seat.status]}`}
+                      aria-label={`Ghế ${seat.label}, ${seat.zoneName}, ${formatPrice(seat.price)}, ${STATUS_LABEL[seat.status]}`}
                       className={`grid aspect-square w-full max-w-10 place-items-center rounded-md font-display text-xs font-semibold tabular-nums transition ${STATUS_CLASS[seat.status]} ${
                         busy ? 'animate-pulse' : ''
                       }`}

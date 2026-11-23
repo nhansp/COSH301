@@ -11,7 +11,6 @@ import (
 )
 
 type Querier interface {
-	ClampZoneSeatPrices(ctx context.Context, arg ClampZoneSeatPricesParams) (int64, error)
 	// ConsumeOTPAttempt counts one verification attempt against the newest usable code
 	// and returns it, so concurrent guesses cannot exceed the attempt limit.
 	ConsumeOTPAttempt(ctx context.Context, arg ConsumeOTPAttemptParams) (OtpVerification, error)
@@ -45,6 +44,7 @@ type Querier interface {
 	ListAuditLogsByEvent(ctx context.Context, arg ListAuditLogsByEventParams) ([]AuditLog, error)
 	ListAuditLogsByUser(ctx context.Context, arg ListAuditLogsByUserParams) ([]AuditLog, error)
 	ListEventZonesWithPrices(ctx context.Context, eventID pgtype.UUID) ([]ListEventZonesWithPricesRow, error)
+	ListMyActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ListMyActiveHoldsRow, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]ListOrganizerEventsRow, error)
 	ListPublishedEvents(ctx context.Context) ([]ListPublishedEventsRow, error)
 	ListStaffAuditLogs(ctx context.Context, arg ListStaffAuditLogsParams) ([]ListStaffAuditLogsRow, error)
@@ -57,6 +57,7 @@ type Querier interface {
 	ReleaseUserActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ReleaseUserActiveHoldsRow, error)
 	RepriceAvailableZoneSeats(ctx context.Context, arg RepriceAvailableZoneSeatsParams) (int64, error)
 	ResetCancelledSeat(ctx context.Context, arg ResetCancelledSeatParams) error
+	// A seat that returns to sale takes the zone's current base price.
 	ResetSeatToAvailable(ctx context.Context, arg ResetSeatToAvailableParams) error
 	SetEmailVerified(ctx context.Context, id pgtype.UUID) error
 	SetPhoneVerified(ctx context.Context, id pgtype.UUID) error

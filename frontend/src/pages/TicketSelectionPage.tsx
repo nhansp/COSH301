@@ -33,11 +33,12 @@ function supportsWebGL(): boolean {
   }
 }
 
+/** The light 2D plan is the default; the 3D scene (a large chunk) loads only for visitors who chose it. */
 function readViewPreference(): '3d' | '2d' {
   try {
-    return localStorage.getItem(VIEW_KEY) === '2d' ? '2d' : '3d';
+    return localStorage.getItem(VIEW_KEY) === '3d' ? '3d' : '2d';
   } catch {
-    return '3d';
+    return '2d';
   }
 }
 
@@ -58,7 +59,7 @@ export const TicketSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { getEventById, loadEventDetail, isLoading } = useEvents();
-  const { isAuthenticated, isLoading: authLoading, sessionExpired, ticketsBookedFor } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, sessionExpired } = useAuth();
   const { isEnabled } = useFeatures();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -76,7 +77,9 @@ export const TicketSelectionPage: React.FC = () => {
   }, [id, needsDetail, loadEventDetail]);
 
   const limit = event ? ticketLimitOf(event) : 0;
-  const maxSeats = event ? Math.max(0, limit - ticketsBookedFor(event.id)) : 0;
+  // The cap is the server's rule; without the ticket_limit flag the client imposes none.
+  const limitEnabled = isEnabled('ticket_limit');
+  const maxSeats = limitEnabled ? limit : Infinity;
   const inventory = useSeatInventory({ eventId: event?.id, maxSeats, holdEnabled: isEnabled('seat_hold') });
   const { seats, mine, pending } = inventory;
   const remaining = Math.max(0, maxSeats - mine.length);
@@ -213,7 +216,7 @@ export const TicketSelectionPage: React.FC = () => {
 
   const goToCheckout = () => {
     if (!event) return;
-    navigate(`/checkout/${event.id}?seats=${encodeURIComponent(mine.map(s => s.id).join(','))}`);
+    navigate(`/checkout/${event.id}`);
   };
 
   const accent = useEventAccent(event?.imageUrl);
@@ -300,7 +303,7 @@ export const TicketSelectionPage: React.FC = () => {
           <h2 className="type-display text-title">{activeZone.name}</h2>
           <p className="text-sm text-kumo-subtle">
             {activeZone.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'} · {activeZone.available === 0 ? 'Hết vé' : `còn ${activeZone.available} vé`} ·{' '}
-            {formatPrice(activeZone.priceFrom, '₫')}
+            {formatPrice(activeZone.priceFrom)}
           </p>
         </div>
       </div>
@@ -314,7 +317,7 @@ export const TicketSelectionPage: React.FC = () => {
         >
           {zones.map(z => (
             <option key={z.id} value={z.id}>
-              {z.name} · {formatPrice(z.priceFrom, '₫')}
+              {z.name} · {formatPrice(z.priceFrom)}
               {z.available === 0 ? ' · hết vé' : ''}
             </option>
           ))}
@@ -408,12 +411,9 @@ export const TicketSelectionPage: React.FC = () => {
 
         {seatMapOff ? (
           <div className="max-w-xl rounded-2xl bg-kumo-base p-6 ring ring-kumo-line">
-            <p className="text-kumo-default">Sơ đồ chọn vé đang tạm đóng. Bạn vẫn có thể mua vé theo hạng.</p>
-            <Link
-              to={`/checkout/${event.id}`}
-              className="btn btn-primary mt-4"
-            >
-              Mua vé theo hạng
+            <p className="text-kumo-default">Sơ đồ chọn vé đang tạm đóng.</p>
+            <Link to={`/event/${event.id}`} className="btn btn-primary mt-4">
+              Về trang sự kiện
             </Link>
           </div>
         ) : inventory.loadState === 'error' ? (
@@ -507,7 +507,7 @@ export const TicketSelectionPage: React.FC = () => {
                   listClassName="max-h-[min(18rem,32dvh)]"
                   mine={mine}
                   zones={zoneById}
-                  limit={limit}
+                  limit={limitEnabled ? limit : null}
                   remaining={remaining}
                   secondsLeft={inventory.secondsLeft}
                   pending={pending}
@@ -530,7 +530,7 @@ export const TicketSelectionPage: React.FC = () => {
                 className="min-h-0"
                 mine={mine}
                 zones={zoneById}
-                limit={limit}
+                limit={limitEnabled ? limit : null}
                 remaining={remaining}
                 secondsLeft={inventory.secondsLeft}
                 pending={pending}
@@ -550,12 +550,12 @@ export const TicketSelectionPage: React.FC = () => {
               <ChevronUp className={`size-5 shrink-0 text-kumo-subtle transition-transform ${summaryOpen ? '' : 'rotate-180'}`} />
               <span className="min-w-0">
                 <span className="flex items-baseline gap-1.5">
-                  <span className="type-figure text-xl text-kumo-strong">{formatPrice(totals.total, '₫')}</span>
+                  <span className="type-figure text-xl text-kumo-strong">{formatPrice(totals.total)}</span>
                   <span className="text-xs text-kumo-subtle">đã gồm phí</span>
                 </span>
                 <span className="flex flex-wrap items-baseline gap-x-2 text-sm text-kumo-subtle">
                   <span className="tabular-nums">
-                    {mine.length}/{limit} vé
+                    {mine.length}{limitEnabled && `/${limit}`} vé
                   </span>
                   {inventory.secondsLeft !== null && <HoldTimer secondsLeft={inventory.secondsLeft} label="Giữ chỗ" className="text-sm" />}
                 </span>
@@ -563,7 +563,7 @@ export const TicketSelectionPage: React.FC = () => {
             </button>
             {!summaryOpen && (
               <button type="button" onClick={goToCheckout} className="btn btn-primary h-12 shrink-0 px-5">
-                Thanh toán
+                Xem ghế đã giữ
               </button>
             )}
           </div>

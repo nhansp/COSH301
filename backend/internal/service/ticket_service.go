@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,16 +27,23 @@ func NewTicketService(dbPool *pgxpool.Pool, queries *store.Queries) *TicketServi
 	return &TicketService{dbPool: dbPool, queries: queries}
 }
 
-// CancelRequest describes a booking the client wants to cancel. Concert and
-// TicketDetails are client-supplied display data and are stored as such.
+var (
+	ErrNothingToCancel = errors.New("nothing_to_cancel")
+	ErrTooManySeats    = errors.New("too_many_seats")
+)
+
+const (
+	maxCancelSeats  = 20
+	maxCancelRefLen = 64
+	maxCancelReason = 500
+)
+
+// CancelRequest describes a booking the client wants to cancel.
 type CancelRequest struct {
-	BookingID     string
-	BookingCode   string
-	EventRef      string
-	Reason        string
-	Seats         []string
-	Concert       map[string]any
-	TicketDetails map[string]any
+	BookingID   string
+	BookingCode string
+	Reason      string
+	Seats       []string
 }
 
 type CancelResult struct {
@@ -47,8 +55,16 @@ type CancelResult struct {
 
 // Cancel releases the user's holds and voids the user's tickets on the
 // requested seats, then records the cancellation, all in one transaction.
-// eventID may be invalid when the booking refers to an unknown event.
+// Nothing is logged unless at least one seat was released.
 func (s *TicketService) Cancel(ctx context.Context, userID pgtype.UUID, userEmail string, eventID pgtype.UUID, req CancelRequest) (*CancelResult, error) {
+	if !eventID.Valid {
+		return nil, ErrEventNotFound
+	}
+	refs := cleanSeatRefs(req.Seats)
+	if len(refs) > maxCancelSeats {
+		return nil, ErrTooManySeats
+	}
+
 	tx, err := s.dbPool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction: %w", err)
@@ -56,43 +72,45 @@ func (s *TicketService) Cancel(ctx context.Context, userID pgtype.UUID, userEmai
 	defer tx.Rollback(ctx)
 	qtx := s.queries.WithTx(tx)
 
-	released := []string{}
-	concert := map[string]any{}
-	if eventID.Valid {
-		for _, ref := range req.Seats {
-			label, err := s.cancelSeat(ctx, qtx, eventID, userID, strings.TrimSpace(ref))
-			if err != nil {
-				return nil, err
-			}
-			if label != "" {
-				released = append(released, label)
-			}
-		}
-		if concert, err = eventConcertInfo(ctx, qtx, eventID); err != nil {
-			return nil, err
-		}
+	// Same lock as HoldSeat, so concurrent cancels and holds by one user on one
+	// event run one at a time instead of locking seat rows in different orders.
+	if err := qtx.LockUserEventAdvisory(ctx, store.LockUserEventAdvisoryParams{
+		Column1: store.UUIDToString(userID),
+		Column2: store.UUIDToString(eventID),
+	}); err != nil {
+		return nil, fmt.Errorf("advisory lock: %w", err)
 	}
 
-	reason := strings.TrimSpace(req.Reason)
+	released := []string{}
+	for _, ref := range refs {
+		label, err := s.cancelSeat(ctx, qtx, eventID, userID, ref)
+		if err != nil {
+			return nil, err
+		}
+		if label != "" {
+			released = append(released, label)
+		}
+	}
+	if len(released) == 0 {
+		return nil, ErrNothingToCancel
+	}
+	concert, err := eventConcertInfo(ctx, qtx, eventID)
+	if err != nil {
+		return nil, err
+	}
+
+	reason := truncate(strings.TrimSpace(req.Reason), maxCancelReason)
 	if reason == "" {
 		reason = defaultCancelReason
 	}
-	seats := req.Seats
-	if seats == nil {
-		seats = []string{}
-	}
 	oldData, err := json.Marshal(map[string]any{
-		"bookingId":     req.BookingID,
-		"bookingCode":   req.BookingCode,
-		"eventId":       req.EventRef,
-		"seats":         seats,
+		"bookingId":     truncate(req.BookingID, maxCancelRefLen),
+		"bookingCode":   truncate(req.BookingCode, maxCancelRefLen),
+		"eventId":       store.UUIDToString(eventID),
+		"seats":         refs,
 		"releasedSeats": released,
 		"concert":       concert,
 		"userEmail":     userEmail,
-		"client": map[string]any{
-			"concert":       req.Concert,
-			"ticketDetails": req.TicketDetails,
-		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("encode audit data: %w", err)
@@ -125,17 +143,38 @@ func (s *TicketService) Cancel(ctx context.Context, userID pgtype.UUID, userEmai
 	return &CancelResult{
 		AuditLogID:    entry.ID,
 		CancelledAt:   entry.CreatedAt.Time,
-		Concert:       mergeConcert(req.Concert, concert),
+		Concert:       concert,
 		ReleasedSeats: released,
 	}, nil
+}
+
+// cleanSeatRefs trims, drops empty or oversized references, dedupes and sorts them.
+func cleanSeatRefs(seats []string) []string {
+	seen := make(map[string]bool, len(seats))
+	out := make([]string, 0, len(seats))
+	for _, ref := range seats {
+		ref = strings.TrimSpace(ref)
+		if ref == "" || len(ref) > maxCancelRefLen || seen[ref] {
+			continue
+		}
+		seen[ref] = true
+		out = append(out, ref)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func truncate(s string, n int) string {
+	r := []rune(s)
+	if len(r) > n {
+		return string(r[:n])
+	}
+	return s
 }
 
 // cancelSeat frees one seat owned by the user and returns its label, or ""
 // when the reference does not match exactly one of the user's seats.
 func (s *TicketService) cancelSeat(ctx context.Context, qtx *store.Queries, eventID, userID pgtype.UUID, ref string) (string, error) {
-	if ref == "" {
-		return "", nil
-	}
 	matches, err := qtx.FindOwnedEventSeats(ctx, store.FindOwnedEventSeatsParams{EventID: eventID, SeatRef: ref, UserID: userID})
 	if err != nil {
 		return "", fmt.Errorf("find seat %q: %w", ref, err)

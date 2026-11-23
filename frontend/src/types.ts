@@ -17,7 +17,6 @@ export interface EventItem {
   id: string;
   slug?: string;
   title: string;
-  subTitle?: string;
   imageUrl: string;
   /** Photo attribution required by the image licence. */
   imageCredit?: string;
@@ -29,24 +28,9 @@ export interface EventItem {
   city: string;
   address: string;
   priceStart: number;
-  currency: string;
   genre: string;
-  isTrending?: boolean;
-  isPopular?: boolean;
   ticketTiers: TicketTier[];
-  artists: {
-    name: string;
-    role: string;
-    avatar: string;
-  }[];
   description: string;
-  organizer: {
-    name: string;
-    verified: boolean;
-    contact: string;
-  };
-  ageRestriction?: string;
-  spotifyPlaylistUrl?: string;
   /** Only present once the event detail has loaded. */
   maxTicketsPerUser?: number;
 }
@@ -64,32 +48,18 @@ export interface User {
 
 export type UserRole = 'CUSTOMER' | 'ORGANIZER' | 'CEO' | 'GATE_STAFF' | 'ADMIN';
 
-export interface Booking {
-  id: string;
+/** A seat the signed-in user is currently holding, as reported by GET /api/holds. */
+export interface Hold {
   eventId: string;
-  eventTitle: string;
-  eventDate: string;
-  eventTime: string;
-  venue: string;
-  city: string;
-  imageUrl: string;
-  tierId: string;
-  tierName: string;
-  quantity: number;
-  totalAmount: number;
-  currency: string;
-  attendeeName: string;
-  attendeePhone: string;
-  attendeeEmail: string;
-  bookingCode: string;
-  purchasedAt: string;
-  paymentMethod: string;
-  status: 'confirmed' | 'cancelled';
-  userId?: string;
-  /** Seat IDs, used to talk to the API. */
-  selectedSeats?: string[];
-  /** Human-readable seat labels ("A1"), shown to the user. */
-  seatLabels?: string[];
+  eventSlug: string;
+  eventName: string;
+  startsAt: string;
+  venueName: string;
+  seatId: string;
+  seatLabel: string;
+  zoneName: string;
+  price: number;
+  expiresAt: string;
 }
 
 export type SeatStatus = 'available' | 'sold' | 'held' | 'selected';
@@ -107,23 +77,10 @@ export interface SeatItem {
   tierId: string;
 }
 
-export interface SeatZoneConfig {
-  id: string;
-  name: string;
-  colorName: string;
-  rows: string[];
-  seatsPerRow: number;
-  tierId: string;
-  price: number;
-}
-
 export interface FilterState {
   searchQuery: string;
   startDate: string;
   endDate: string;
   selectedGenres: string[];
   city: string;
-  onlyTrending: boolean;
-  onlyPopular: boolean;
-  priceRange: [number, number];
 }

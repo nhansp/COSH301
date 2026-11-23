@@ -26,10 +26,11 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	mux := http.NewServeMux()
 	fm := deps.Config.Features
 
-	sysHandler := NewSystemHandler(fm)
+	sysHandler := NewSystemHandler(fm, deps.Config.DemoMode)
 	authHandler := NewAuthHandler(deps.AuthService, deps.Config.CookieSecure)
 	organizerHandler := NewOrganizerHandler(deps.Organizer, deps.EventService)
 	otpLimiter := NewRateLimiter(30, time.Minute)
+	demoLimiter := NewRateLimiter(5, time.Minute)
 	eventHandler := NewEventHandler(deps.EventService)
 	seatHandler := NewSeatHandler(deps.SeatService, deps.AuthService, deps.EventService)
 	streamHandler := NewStreamHandler(deps.RealtimeHub, deps.EventService)
@@ -44,7 +45,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	mux.HandleFunc("POST /api/auth/otp/request", RequireFeature(fm, config.FlagOtpLogin, otpLimiter.Wrap(authHandler.HandleRequestOTP)))
 	mux.HandleFunc("POST /api/auth/otp/verify", RequireFeature(fm, config.FlagOtpLogin, otpLimiter.Wrap(authHandler.HandleVerifyOTP)))
 	if deps.Config.DemoMode {
-		mux.HandleFunc("POST /api/auth/demo-login", authHandler.HandleDemoLogin)
+		mux.HandleFunc("POST /api/auth/demo-login", demoLimiter.Wrap(authHandler.HandleDemoLogin))
 	}
 	mux.HandleFunc("GET /api/auth/me", authHandler.HandleMe)
 	mux.HandleFunc("POST /api/auth/logout", authHandler.HandleLogout)
@@ -60,6 +61,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	// 5. Seat Hold Endpoints (gated by seat_hold)
 	mux.HandleFunc("POST /api/holds", RequireFeature(fm, config.FlagSeatHold, seatHandler.HandleHolds))
 	mux.HandleFunc("DELETE /api/holds/{seatId}", RequireFeature(fm, config.FlagSeatHold, seatHandler.HandleHolds))
+	mux.HandleFunc("GET /api/holds", RequireFeature(fm, config.FlagSeatHold,
+		RequireRole(authHandler, anyRole, seatHandler.HandleMyHolds)))
 
 	// 6. Organizer console (FR-08)
 	mux.HandleFunc("GET /api/organizer/events", RequireFeature(fm, config.FlagOrganizerConsole,
@@ -67,10 +70,10 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	mux.HandleFunc("PUT /api/organizer/events/{id}/zones/{zoneId}/pricing", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireFeature(fm, config.FlagZonePricing, RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateZonePricing))))
 
-	// 7. Ticket cancellation acts on seat holds; audit logs belong to the organizer console.
-	mux.HandleFunc("POST /api/tickets/cancel", RequireFeature(fm, config.FlagSeatHold,
+	// 7. Tickets exist only once payment is on; audit logs belong to the organizer console.
+	mux.HandleFunc("POST /api/tickets/cancel", RequireFeature(fm, config.FlagPayments,
 		RequireRole(authHandler, anyRole, ticketHandler.HandleCancelTicket)))
-	mux.HandleFunc("GET /api/tickets/cancelled", RequireFeature(fm, config.FlagSeatHold,
+	mux.HandleFunc("GET /api/tickets/cancelled", RequireFeature(fm, config.FlagPayments,
 		RequireRole(authHandler, anyRole, ticketHandler.HandleListUserCancelledTickets)))
 	mux.HandleFunc("GET /api/tickets/audit-logs", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireRole(authHandler, organizerRoles, ticketHandler.HandleListAuditLogs)))

@@ -335,3 +335,42 @@ func (s *SeatService) ExpireStaleHolds(ctx context.Context) ([]store.ExpireStale
 
 	return expiredRows, errors.Join(errs...)
 }
+
+// MyHold is one of the caller's active seat holds.
+type MyHold struct {
+	EventID   string `json:"eventId"`
+	EventSlug string `json:"eventSlug"`
+	EventName string `json:"eventName"`
+	StartsAt  string `json:"startsAt"`
+	VenueName string `json:"venueName"`
+	SeatID    string `json:"seatId"`
+	SeatLabel string `json:"seatLabel"`
+	ZoneName  string `json:"zoneName"`
+	Price     int64  `json:"price"`
+	ExpiresAt string `json:"expiresAt"`
+}
+
+// ListMyHolds returns the user's active holds across all events.
+func (s *SeatService) ListMyHolds(ctx context.Context, userID pgtype.UUID) ([]MyHold, error) {
+	rows, err := s.queries.ListMyActiveHolds(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list holds: %w", err)
+	}
+	holds := make([]MyHold, 0, len(rows))
+	for _, r := range rows {
+		price, _ := r.CurrentPrice.Int64Value()
+		holds = append(holds, MyHold{
+			EventID:   store.UUIDToString(r.EventID),
+			EventSlug: r.EventSlug,
+			EventName: r.EventName,
+			StartsAt:  r.StartsAt.Time.Format(time.RFC3339),
+			VenueName: r.VenueName,
+			SeatID:    store.UUIDToString(r.SeatID),
+			SeatLabel: r.SeatLabel,
+			ZoneName:  r.ZoneName,
+			Price:     price.Int64,
+			ExpiresAt: r.ExpiresAt.Time.Format(time.RFC3339),
+		})
+	}
+	return holds, nil
+}

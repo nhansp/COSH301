@@ -1,43 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole, Booking } from '../types';
+import { User, UserRole } from '../types';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  bookings: Booking[];
   /** Asks the server for a login code; `demoCode` is set when the server shows codes on screen. */
   requestOtp: (destination: string) => Promise<OtpResult & { demoCode?: string }>;
   /** Signs in with a login code. Succeeds only when the server opened a session. */
   verifyOtp: (destination: string, code: string) => Promise<OtpResult>;
-  /** One-click demo account; available while the server runs outside production. */
+  /** One-click demo account; only call it when `/api/features` reports `demoLogin`. */
   demoLogin: () => Promise<OtpResult>;
   /** Drops the signed-in user after the server reports the session is gone. */
   sessionExpired: () => void;
   logout: () => void;
-  createBooking: (bookingData: {
-    eventId: string;
-    eventTitle: string;
-    eventDate: string;
-    eventTime: string;
-    venue: string;
-    city: string;
-    imageUrl: string;
-    tierId: string;
-    tierName: string;
-    quantity: number;
-    totalAmount: number;
-    currency: string;
-    attendeeName: string;
-    attendeePhone: string;
-    attendeeEmail: string;
-    paymentMethod: string;
-    selectedSeats?: string[];
-    seatLabels?: string[];
-  }) => Booking;
-  cancelBooking: (bookingId: string) => void;
-  /** Tickets the signed-in user holds in confirmed bookings for one event. */
-  ticketsBookedFor: (eventId: string) => number;
 }
 
 /** `error` is a message for the user, set whenever `ok` is false. */
@@ -62,8 +38,6 @@ async function authErrorOf(res: Response): Promise<string> {
 const OFFLINE_ERROR = 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const BOOKINGS_STORAGE_KEY = 'sms_user_bookings';
 
 interface ApiUser {
   id: string;
@@ -91,21 +65,11 @@ function userFromApi(u: ApiUser): User {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // The server session (HttpOnly cookie) is the source of truth; restore it via /api/auth/me.
   useEffect(() => {
     let isMounted = true;
-    try {
-      const savedBookings = localStorage.getItem(BOOKINGS_STORAGE_KEY);
-      if (savedBookings) {
-        setBookings(JSON.parse(savedBookings));
-      }
-    } catch (e) {
-      console.error('Error loading stored bookings:', e);
-    }
-
     fetch('/api/auth/me')
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
@@ -154,80 +118,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const verifyOtp = (destination: string, code: string) => signIn('/api/auth/otp/verify', { destination, code });
-  const demoLogin = () => signIn('/api/auth/demo-login', { role: 'CUSTOMER' });
+  const demoLogin = () => signIn('/api/auth/demo-login', {});
   const sessionExpired = () => setUser(null);
 
   const logout = () => {
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     setUser(null);
-  };
-
-  const createBooking = (bookingData: {
-    eventId: string;
-    eventTitle: string;
-    eventDate: string;
-    eventTime: string;
-    venue: string;
-    city: string;
-    imageUrl: string;
-    tierId: string;
-    tierName: string;
-    quantity: number;
-    totalAmount: number;
-    currency: string;
-    attendeeName: string;
-    attendeePhone: string;
-    attendeeEmail: string;
-    paymentMethod: string;
-    selectedSeats?: string[];
-    seatLabels?: string[];
-  }): Booking => {
-    const bookingCode = `SMS-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const newBooking: Booking = {
-      id: `bk_${Date.now()}`,
-      ...bookingData,
-      userId: user?.id,
-      bookingCode,
-      purchasedAt: new Date().toISOString(),
-      status: 'confirmed'
-    };
-
-    const updatedBookings = [newBooking, ...bookings];
-    setBookings(updatedBookings);
-    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updatedBookings));
-
-    // Update seat map status to permanently 'sold' for confirmed seats
-    if (bookingData.selectedSeats && bookingData.selectedSeats.length > 0) {
-      try {
-        const storageKey = `sms_event_seats_${bookingData.eventId}`;
-        const existing = localStorage.getItem(storageKey);
-        if (existing) {
-          const parsedSeats = JSON.parse(existing);
-          const updatedSeats = parsedSeats.map((s: { id: string; status: string }) =>
-            bookingData.selectedSeats?.includes(s.id) ? { ...s, status: 'sold' } : s
-          );
-          localStorage.setItem(storageKey, JSON.stringify(updatedSeats));
-        }
-      } catch (err) {
-        console.error('Failed to update seat status upon booking:', err);
-      }
-    }
-
-    return newBooking;
-  };
-
-  const cancelBooking = (bookingId: string) => {
-    const updated = bookings.map(b => (b.id === bookingId ? { ...b, status: 'cancelled' as const } : b));
-    setBookings(updated);
-    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
-  };
-
-  const ticketsBookedFor = (eventId: string) => {
-    if (!user) return 0;
-    return bookings
-      .filter(b => b.eventId === eventId && b.status === 'confirmed' && b.userId === user.id)
-      .reduce((sum, b) => sum + b.quantity, 0);
   };
 
   return (
@@ -236,15 +132,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isAuthenticated: !!user,
         isLoading,
-        bookings,
         requestOtp,
         verifyOtp,
         demoLogin,
         sessionExpired,
-        logout,
-        createBooking,
-        cancelBooking,
-        ticketsBookedFor
+        logout
       }}
     >
       {children}

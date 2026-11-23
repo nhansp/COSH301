@@ -179,3 +179,13 @@ func (h *SeatHandler) HandleHolds(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
 }
+
+// HandleMyHolds handles GET /api/holds: the caller's active holds.
+func (h *SeatHandler) HandleMyHolds(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	holds, err := h.seatService.ListMyHolds(r.Context(), sess.UserID)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, holds)
+}
