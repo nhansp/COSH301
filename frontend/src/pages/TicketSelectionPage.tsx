@@ -33,11 +33,12 @@ function supportsWebGL(): boolean {
   }
 }
 
+/** The light 2D plan is the default; the 3D scene (a large chunk) loads only for visitors who chose it. */
 function readViewPreference(): '3d' | '2d' {
   try {
-    return localStorage.getItem(VIEW_KEY) === '2d' ? '2d' : '3d';
+    return localStorage.getItem(VIEW_KEY) === '3d' ? '3d' : '2d';
   } catch {
-    return '3d';
+    return '2d';
   }
 }
 
