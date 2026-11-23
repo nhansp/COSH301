@@ -246,7 +246,7 @@ export const HeroSpotlight: React.FC<HeroSpotlightProps> = ({ onExploreClick }) 
               <div className="flex items-center gap-1.5">
                 <span className="text-white/60">Giá từ:</span>
                 <span className="text-emerald-400 font-bold tabular-nums text-base">
-                  {formatPrice(current.priceStart, current.currency)}
+                  {formatPrice(current.priceStart)}
                 </span>
               </div>
             </div>
@@ -340,7 +340,7 @@ export const HeroSpotlight: React.FC<HeroSpotlightProps> = ({ onExploreClick }) 
                         </span>
 
                         <span className="text-xs font-bold text-emerald-300 tabular-nums">
-                          {formatPrice(item.priceStart, item.currency)}
+                          {formatPrice(item.priceStart)}
                         </span>
                       </div>
                     </div>

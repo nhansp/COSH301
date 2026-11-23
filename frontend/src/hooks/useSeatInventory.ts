@@ -192,7 +192,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
       setStatus(seat.id, 'selected');
       // Keep the ref current for loops that hold several seats in one go.
       mineRef.current = [...mineRef.current, { ...seat, status: 'selected' }];
-      if (!quiet) notify(`Đã giữ ghế ${seat.label} · ${formatPrice(seat.price, '₫')}`, 'success');
+      if (!quiet) notify(`Đã giữ ghế ${seat.label} · ${formatPrice(seat.price)}`, 'success');
       return { ok: true };
     },
     [eventId, holdEnabled, maxSeats, notify, updateExpiries]

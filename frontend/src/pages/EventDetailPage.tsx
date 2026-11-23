@@ -207,7 +207,7 @@ export const EventDetailPage: React.FC = () => {
                       <span
                         className={`type-figure shrink-0 text-lg ${zone.available === 0 ? 'text-kumo-subtle line-through' : 'text-kumo-strong'}`}
                       >
-                        {formatPrice(zone.basePrice, event.currency)}
+                        {formatPrice(zone.basePrice)}
                       </span>
                     </div>
                     <div className="mt-2 flex items-center gap-3 pl-5.5">
@@ -238,7 +238,7 @@ export const EventDetailPage: React.FC = () => {
         <div className="mx-auto flex max-w-page items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-sm text-kumo-subtle">Giá từ</div>
-            <div className="type-figure text-xl text-kumo-strong">{formatPrice(event.priceStart, event.currency)}</div>
+            <div className="type-figure text-xl text-kumo-strong">{event.priceStart > 0 ? formatPrice(event.priceStart) : 'Chưa có giá'}</div>
           </div>
           {cta(false)}
         </div>

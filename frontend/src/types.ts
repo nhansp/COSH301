@@ -29,7 +29,6 @@ export interface EventItem {
   city: string;
   address: string;
   priceStart: number;
-  currency: string;
   genre: string;
   isTrending?: boolean;
   isPopular?: boolean;
@@ -77,7 +76,6 @@ export interface Booking {
   tierName: string;
   quantity: number;
   totalAmount: number;
-  currency: string;
   attendeeName: string;
   attendeePhone: string;
   attendeeEmail: string;

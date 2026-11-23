@@ -300,7 +300,7 @@ export const TicketSelectionPage: React.FC = () => {
           <h2 className="type-display text-title">{activeZone.name}</h2>
           <p className="text-sm text-kumo-subtle">
             {activeZone.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'} · {activeZone.available === 0 ? 'Hết vé' : `còn ${activeZone.available} vé`} ·{' '}
-            {formatPrice(activeZone.priceFrom, '₫')}
+            {formatPrice(activeZone.priceFrom)}
           </p>
         </div>
       </div>
@@ -314,7 +314,7 @@ export const TicketSelectionPage: React.FC = () => {
         >
           {zones.map(z => (
             <option key={z.id} value={z.id}>
-              {z.name} · {formatPrice(z.priceFrom, '₫')}
+              {z.name} · {formatPrice(z.priceFrom)}
               {z.available === 0 ? ' · hết vé' : ''}
             </option>
           ))}
@@ -550,7 +550,7 @@ export const TicketSelectionPage: React.FC = () => {
               <ChevronUp className={`size-5 shrink-0 text-kumo-subtle transition-transform ${summaryOpen ? '' : 'rotate-180'}`} />
               <span className="min-w-0">
                 <span className="flex items-baseline gap-1.5">
-                  <span className="type-figure text-xl text-kumo-strong">{formatPrice(totals.total, '₫')}</span>
+                  <span className="type-figure text-xl text-kumo-strong">{formatPrice(totals.total)}</span>
                   <span className="text-xs text-kumo-subtle">đã gồm phí</span>
                 </span>
                 <span className="flex flex-wrap items-baseline gap-x-2 text-sm text-kumo-subtle">

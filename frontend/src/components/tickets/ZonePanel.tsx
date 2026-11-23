@@ -102,7 +102,7 @@ export const ZoneList: React.FC<ZoneListProps> = ({ zones, activeZoneId, heldByZ
                     onBlur={() => onHover(null)}
                     aria-label={`${zone.name}, ${zone.kind === 'standing' ? 'khu đứng' : 'ghế ngồi'}, ${
                       soldOut ? 'hết vé' : `còn ${zone.available} trên ${zone.capacity} vé`
-                    }, giá từ ${formatPrice(zone.priceFrom, '₫')}`}
+                    }, giá từ ${formatPrice(zone.priceFrom)}`}
                     className="peer sr-only"
                   />
                   {/* Selection mark: a filled check, not colour alone. */}
@@ -148,7 +148,7 @@ export const ZoneList: React.FC<ZoneListProps> = ({ zones, activeZoneId, heldByZ
                         soldOut ? 'text-kumo-subtle line-through' : 'text-kumo-strong'
                       }`}
                     >
-                      {formatPrice(zone.priceFrom, '₫')}
+                      {formatPrice(zone.priceFrom)}
                     </span>
                     <span className="text-xs text-kumo-subtle">mỗi vé</span>
                   </span>
@@ -195,7 +195,7 @@ export const ZoneDetail: React.FC<ZoneDetailProps> = ({
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="font-display text-xl font-semibold tabular-nums text-kumo-strong">
-              {formatPrice(zone.priceFrom, '₫')}
+              {formatPrice(zone.priceFrom)}
             </div>
             <div className="text-sm text-kumo-subtle">mỗi vé</div>
           </div>

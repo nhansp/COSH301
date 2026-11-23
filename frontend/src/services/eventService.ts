@@ -37,7 +37,6 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
       city: ev.city || 'Hà Nội',
       address: ev.address || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
       priceStart: typeof ev.priceFrom === 'number' ? ev.priceFrom : 0,
-      currency: '₫',
       genre: ev.genre || 'Classical & Symphony',
       isTrending: true,
       isPopular: true,
@@ -77,15 +76,10 @@ export function formatPriceShort(amount: number): string {
   return `${amount}₫`;
 }
 
-export function formatPrice(amount: number, currency: string = '₹'): string {
-  if (amount === 0) return 'Miễn phí';
-  if (currency === '₫') {
-    return `${amount.toLocaleString('vi-VN')}₫`;
-  }
-  if (currency === '$') {
-    return `$${amount.toLocaleString('en-US')}`;
-  }
-  return `₹${amount.toLocaleString('en-IN')}`;
+const vnd = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+
+export function formatPrice(amount: number): string {
+  return vnd.format(amount);
 }
 
 // -------------------------------------------------------------
@@ -140,7 +134,6 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
         typeof ev.maxTicketsPerUser === 'number' && ev.maxTicketsPerUser > 0
           ? ev.maxTicketsPerUser
           : DEFAULT_MAX_TICKETS_PER_USER,
-      currency: '₫',
       genre: ev.genre || 'Classical & Symphony',
       isTrending: true,
       isPopular: true,

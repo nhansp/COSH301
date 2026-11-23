@@ -63,7 +63,7 @@ const TicketPass: React.FC<{ booking: Booking; onOpen: () => void; onCancel: () 
           <span className="text-sm text-kumo-subtle">{booking.tierName}</span>
         </p>
         <p className="mt-4 text-sm text-kumo-subtle">
-          {formatPrice(booking.totalAmount, booking.currency)}, {paymentMethodName(booking.paymentMethod)}
+          {formatPrice(booking.totalAmount)}, {paymentMethodName(booking.paymentMethod)}
           {bought && `, mua ngày ${bought}`}
         </p>
       </div>

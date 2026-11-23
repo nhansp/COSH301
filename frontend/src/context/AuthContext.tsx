@@ -27,7 +27,6 @@ interface AuthContextType {
     tierName: string;
     quantity: number;
     totalAmount: number;
-    currency: string;
     attendeeName: string;
     attendeePhone: string;
     attendeeEmail: string;
@@ -174,7 +173,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     tierName: string;
     quantity: number;
     totalAmount: number;
-    currency: string;
     attendeeName: string;
     attendeePhone: string;
     attendeeEmail: string;

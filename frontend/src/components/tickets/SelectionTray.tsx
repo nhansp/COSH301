@@ -139,11 +139,11 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
         <dl className="space-y-0.5 text-sm">
           <div className="flex justify-between gap-3">
             <dt className="text-kumo-subtle">Tạm tính</dt>
-            <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, '₫')}</dd>
+            <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal)}</dd>
           </div>
           <div className="flex justify-between gap-3">
             <dt className="text-kumo-subtle">Phí dịch vụ ({Math.round(SERVICE_FEE_RATE * 100)}%)</dt>
-            <dd className="tabular-nums text-kumo-default">{formatPrice(fee, '₫')}</dd>
+            <dd className="tabular-nums text-kumo-default">{formatPrice(fee)}</dd>
           </div>
         </dl>
         {/* Total beside the button: one row less, so the list keeps more of the height. */}
@@ -151,7 +151,7 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
           <p className="min-w-0">
             <span className="block text-sm font-medium text-kumo-strong">Tổng cộng</span>
             <span className="type-figure block text-2xl leading-tight text-kumo-strong">
-              {formatPrice(total, '₫')}
+              {formatPrice(total)}
             </span>
           </p>
           <button type="button" onClick={onCheckout} className="btn btn-primary h-12 shrink-0">
@@ -189,11 +189,11 @@ const TicketGroup: React.FC<TicketGroupProps> = ({ seats, zone, pending, onRelea
         <span aria-hidden="true" className="size-2.5 shrink-0 translate-y-px rounded-full" style={{ background: zone?.color }} />
         <p className="min-w-0 flex-1 truncate font-medium text-kumo-strong">{seats[0].zoneName}</p>
         <span className="type-figure shrink-0 text-base text-kumo-strong">
-          {formatPrice(lineTotal, '₫')}
+          {formatPrice(lineTotal)}
         </span>
       </div>
       <p className="pl-4.5 text-sm text-kumo-subtle tabular-nums">
-        {seats.length} × {samePrice ? formatPrice(seats[0].price, '₫') : 'giá theo từng ghế'}
+        {seats.length} × {samePrice ? formatPrice(seats[0].price) : 'giá theo từng ghế'}
         {standing && ' · vé đứng'}
       </p>
 

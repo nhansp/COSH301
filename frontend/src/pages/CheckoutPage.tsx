@@ -190,7 +190,6 @@ export const CheckoutPage: React.FC = () => {
       tierName: tier.name,
       quantity: ticketCount,
       totalAmount,
-      currency: event.currency,
       attendeeName: attendeeName || user?.name || 'Khách',
       attendeePhone: attendeePhone || user?.phone || 'N/A',
       attendeeEmail: attendeeEmail || user?.email || 'N/A',
@@ -234,7 +233,7 @@ export const CheckoutPage: React.FC = () => {
       active ? 'bg-kumo-tint ring-2 ring-violet' : 'bg-kumo-recessed ring-kumo-line hover:bg-kumo-tint'
     }`;
 
-  const confirmLabel = isProcessing ? 'Đang xử lý…' : `Thanh toán ${formatPrice(totalAmount, event.currency)}`;
+  const confirmLabel = isProcessing ? 'Đang xử lý…' : `Thanh toán ${formatPrice(totalAmount)}`;
 
   const summary = (
     <dl className="space-y-3">
@@ -245,7 +244,7 @@ export const CheckoutPage: React.FC = () => {
               <dt className="min-w-0 text-kumo-default">
                 <span className="type-figure text-lg text-spot">{seat.label}</span> <span className="text-sm text-kumo-subtle">{seat.zoneName}</span>
               </dt>
-              <dd className="tabular-nums text-kumo-default">{formatPrice(seat.price, event.currency)}</dd>
+              <dd className="tabular-nums text-kumo-default">{formatPrice(seat.price)}</dd>
             </div>
           ))}
           {standingPicks.map(group => (
@@ -254,7 +253,7 @@ export const CheckoutPage: React.FC = () => {
                 <span className="type-figure text-lg text-spot">{group.length}×</span>{' '}
                 <span className="text-sm text-kumo-subtle">{group[0].zoneName}, vé đứng</span>
               </dt>
-              <dd className="tabular-nums text-kumo-default">{formatPrice(group.reduce((sum, s) => sum + s.price, 0), event.currency)}</dd>
+              <dd className="tabular-nums text-kumo-default">{formatPrice(group.reduce((sum, s) => sum + s.price, 0))}</dd>
             </div>
           ))}
           {!seatsReady && !seatLoadFailed && (
@@ -269,20 +268,20 @@ export const CheckoutPage: React.FC = () => {
           <dt className="text-kumo-default">
             {quantity} × {selectedTier?.name}
           </dt>
-          <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, event.currency)}</dd>
+          <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal)}</dd>
         </div>
       )}
       <div className="flex items-baseline justify-between gap-4 border-t border-kumo-hairline pt-3 text-sm">
         <dt className="text-kumo-subtle">Tạm tính</dt>
-        <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, event.currency)}</dd>
+        <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal)}</dd>
       </div>
       <div className="flex items-baseline justify-between gap-4 text-sm">
         <dt className="text-kumo-subtle">Phí dịch vụ (3%)</dt>
-        <dd className="tabular-nums text-kumo-default">{formatPrice(bookingFee, event.currency)}</dd>
+        <dd className="tabular-nums text-kumo-default">{formatPrice(bookingFee)}</dd>
       </div>
       <div className="flex items-baseline justify-between gap-4 border-t border-kumo-hairline pt-4">
         <dt className="font-medium text-kumo-strong">Tổng cộng</dt>
-        <dd className="type-figure text-3xl text-kumo-strong">{formatPrice(totalAmount, event.currency)}</dd>
+        <dd className="type-figure text-3xl text-kumo-strong">{formatPrice(totalAmount)}</dd>
       </div>
     </dl>
   );
@@ -367,7 +366,7 @@ export const CheckoutPage: React.FC = () => {
                             </span>
                           </span>
                         </span>
-                        <span className="type-figure shrink-0 text-lg text-kumo-strong">{formatPrice(tier.price, event.currency)}</span>
+                        <span className="type-figure shrink-0 text-lg text-kumo-strong">{formatPrice(tier.price)}</span>
                       </label>
                     ))}
                   </div>
