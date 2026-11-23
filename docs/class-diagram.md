@@ -231,6 +231,11 @@ Cách các lớp phối hợp:
   Ghế chỉ chuyển sang `HELD` khi đang `AVAILABLE`.
   Partial unique index trên `seat_holds` là lớp chặn thứ hai.
 
+Ngoài các lớp trên, code còn có:
+- `TicketHandler` và `TicketService`: hủy vé (`POST /api/tickets/cancel`, `GET /api/tickets/cancelled`, cờ `payments`), xem `audit_logs` (`GET /api/tickets/audit-logs`, cờ `organizer_console`) và đặt lại dữ liệu demo (`POST /api/tickets/reset-demo`, chỉ khi `APP_ENV` khác `production`);
+- `AuthHandler.HandleDemoLogin` (`POST /api/auth/demo-login`, chỉ khi `APP_ENV` khác `production`);
+- `SeatHandler` có thêm `GET /api/holds`.
+
 ## 3. Thuộc tính các Entity đang dùng
 
 Thuộc tính lấy đúng tên trường trong `internal/store/models.go`.
@@ -477,7 +482,7 @@ Endpoint lấy từ mục 7 của [thiết kế](design/README.md).
 | Middleware kiểm tra Turnstile | `bot_check` | Bọc `POST /api/auth/otp/request` | — |
 | `OrderHandler`, `OrderService` | `payments` | `POST /api/orders`, `GET /api/orders/{id}` | `orders`, `order_items`, `seat_holds` |
 | `PaymentHandler`, `PaymentService` | `payments`, `reconciliation` | `POST /api/orders/{id}/payments`, `GET /api/payments/{provider}/return`, `POST /api/payments/{provider}/ipn`; tác vụ đối soát | `payments`, `orders`, `tickets` |
-| `TicketHandler`, `TicketService` | `rotating_qr`, `ticket_email` | `GET /api/me/tickets`, `GET /api/tickets/{id}/qr` | `tickets` |
+| Mở rộng `TicketHandler`, `TicketService` | `rotating_qr`, `ticket_email` | `GET /api/me/tickets`, `GET /api/tickets/{id}/qr` | `tickets` |
 | Lớp gửi OTP và vé qua SMTP, SMS Gateway | `otp_login`, `ticket_email` | Dùng trong `AuthService` và `TicketService` | — |
 | `GateHandler`, `GateCheckinService` | `gate_checkin`, `offline_checkin` | `GET /api/gate/events/{id}/manifest`, `POST /api/gate/checkins`, `POST /api/gate/sync` | `tickets`, `checkins`, `gate_devices` |
 | `DashboardHandler`, `DashboardService` | `ceo_dashboard`, `reports_export` | `GET /api/dashboard/stream`, `GET /api/reports/sales.csv`, `GET /api/reports/sales.xlsx`; tác vụ chụp số liệu | `sales_snapshots` |

@@ -32,6 +32,8 @@ flowchart LR
 
 - **Profile cờ tính năng:** `FEATURE_PROFILE=sprint2`
 - **Cờ được kích hoạt:** `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console` (FR-02 luôn bật).
+- **Endpoint demo:** `POST /api/auth/demo-login` và `POST /api/tickets/reset-demo` chỉ có khi `APP_ENV` khác `production`. Bản trực tuyến chạy `production` nên không có hai endpoint này.
+- **Hủy vé:** `POST /api/tickets/cancel` và `GET /api/tickets/cancelled` nằm sau cờ `payments` (Sprint 4), nên chưa dùng được ở Sprint 2.
 - **Mục tiêu cốt lõi:**
   - Chuyển đổi toàn bộ cơ sở dữ liệu sang PostgreSQL 18 với giao dịch ACID và partial unique index.
   - Hoàn thiện luồng đăng nhập không mật khẩu bằng OTP (FR-01, FR-04). Mã OTP hiện trên màn hình (`OTP_DEMO`) hoặc ghi vào log, chưa gửi qua SMTP hay SMS Gateway.
@@ -46,10 +48,10 @@ flowchart LR
 |---|---|---|:---:|---|
 | T12.1 | Thiết lập dự án Backend Go, migration PostgreSQL 18, `sqlc` và Docker Compose | Nhân (`nhansp`) | 16 | Hạ tầng, `compose.yaml` |
 | T12.2 | Triển khai Service & Endpoint xác thực OTP (`/api/auth/otp/*`), quản lý phiên `sessions` | Nhân (`nhansp`) | 12 | `otp_login` (FR-01, FR-04) |
-| T12.3 | Triển khai Service giữ ghế (`/api/holds`): `UPDATE` có điều kiện và unique index trên `seat_holds` chống bán trùng | Huy (`vdhwy`) | 18 | `seat_hold` (FR-06, FR-07) |
+| T12.3 | Triển khai Service giữ ghế (`/api/holds`, gồm `GET` liệt kê lượt giữ của người gọi): `UPDATE` có điều kiện và unique index trên `seat_holds` chống bán trùng | Huy (`vdhwy`) | 18 | `seat_hold` (FR-06, FR-07) |
 | T12.4 | Xây dựng SSE Hub kết nối `LISTEN/NOTIFY` và background worker nhả ghế hết hạn (`HoldReaper`) | Huy (`vdhwy`) | 14 | `seat_map_realtime` (FR-03, FR-05, NFR-10) |
 | T12.5 | Tích hợp nginx proxy `/api` trong container `frontend`, kết nối Frontend React với SSE và API giữ ghế | Nhân (`nhansp`) | 12 | Giao diện, `SeatMap.tsx` |
-| T12.6 | Danh sách sự kiện và API Ban Tổ chức: xem sự kiện của mình, đặt giá khu vực, ghi `price_changes` | Nhân (`nhansp`) | 8 | `zone_pricing`, `organizer_console` (FR-02, FR-08) |
+| T12.6 | Danh sách sự kiện và API Ban Tổ chức: xem sự kiện của mình, đặt giá khu vực, ghi `price_changes`, xem `audit_logs` | Nhân (`nhansp`) | 8 | `zone_pricing`, `organizer_console` (FR-02, FR-08) |
 | T01 | Trích xuất schema PostgreSQL, dựng sơ đồ ERD Mermaid và phân tích sai khác so với Sprint 1 | Huy (`vdhwy`) | 8 | `docs/erd.md` |
 | T02 | Thiết kế sơ đồ lớp BCE (Boundary, Control, Entity) chuẩn bài B05 và ánh xạ 23 thực thể | Huy (`vdhwy`) | 10 | `docs/class-diagram.md` |
 | T03 | Lập kế hoạch Sprint 1–5, WBS, bảng ước lượng giờ và phân bổ nhân lực | Huy (`vdhwy`) | 6 | `docs/sprints.md` |

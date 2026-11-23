@@ -9,6 +9,8 @@ info:
 
     Endpoint có `x-feature` trả `404 feature_disabled` khi một trong các cờ đó tắt.
     Endpoint có `x-roles` trả `403 forbidden` với vai trò khác.
+    Endpoint có `x-environment: non-production` chỉ được đăng ký khi `APP_ENV` khác `production`.
+    Ở môi trường `production` các endpoint này không tồn tại và trả `404`.
 
     Phiên đăng nhập gửi qua cookie `session_token`, hoặc header `Authorization: Bearer <token>`.
 servers:
@@ -21,6 +23,7 @@ tags:
   - name: events
   - name: seats
   - name: organizer
+  - name: tickets
 
 paths:
   /api/health:
@@ -181,6 +184,37 @@ paths:
         '429':
           $ref: '#/components/responses/Error'
 
+  /api/auth/demo-login:
+    post:
+      tags: [auth]
+      summary: Đăng nhập thử nhanh, mỗi lần tạo một tài khoản khán giả mới
+      description: |
+        Chỉ có khi `APP_ENV` khác `production`.
+        Mỗi lần gọi tạo một tài khoản `CUSTOMER` mới và mở phiên.
+        Không có tài khoản Ban Tổ chức qua endpoint này.
+      operationId: demoLogin
+      x-environment: non-production
+      responses:
+        '200':
+          description: Đã tạo tài khoản và mở phiên
+          headers:
+            Set-Cookie:
+              description: '`session_token=<token>; Path=/; Max-Age=604800; HttpOnly; SameSite=Lax`'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, user]
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '404':
+          description: Không có endpoint này khi `APP_ENV=production`
+
   /api/auth/me:
     get:
       tags: [auth]
@@ -320,6 +354,27 @@ paths:
           $ref: '#/components/responses/FeatureDisabled'
 
   /api/holds:
+    get:
+      tags: [seats]
+      summary: Các lượt giữ ghế còn hiệu lực của người gọi
+      operationId: listMyHolds
+      x-feature: [seat_hold]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      responses:
+        '200':
+          description: Danh sách lượt giữ đang `ACTIVE`, mỗi phần tử có dạng như phản hồi của `POST /api/holds`
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SeatHold'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
     post:
       tags: [seats]
       summary: Giữ một ghế trong 5 phút (FR-06, FR-07)
@@ -495,6 +550,148 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: '`event_not_found`, `zone_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tickets/cancel:
+    post:
+      tags: [tickets]
+      summary: Hủy ghế hoặc vé của chính người gọi
+      description: |
+        Nhả các lượt giữ và hủy các vé của người gọi trên những ghế được chọn, rồi ghi một dòng vào `audit_logs`.
+        Chỉ có tác dụng khi cờ `payments` bật.
+        Ở profile `sprint2` cờ này tắt nên endpoint trả `404 feature_disabled`.
+      operationId: cancelTicket
+      x-feature: [payments]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelTicketRequest'
+      responses:
+        '200':
+          description: Đã hủy và ghi nhật ký
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [cancelled]
+                  auditLogId:
+                    type: integer
+                    format: int64
+                  bookingCode:
+                    type: string
+                  releasedSeats:
+                    type: array
+                    items:
+                      type: string
+                  cancelledAt:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+        '400':
+          description: '`invalid_payload`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/tickets/cancelled:
+    get:
+      tags: [tickets]
+      summary: Các lần hủy của người gọi
+      description: Chỉ có tác dụng khi cờ `payments` bật.
+      operationId: listCancelledTickets
+      x-feature: [payments]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      responses:
+        '200':
+          description: Danh sách lần hủy, mới nhất trước
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CancelledTicket'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/tickets/audit-logs:
+    get:
+      tags: [tickets]
+      summary: Nhật ký kiểm toán các sự kiện của Ban Tổ chức
+      description: '`ADMIN` thấy toàn bộ nhật ký. Thuộc bảng điều khiển Ban Tổ chức nên dùng cờ `organizer_console`.'
+      operationId: listAuditLogs
+      x-feature: [organizer_console]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      responses:
+        '200':
+          description: Các dòng nhật ký gần đây
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditLogItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/tickets/reset-demo:
+    post:
+      tags: [tickets]
+      summary: Nhả các lượt giữ của người gọi để chạy lại demo
+      description: |
+        Chỉ có khi `APP_ENV` khác `production`.
+        Ghi một dòng `DEMO_RESET` vào `audit_logs`, không xóa nhật ký cũ.
+      operationId: resetDemoTickets
+      x-environment: non-production
+      x-feature: [seat_hold]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      responses:
+        '200':
+          description: Đã nhả các lượt giữ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: '`feature_disabled`, hoặc không có endpoint này khi `APP_ENV=production`'
           content:
             application/json:
               schema:
@@ -805,3 +1002,85 @@ components:
         ceilingPrice:
           type: integer
           format: int64
+
+    CancelTicketRequest:
+      type: object
+      properties:
+        bookingId:
+          type: string
+        bookingCode:
+          type: string
+        eventId:
+          type: string
+          description: UUID hoặc slug của sự kiện
+        reason:
+          type: string
+        seats:
+          type: array
+          items:
+            type: string
+          description: Nhãn hoặc UUID của các ghế cần hủy
+        concert:
+          type: object
+          additionalProperties: true
+          description: Dữ liệu hiển thị do client gửi, lưu nguyên
+        ticketDetails:
+          type: object
+          additionalProperties: true
+          description: Dữ liệu hiển thị do client gửi, lưu nguyên
+
+    CancelledTicket:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        bookingId:
+          type: string
+        bookingCode:
+          type: string
+        eventId:
+          type: string
+        eventTitle:
+          type: string
+        seats:
+          type: array
+          items:
+            type: string
+        releasedSeats:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+        cancelledAt:
+          type: string
+          format: date-time
+        userEmail:
+          type: string
+
+    AuditLogItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        action:
+          type: string
+        entityType:
+          type: string
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        actorEmail:
+          type: string
+        eventName:
+          type: string
+        oldData:
+          type: object
+          additionalProperties: true
+        newData:
+          type: object
+          additionalProperties: true
