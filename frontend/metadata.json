@@ -1,6 +1,6 @@
 {
-  "name": "SortMyScene - Concert & Music Event Ticketing",
-  "description": "Nền tảng khám phá và đặt vé concert âm nhạc trực tuyến với hệ thống xác thực OTP và tích hợp sự kiện trực tiếp",
+  "name": "COSH301 Concerts",
+  "description": "Xem sự kiện, chọn ghế và giữ chỗ theo thời gian thực. Đăng nhập bằng mã OTP.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
