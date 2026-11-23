@@ -5,13 +5,13 @@
 * **Khoa**: Công nghệ và Khoa học dữ liệu — Trường Đại học Ngoại thương
 * **Giảng viên hướng dẫn**: TS. Phạm Thị Kim Dung
 * **Nhóm sinh viên thực hiện**:
-  1. Vũ Đức Huy — MSV: 2412960011 *(Nhóm trưởng, ERD 26 bảng, Sơ đồ lớp BCE, Kế hoạch Sprint)*
+  1. Vũ Đức Huy — MSV: 2412960011 *(Nhóm trưởng, ERD 23 bảng, Sơ đồ lớp BCE, Kế hoạch Sprint)*
   2. Trần Trung Nhân — MSV: 2412960019 *(Kiến trúc hệ thống, Go Backend, React Frontend, OTP & API Spec)*
-  3. Đinh Tiến Thành — MSV: 2413960023 *(Bóc tách bài toán, Recommendation Engine, Ma trận truy vết FR/NFR)*
-  4. Lê Đức Anh — MSV: 2411960002 *(Sơ đồ & Đặc tả Use Case, Usability Testing & Khảo sát SUS)*
-  5. Nguyễn Đức Phúc — MSV: 2413960020 *(Sơ đồ luồng dữ liệu DFD 3 cấp độ, Sequence chống bán trùng)*
-  6. Nguyễn Anh Dũng — MSV: 2413960006 *(Sequence giữ ghế 5 phút, Kiểm thử thủ công FR-06)*
-* **Mốc báo cáo**: Báo cáo Giữa kỳ (Nghiệm thu toàn diện Sprint 1 & Sprint 2)
+  3. Đinh Tiến Thành — MSV: 2413960023 *(Bảng FR/NFR, Ma trận truy vết, Kiểm thử thủ công FR-06)*
+  4. Lê Đức Anh — MSV: 2411960002 *(Sơ đồ và Đặc tả Use Case, Kế hoạch kiểm thử người dùng)*
+  5. Nguyễn Đức Phúc — MSV: 2413960020 *(Sơ đồ luồng dữ liệu DFD, Sequence chống bán trùng)*
+  6. Nguyễn Anh Dũng — MSV: 2413960006 *(Sequence giữ ghế 5 phút, Bài toán và thiết kế Định giá động)*
+* **Mốc báo cáo**: Báo cáo Giữa kỳ (Sprint 1 và Sprint 2)
 * **Thời lượng chuẩn**: 10 – 12 phút thuyết trình + 3 phút Live Demo / Q&A
 
 ---
@@ -43,7 +43,7 @@
 #### `[Slide 2: Nhóm thực hiện & Phân công tiến độ]`
 * **Cử chỉ**: Chỉ tay nhẹ về phía slide, giới thiệu ngắn gọn tinh thần phối hợp của nhóm.
 * **Lời thoại**:
-  > *"Nhóm nghiên cứu gồm 6 thành viên. Trong 2 Sprint vừa qua, nhóm đã hoàn thành trọn vẹn **14 đầu việc (từ T01 đến T14)** với tổng quy mô **174 giờ công**, phân bổ rành mạch từ thiết kế kiến trúc, mô hình hóa UML, DFD, cơ sở dữ liệu ERD đến triển khai mã nguồn thực nghiệm và đo lường trải nghiệm người dùng."*
+  > *"Nhóm nghiên cứu gồm 6 thành viên. Sprint 2 gồm **14 đầu việc (T01 đến T14)**, ước lượng **206 giờ công**, từ thiết kế kiến trúc, mô hình hóa UML, DFD, ERD đến mã nguồn backend và frontend. Riêng kiểm thử với người dùng mới có kế hoạch, chưa thực hiện."*
 
 #### `[Slide 3: Bài toán: 5 thách thức của bán vé online]`
 * **Cử chỉ**: Đếm từng ngón tay hoặc nhấn giọng dứt khoát ở 5 từ khóa cốt lõi.
@@ -53,7 +53,7 @@
   > 1. *Thứ nhất là **Nghẽn hệ thống**: Hàng chục ngàn lượt truy cập cùng ập vào một thời điểm khiến máy chủ tê liệt.*
   > 2. *Thứ hai là **Phe vé và bot tự động**: Dùng kịch bản phần mềm gom sạch vé đẹp chỉ trong vài giây.*
   > 3. *Thứ ba là **Bán trùng ghế (Double-booking)**: Khi hai người cùng bấm vào một ghế ở cùng một phần nghìn giây, dữ liệu bất đồng bộ khiến cả hai bị trừ tiền nhưng chỉ một người có chỗ.*
-  > 4. *Thứ tư là **Mất cân đối lấp đầy**: Khán giả khó tìm vị trí phù hợp túi tiền; trong khi các giải pháp Dynamic Pricing truyền thống lại đẩy giá lên quá cao, gây bức xúc tẩy chay và để trống khán đài xa.*
+  > 4. *Thứ tư là **Mất cân đối lấp đầy**: Giá cố định khiến khu VIP cháy vé sớm, trong khi khu xa sân khấu còn trống. Giá tăng tự động lại gây tranh cãi, nên nhóm thiết kế Định giá động theo hướng chỉ đề xuất, Ban Tổ chức duyệt.*
   > 5. *Và thứ năm là **Gian lận vé tại cổng**: Ảnh chụp màn hình QR bị chia sẻ lậu, hoặc mất sóng viễn thông tại sân vận động làm máy soát vé tê liệt.*
   > 
   > *EventTicketing ra đời để giải quyết tận gốc 5 bài toán này."*
@@ -65,23 +65,23 @@
 #### `[Slide 4: Mục tiêu và phạm vi]`
 * **Cử chỉ**: Hướng về phần Won't-Have để tạo sự chú ý về tư duy phản biện.
 * **Lời thoại**:
-  > *"Mục tiêu cốt lõi của đồ án là chuẩn hóa toàn bộ yêu cầu, mô hình hóa phân tầng theo chuẩn BCE, xây dựng CSDL PostgreSQL 18 bảo đảm ACID tuyệt đối không bán trùng ghế, đồng bộ realtime qua Server-Sent Events (SSE) và xây dựng hệ thống Gợi ý Thông minh cho khán giả.*
+  > *"Mục tiêu cốt lõi của đồ án là chuẩn hóa toàn bộ yêu cầu, mô hình hóa phân tầng theo chuẩn BCE, xây dựng CSDL PostgreSQL 18 bảo đảm ACID tuyệt đối không bán trùng ghế, đồng bộ realtime qua Server-Sent Events (SSE) và thiết kế Định giá động có người duyệt (FR-22).*
   > 
-  > *Về phạm vi, phiên bản MVP tập trung vào: Đăng nhập OTP không mật khẩu, sơ đồ ghế realtime, khóa giữ ghế độc quyền 5 phút, cấu hình giá sàn/trần và quy trình soát vé an toàn.*
+  > *Về phạm vi, bản chạy ở Sprint 2 gồm: đăng nhập OTP không mật khẩu, sơ đồ ghế realtime, khóa giữ ghế độc quyền 5 phút và cấu hình giá sàn/trần. Thanh toán, phát vé và soát vé là các Sprint sau.*
   > 
-  > *Đặc biệt, ở nhóm yêu cầu **Won't-Have (W-01)**, nhóm em dũng cảm đưa ra quyết định **bãi bỏ hoàn toàn cơ chế Định giá động (Dynamic Pricing)** để bảo vệ quyền lợi người tiêu dùng và giữ vững uy tín thương hiệu cho Ban Tổ chức."*
+  > *Ở nhóm **Won't-Have**, yêu cầu **W-01** quy định hệ thống không bao giờ tự đổi giá. Định giá động (FR-22) chỉ sinh đề xuất, và giá chỉ đổi khi Ban Tổ chức duyệt, để bảo vệ người mua và uy tín của Ban Tổ chức."*
 
 #### `[Slide 5: Đặc tả yêu cầu & Phân loại MoSCoW]`
 * **Lời thoại**:
-  > *"Hệ thống được bóc tách khoa học thành **23 Yêu cầu Chức năng (FR)**, **13 Yêu cầu Phi chức năng (NFR)**, **7 User Stories** theo cú pháp Given-When-Then và **13 Use Cases** tổng thể.*
+  > *"Hệ thống được bóc tách khoa học thành **23 Yêu cầu Chức năng (FR)**, **13 Yêu cầu Phi chức năng (NFR)**, **7 User Stories** theo cú pháp Given-When-Then và **17 Use Cases** tổng thể.*
   > 
-  > *Qua ma trận phân loại MoSCoW: Toàn bộ 11 yêu cầu cốt lõi thuộc nhóm **Must-Have** đã được nhóm em hoàn thành và kiểm chứng 100% ngay trong mốc Sprint 2 này."*
+  > *Theo `docs/spec.md`, ở mốc Sprint 2 có **6 yêu cầu đã xong** (FR-02 đến FR-07), **4 yêu cầu đang làm** (FR-01, FR-08, FR-11, FR-20) và **13 yêu cầu chưa làm**. Hệ thống có 19 cờ tính năng, profile `sprint2` bật 5 cờ."*
 
 #### `[Slide 6: Cam kết chất lượng định lượng (SLA)]`
 * **Lời thoại**:
-  > *"Mọi yêu cầu phi chức năng đều được gắn chỉ số SLA định lượng khắt khe:*
-  > * *Chịu tải tối thiểu **≥ 50.000 kết nối đồng thời** với độ trễ $p95 \le 2$ giây (NFR-01).*
-  > * *Tỷ lệ bán trùng ghế cam kết bằng **0% tuyệt đối** (NFR-03).*
+  > *"Mọi yêu cầu phi chức năng đều có chỉ số mục tiêu định lượng. Đây là mục tiêu thiết kế, hiện mới NFR-03 và NFR-10 đã xong:*
+  > * *Mục tiêu chịu tải **≥ 50.000 người dùng đồng thời** với $p95 \le 2$ giây (NFR-01). Nhóm chưa chạy kiểm thử tải k6.*
+  > * *Không bán trùng ghế (NFR-03).*
   > * *Tốc độ phản ánh đổi màu ghế giữa các trình duyệt **dưới 3 giây** không cần F5 (NFR-10).*
   > * *Tốc độ xác thực vé tại cổng **dưới 1 giây/vé** (NFR-05).*
   > * *Và chu kỳ làm mới mã QR động **30 giây một lần** chống chụp màn hình (NFR-08)."*
@@ -92,19 +92,19 @@
 
 #### `[Slide 7: Kiến trúc triển khai hệ thống]`
 * **Lời thoại**:
-  > *"Về kiến trúc triển khai, hệ thống được đóng gói container hóa qua `compose.yaml`:*
-  > * *Đi qua lớp bảo vệ **Cloudflare Tunnel** chống DDoS và lọc bot bằng Turnstile.*
-  > * *Frontend xây dựng trên **React 19 SPA** kết hợp hệ thống token màu Kumo tối ưu cho thiết bị di động.*
-  > * *Backend là **một file binary Go 1.24+ duy nhất** (`cosh301-api`), khởi động tức thì trong 20 mili-giây và tiêu tốn chưa đầy 50MB RAM.*
-  > * *Cơ sở dữ liệu trung tâm **PostgreSQL 18**.*
-  > * *Hệ thống tích hợp sẵn luồng **RealtimeHub** phát sóng sự kiện qua SSE và background worker **HoldReaper** quét dọn ghế hết hạn 5 giây một lần."*
+  > *"Về kiến trúc triển khai, hệ thống đóng gói bằng Docker Compose (`compose.yaml`) gồm 4 dịch vụ và chạy trên một máy ảo GCP:*
+  > * *`tunnel` (cloudflared): công bố hệ thống ra Internet qua **Cloudflare Tunnel** tại `cosh301.nhansp.id.vn`.*
+  > * *`frontend`: **React 19 SPA** phục vụ bởi nginx, đồng thời chuyển `/api` sang backend.*
+  > * *`api`: **một file chạy Go duy nhất**.*
+  > * *`db`: **PostgreSQL 18**.*
+  > * *Trong api có **RealtimeHub** phát sự kiện qua SSE và worker **HoldReaper** nhả ghế hết hạn, quét 5 giây một lần."*
 
 #### `[Slide 8: Mô hình BCE & Triết lý Single Source of Truth]`
 * **Cử chỉ**: Giọng điệu hào hứng, tự tin giải thích quyết định kiến trúc quan trọng.
 * **Lời thoại**:
   > *"Điểm nhấn kỹ nghệ quan trọng nhất trong kiến trúc backend là việc áp dụng mô hình phân tầng **BCE (Boundary – Control – Entity)**:*
   > * *Tầng **Boundary** (`internal/httpapi`): Kiểm tra token, phân quyền RBAC và kiểm soát cờ tính năng động (Feature Flags).*
-  > * *Tầng **Control** (`internal/service`): Xử lý logic giữ ghế nguyên tử, trần 4 vé, gợi ý thông minh, điều phối SSE và dọn ghế quá hạn.*
+  > * *Tầng **Control** (`internal/service`): Xử lý logic giữ ghế nguyên tử, giới hạn vé mỗi người (cờ `ticket_limit`), giá khu vực, điều phối SSE và dọn ghế quá hạn.*
   > * *Tầng **Entity** (`internal/store`): Sinh tự động 100% bằng `sqlc` và driver `pgx/v5`, bảo đảm an toàn kiểu dữ liệu tại thời điểm biên dịch.*
   > 
   > ***Tại sao nhóm em loại bỏ hoàn toàn Redis?** Trong các hệ thống bán vé, việc dùng Redis làm cache phân tán rất dễ gây ra thảm họa lệch pha dữ liệu (cache inconsistency) hoặc sụp đổ bộ đệm (cache stampede). Bằng cách khai thác triệt để sức mạnh của PostgreSQL 18 — từ khóa hàng nguyên tử, advisory lock, partial unique index đến pub/sub `LISTEN/NOTIFY` nội tại — hệ thống đạt được tính nhất quán ACID tuyệt đối với kiến trúc vô cùng tinh gọn."*
@@ -112,9 +112,9 @@
 #### `[Slide 9, 10, 11: Mô hình hóa Use Case, DFD & ERD]`
 * **Lời thoại**:
   > *"Hệ thống mô hình hóa tường minh qua:*
-  > * *Sơ đồ **13 Use Case**: Phân định rõ 7 ca sử dụng của Khán giả (bao gồm xem đề xuất cá nhân hóa UC-08), 1 của Ban Tổ chức, 2 của CEO, 2 của Nhân viên cổng và 1 của Quản trị viên.*
-  > * *Sơ đồ **DFD 3 cấp độ**: Ánh xạ chính xác vào **4 kho dữ liệu** tương ứng với các bảng thực thể: D1 (Tài khoản & Phiên), D2 (Sự kiện & Ghế), D3 (Giao dịch & Giữ chỗ), D4 (Vé & Soát vé).*
-  > * *Và sơ đồ **ERD 26 bảng chuẩn hóa**: Phân bổ chặt chẽ thành 6 nhóm nghiệp vụ, đáp ứng đầy đủ từ bảo mật, kiểm toán bất biến, định danh đến soát vé ngoại tuyến."*
+  > * *Sơ đồ **17 Use Case**: 7 của Khán giả, 5 của Ban Tổ chức (UC-08 đến UC-12, trong đó UC-10 là duyệt đề xuất giá), 2 của CEO, 2 của Nhân viên cổng và 1 của Quản trị. UC-01 đăng nhập dùng chung.*
+  > * *Sơ đồ **DFD** mức ngữ cảnh, mức 0 (9 tiến trình) và mức 1. Mức 0 có **17 kho dữ liệu**, mỗi kho ứng với một hoặc vài bảng thật trong database.*
+  > * *Và sơ đồ **ERD 23 bảng**, chia thành 6 nhóm: định danh, địa điểm và ghế, hàng chờ và giữ chỗ, đơn hàng và thanh toán, vé và soát vé, giá và thống kê. ERD Sprint 1 trên MySQL có 26 bảng."*
 
 ---
 
@@ -127,50 +127,50 @@
   > * *Về giải pháp **Chống bán trùng tuyệt đối**, nhóm em áp dụng cơ chế 3 lớp:*
   >   1. *Khóa mức hàng nguyên tử: `UPDATE event_seats SET status = 'HELD' WHERE status = 'AVAILABLE'`.*
   >   2. *Tận dụng **Partial Unique Index** trên bảng `seat_holds`: `WHERE status = 'ACTIVE'`. Điều này ngăn chặn việc tồn tại hai bản ghi giữ chỗ đồng thời ở cấp độ vật lý đĩa cứng.*
-  >   3. *Dùng **Advisory Lock** khóa phạm vi `(user_id, event_id)` để chặn đứng các script chạy song song vượt trần 4 vé."*
+  >   3. *Khi cờ `ticket_limit` bật, dùng **Advisory Lock** khóa phạm vi `(user_id, event_id)` để các yêu cầu song song của một người không vượt giới hạn vé. Cờ này đang tắt ở profile `sprint2`."*
 
-#### `[Slide 14: Phản biện Dynamic Pricing & Hệ thống Gợi ý Thông minh (Trọng tâm Đồ án)]`
-* **Cử chỉ**: Giọng nói chững chạc, lập luận sắc bén và thuyết phục.
+#### `[Slide 14: Định giá động (FR-22) và phản biện]`
+* **Cử chỉ**: Giọng nói chững chạc, nêu rõ phần nào là thiết kế, phần nào đã chạy.
 * **Lời thoại**:
-  > *"Kính thưa cô, ở phân hệ định giá, nhóm em đã thực hiện một bước nghiên cứu phản biện rất sâu sắc.*
-  > 
-  > *Ban đầu, nhóm từng thiết kế mô hình Định giá động (Dynamic Pricing) theo luật cung cầu. Tuy nhiên, qua phân tích thực tế các vụ khủng hoảng quốc tế — như vụ **Oasis Live '25** khiến Ticketmaster bị Cơ quan Quản lý Cạnh tranh Anh (CMA) điều tra vì xâm phạm luật bảo vệ người tiêu dùng, cùng làn sóng cấm surge pricing từ EU, Ireland và UEFA Euro 2028 — kết hợp với **thực nghiệm mô phỏng của nhóm**, chúng em nhận thấy: **Dynamic Pricing làm tỷ lệ bỏ giỏ hàng tăng vọt 42%**, đồng thời gây ra hiệu ứng 'chờ giá chạm đáy' làm đóng băng thanh khoản.*
-  > 
-  > *Vì vậy, nhóm quyết định **chính thức bãi bỏ Dynamic Pricing** để kiên định với Chính sách Giá Cố định Minh bạch.*
-  > 
-  > *Thay vào đó, nhóm em đề xuất giải pháp thay thế văn minh và nhân văn hơn: **Hệ thống Gợi ý Thông minh cho Khán giả (Recommendation Engine - FR-22)**.*
-  > * *Hệ thống tính toán Điểm Ưu tiên **Priority Score** trên thang 0–100 dựa trên 5 tiêu chí định lượng: 35% Gu âm nhạc, 25% Ngân sách quen thuộc, 15% Khoảng cách địa lý, 15% Góc nhìn khán đài và 10% Tỷ lệ lấp đầy.*
-  > * *Từ đó phân thành **3 Phân tầng (Tier 1 Top Picks, Tier 2 Trending, Tier 3 Discovery)** để dẫn dắt khán giả chọn chỗ ngồi tối ưu nhất.*
-  > * *Khi cận ngày diễn ra sự kiện mà khán đài còn trống, hệ thống tự động nhắc BTC phát hành mã giảm giá (FR-23) thay vì tự ý nâng hạ giá vé làm mất niềm tin của công chúng."*
+  > *"Kính thưa cô, ở phân hệ giá, nhóm em phân biệt rõ phần đã chạy và phần mới ở mức thiết kế.*
+  >
+  > *Đã chạy: Ban Tổ chức đặt **giá sàn, giá cơ bản, giá trần** cho từng khu (FR-08). Mỗi lần đổi giá ghi vào bảng `price_changes`, có trigger chặn sửa và xóa.*
+  >
+  > *Mới thiết kế: **Định giá động (FR-22)**, cờ `dynamic_pricing` đang tắt. Cứ 5 phút, hệ thống tính chỉ số áp lực từ tốc độ bán, hàng chờ và tỷ lệ ghế đang giữ, rồi đề xuất giá mới cho từng khu. Mỗi chu kỳ đổi tối đa 20%, giá luôn nằm trong khoảng giá sàn và giá trần, chênh dưới 5% thì bỏ qua. **Hệ thống không bao giờ tự đổi giá (W-01)**, Ban Tổ chức duyệt thì giá mới có hiệu lực.*
+  >
+  > *Nhóm có phản biện về Định giá động: người mua không biết trước giá có thể tăng, và có tiền lệ như cuộc điều tra của CMA ở Anh về cách bán vé Oasis. Vì vậy thiết kế dùng người duyệt, biên độ giá và nhật ký giá để giảm rủi ro. Nhóm chưa chạy thực nghiệm nào về hành vi người mua, nên em không đưa ra số liệu thực nghiệm.*
+  >
+  > *Ví dụ tính tay trong `docs/dynamic-pricing.md`: khu Fanzone có giá 1.200.000 đồng, tốc độ bán gấp đôi mục tiêu, 250 người chờ và 40% ghế đang giữ. Chỉ số áp lực là 1,73, giá đề xuất tăng 18,3% lên 1.420.000 đồng."*
 
-#### `[Slide 15 & 16: Các phân hệ nâng cao (S3 – S5)]`
+#### `[Slide 15 & 16: Các phân hệ nâng cao (Sprint 3 đến 5, mới ở mức thiết kế)]`
 * **Lời thoại**:
-  > *"Bên cạnh đó, đồ án đã hoàn tất thiết kế chi tiết cho các phân hệ tiếp theo:*
-  > * *Cơ chế **Hàng chờ ảo (Virtual Waiting Room)**: Điều tiết theo thuật toán Leaky Bucket xả mẻ 200 người/30 giây khi lưu lượng vượt 2.000 kết nối.*
-  > * *Bảo mật vé với **Mã QR động xoay vòng 30 giây** sinh bằng thuật toán TOTP kết hợp HMAC-SHA256, vô hiệu hóa hoàn toàn ảnh chụp màn hình.*
-  > * *Và ứng dụng **Soát vé di động ngoại tuyến (Offline Mode)**: Tải trước manifest chữ ký số vào IndexedDB trên máy quét, xử lý siêu tốc dưới 1 giây ngay cả khi mất trọn sóng 4G."*
+  > *"Các phân hệ sau mới có thiết kế, chưa có code, và cờ tương ứng đang tắt:*
+  > * *Cơ chế **Hàng chờ ảo (Virtual Waiting Room)**: số người mua cùng lúc tối đa bằng `waiting_room_capacity`, mỗi lượt vào có hạn 10 phút. Hiện mới có bảng `queue_entries`.*
+  > * *Bảo mật vé với **Mã QR xoay vòng 30 giây** theo công thức `ticket_code.step.HMAC(qr_secret, step)`. Hiện mới có cột `tickets.qr_secret`.*
+  > * *Và **Soát vé ngoại tuyến (Offline Mode)**: máy quét tải trước danh sách vé, mất mạng vẫn kiểm tra được chữ ký QR và đồng bộ lại khi có mạng."*
 
 ---
 
 ### PHẦN 5: NGHIỆM THU THỰC NGHIỆM & KẾT LUẬN (2.0 phút)
 
-#### `[Slide 17: Kết quả kiểm thử thực nghiệm]`
+#### `[Slide 17: Kiểm thử đã có và chưa có]`
 * **Lời thoại**:
-  > *"Đến mốc Giữa kỳ (Sprint 2), toàn bộ cam kết kỹ thuật đều được chứng minh bằng số liệu thực nghiệm:*
-  > 1. *Về khả năng chịu tải và chống bán trùng: Nhóm đã chạy kiểm thử đa luồng với **50 goroutines đồng thời tranh chấp đúng 1 chiếc ghế** trong cùng 1 phần nghìn giây. Kết quả: Đúng 1 luồng giữ thành công, 49 luồng nhận thông báo từ chối hợp lệ — **Tỷ lệ bán trùng đạt 0.00% tuyệt đối**.*
-  > 2. *Về trải nghiệm người dùng: Nhóm đã mời **8 người dùng thực tế** tham gia bài kiểm thử Usability Testing qua 5 kịch bản. Điểm số đánh giá theo thang đo quốc tế **SUS đạt 88.75 / 100 điểm**, xếp **Hạng A+ (Mức xuất sắc)**."*
+  > *"Về kiểm thử, em xin nói rõ phần đã có và phần chưa có:*
+  > 1. *Đã có: test tương tranh `TestHoldSeat_ConcurrentHoldersGetOneSeat`. Test cho **50 goroutines cùng giữ một ghế** trên PostgreSQL thật, mong đợi đúng 1 lượt giữ thành công, các lượt còn lại bị từ chối, và `seat_holds` chỉ có một dòng `ACTIVE`. Test chạy ở tầng service và cần biến `TEST_DATABASE_URL`.*
+  > 2. *Đã có: kịch bản kiểm thử thủ công FR-06 theo US-03 trong `docs/checks/fr-06.md`.*
+  > 3. *Chưa có: kiểm thử tải k6 cho NFR-01, và kiểm thử với người dùng thật. Kế hoạch, kịch bản và form khảo sát SUS đã viết trong `docs/testing.md`, các bảng kết quả để trống."*
 
 #### `[Slide 18 & 19: Hạn chế, Hướng phát triển & Bài học kinh nghiệm]`
 * **Lời thoại**:
-  > *"Qua 2 Sprint triển khai, bài học lớn nhất mà nhóm đúc kết được là triết lý **KISS (Keep It Simple, Stupid)**: Việc khai thác đúng cách năng lực của PostgreSQL 18 và kiến trúc phân tầng BCE đã giúp hệ thống vừa đạt hiệu năng đỉnh cao, vừa an toàn giao dịch mà không bị phụ thuộc vào tầng cache phức tạp.*
+  > *"Qua Sprint 2, bài học lớn nhất mà nhóm đúc kết được là triết lý **KISS (Keep It Simple, Stupid)**: Việc khai thác đúng cách năng lực của PostgreSQL 18 và kiến trúc phân tầng BCE giúp giữ ghế an toàn giao dịch mà không cần tầng cache riêng.*
   > 
-  > *Hạn chế hiện tại của nhóm là thuật toán gợi ý vẫn đang chạy trên trọng số chuyên gia và cổng thanh toán đang ở môi trường sandbox. Hướng phát triển cho Sprint 3–5 là nâng cấp Recommendation Engine sang mô hình học sâu (Deep Learning) và tích hợp hoàn chỉnh Webhook thanh toán thực tế."*
+  > *Hạn chế hiện tại: mã OTP chưa gửi qua SMS hay email, chưa kiểm tra Turnstile, thanh toán và phát vé chưa làm, hệ thống chạy trên một máy ảo. Hướng phát triển là hoàn thành Sprint 3 đến 5 theo bảng cờ tính năng."*
 
 #### `[Slide 20: Lời cảm ơn]`
 * **Lời thoại**:
   > *"Trên đây là toàn bộ báo cáo tiến độ và thiết kế kiến trúc hệ thống EventTicketing cho đến mốc Sprint 2 của nhóm.*
   > 
-  > *Sau đây, nhóm em xin phép được **trình diễn trực tiếp (Live Demo)** hệ thống đang chạy thực tế trên máy chủ.*
+  > *Sau đây, nhóm em xin phép được **trình diễn trực tiếp (Live Demo)** hệ thống đang chạy thực tế tại `cosh301.nhansp.id.vn`.*
   > 
   > *Chúng em xin chân thành cảm ơn cô Phạm Thị Kim Dung và xin lắng nghe các ý kiến nhận xét, đóng góp của cô ạ!"*
 
@@ -180,17 +180,19 @@
 
 * **Thiết lập chuẩn bị**:
   - Mở 2 cửa sổ trình duyệt song song (ví dụ: Google Chrome bên trái và Safari / Cửa sổ ẩn danh bên phải).
-  - Terminal chạy sẵn backend Go (`localhost:8080`) và frontend React (`localhost:3001`).
+  - Dùng bản trực tuyến `https://cosh301.nhansp.id.vn`, hoặc chạy cục bộ bằng `docker compose up -d --build` rồi mở `http://127.0.0.1:3001`.
+  - Bản trực tuyến chạy `APP_ENV=production`: không có nút Demo 1-Click, đăng nhập bằng OTP. Bản cục bộ (`APP_ENV=development`) có Demo 1-Click, mỗi lần bấm tạo một tài khoản khán giả mới.
+  - Các cờ `payments`, `ticket_limit` đang tắt, nên bước demo không có thanh toán và không áp giới hạn vé.
 
 | Bước | Hành động thao tác | Lời dẫn thuyết minh | Kết quả hiển thị quan sát |
 |:---:|---|---|---|
 | **1** | Mở trang chủ trên cả 2 màn hình. | *"Đầu tiên, hệ thống tải danh mục sự kiện hoàn toàn động từ Go backend qua RESTful API `/api/events`, hình ảnh và giá vé tối thiểu được tính trực tiếp từ database."* | Danh sách concert hiển thị mượt mà kèm bộ lọc thể loại. |
-| **2** | Trên Màn hình Trái, bấm **Đăng nhập** $\rightarrow$ chọn **Demo 1-Click Khán giả**. | *"Để thuận tiện nghiệm thu, hệ thống cung cấp cơ chế Demo Login tạo phiên bảo mật `sessions` thực tế với cookie HttpOnly mà không cần gửi SMS OTP."* | Màn hình góc phải hiển thị avatar và tên `Khán giả Demo`. |
+| **2** | Trên Màn hình Trái, bấm **Đăng nhập**, nhập email và mã OTP (bản cục bộ: có thể chọn **Demo 1-Click**). | *"Đăng nhập bằng OTP tạo phiên `sessions` với cookie HttpOnly. Mã OTP hiện trên màn hình khi bật `OTP_DEMO`, vì chưa có kênh gửi SMS hay email."* | Màn hình hiển thị thông tin tài khoản đã đăng nhập. |
 | **3** | Cả 2 màn hình cùng truy cập vào chi tiết concert và mở **Sơ đồ ghế**. | *"Ngay khi mở trang chọn ghế, cả 2 trình duyệt lập tức mở luồng Server-Sent Events (SSE) `/api/events/{id}/stream`. Toàn bộ 4 màu sắc ghế hiển thị trực quan."* | Ghế trống màu xanh lá; ghế đã bán màu xám gạch ngang. |
-| **4** | Trên Màn hình Trái, bấm chọn **ghế A1**. | *"Khi khán giả Trái bấm chọn ghế A1, backend mở transaction khóa ghế 300 giây. Ngay lập tức, lệnh `NOTIFY` đẩy thông điệp qua SSE."* | • Trình duyệt Trái: Ghế A1 hóa **Tím**, đồng hồ đếm ngược **04:59** xuất hiện.<br/>• Trình duyệt Phải: Ghế A1 **tự động hóa Vàng** tức thì dưới 1 giây mà **không cần bấm F5**. |
-| **5** | Trên Màn hình Phải, cố tình bấm đè vào **ghế A1**. | *"Bây giờ khán giả Phải cố tình bấm vào ghế A1 vừa bị giữ. Hệ thống từ chối ngay lập tức, thông báo ghế đang được giữ bởi người khác."* | Toast báo đỏ: `Ghế hiện đang có người khác giữ chỗ`. Không bị bán trùng. |
-| **6** | Trên Màn hình Trái, bấm **Bỏ chọn ghế A1**. | *"Nếu khán giả đổi ý nhả ghế, trạng thái ghế lập tức quay lại `AVAILABLE`."* | Ghế A1 trên cả 2 màn hình cùng lập tức chuyển lại màu **Xanh lá**. |
-| **7** | Mở trang **Ban Tổ chức (`/organizer`)**. | *"Về phía Ban Tổ chức, hệ thống cho phép cấu hình phân khu, dải giá sàn/trần và lưu vết bất biến trong bảng `price_changes`."* | Bảng điều khiển phân khu VIP, GA và danh sách điều chỉnh giá. |
+| **4** | Trên Màn hình Trái, bấm chọn **ghế A1**. | *"Khi khán giả Trái bấm chọn ghế A1, backend mở transaction khóa ghế 300 giây. Ngay lập tức, lệnh `NOTIFY` đẩy thông điệp qua SSE."* | • Trình duyệt Trái: Ghế A1 chuyển sang trạng thái "mình đang giữ", đồng hồ đếm ngược bắt đầu từ **05:00**.<br/>• Trình duyệt Phải: Ghế A1 tự chuyển sang trạng thái "người khác đang giữ" mà **không cần bấm F5**. |
+| **5** | Trên Màn hình Phải, cố tình bấm đè vào **ghế A1**. | *"Bây giờ khán giả Phải cố tình bấm vào ghế A1 vừa bị giữ. Hệ thống từ chối ngay lập tức, thông báo ghế đang được giữ bởi người khác."* | Thông báo lỗi: `Ghế A1 đang có người giữ. Chọn ghế khác.` Ghế không vào giỏ. |
+| **6** | Trên Màn hình Trái, bấm **Bỏ chọn ghế A1**. | *"Nếu khán giả đổi ý nhả ghế, trạng thái ghế lập tức quay lại `AVAILABLE`."* | Ghế A1 trên cả 2 màn hình chuyển lại trạng thái **còn trống**. |
+| **7** *(tùy chọn)* | Đăng nhập tài khoản `ORGANIZER` và mở trang **Ban Tổ chức (`/organizer`)**. | *"Ban Tổ chức xem sự kiện của mình và đặt giá sàn, giá cơ bản, giá trần cho từng khu. Mỗi lần đổi giá cơ bản ghi một dòng vào `price_changes`."* | Danh sách sự kiện của Ban Tổ chức và form đặt giá khu vực. Mã OTP của nhân sự chỉ ghi vào log của api. |
 
 ---
 
@@ -198,23 +200,23 @@
 
 ### Câu 1: *"Tại sao nhóm không dùng Redis để giữ ghế như các hệ thống lớn (Ticketmaster, Shopee), mà lại dùng PostgreSQL?"*
 * **Đáp án chuẩn**:
-  > *"Thưa cô, các hệ thống lớn dùng Redis vì họ có cụm máy chủ phân tán hàng trăm nodes và đội ngũ DevOps đông đảo. Tuy nhiên, với bài toán đặt vé concert, việc dùng Redis tách rời Database rất dễ dẫn đến hiện tượng **Cache Inconsistency** và **Phantom Reads**: Redis báo ghế trống nhưng DB đã bán, hoặc ngược lại. Khi mạng giữa Redis và DB chập chờn, giao dịch rất dễ bị bán trùng hoặc treo tiền của khách.
+  > *"Thưa cô, Redis phù hợp khi hệ thống đã phải chạy phân tán trên nhiều máy chủ. Tuy nhiên, với bài toán đặt vé concert, việc dùng Redis tách rời Database rất dễ dẫn đến hiện tượng **Cache Inconsistency** và **Phantom Reads**: Redis báo ghế trống nhưng DB đã bán, hoặc ngược lại. Khi mạng giữa Redis và DB chập chờn, giao dịch rất dễ bị bán trùng hoặc treo tiền của khách.
   > 
-  > PostgreSQL 18 hỗ trợ khóa hàng nguyên tử `UPDATE ... WHERE status = 'AVAILABLE'`, partial unique index và cơ chế `LISTEN/NOTIFY` chạy trong cùng một transaction ACID. Điều này giúp hệ thống đạt tính toàn vẹn 100% (Single Source of Truth), loại bỏ hoàn toàn nguy cơ lệch dữ liệu mà hiệu năng vẫn đáp ứng hàng vạn kết nối đồng thời với Go pgxpool."*
+  > PostgreSQL 18 hỗ trợ khóa hàng nguyên tử `UPDATE ... WHERE status = 'AVAILABLE'`, partial unique index và cơ chế `LISTEN/NOTIFY` chạy trong cùng một transaction ACID. Điều này giúp hệ thống đạt tính toàn vẹn 100% (Single Source of Truth), loại bỏ hoàn toàn nguy cơ lệch dữ liệu và đủ cho phạm vi của đồ án. Nhóm chưa đo hiệu năng ở mức hàng chục nghìn người dùng."*
 
 ### Câu 2: *"Cơ chế HoldReaper quét 5 giây một lần có làm chậm database không? Nếu hai người cùng bấm cướp ghế hết hạn thì xử lý thế nào?"*
 * **Đáp án chuẩn**:
-  > *"Thưa cô, worker `HoldReaper` chỉ quét các bản ghi `seat_holds` có `status = 'ACTIVE'` và `expires_at < now()`, bảng này đã được đánh Partial Unique Index nên câu quét tốn dưới 1 mili-giây.
+  > *"Thưa cô, worker `HoldReaper` chỉ quét các bản ghi `seat_holds` có `status = 'ACTIVE'` và `expires_at < now()`, bảng này có index một phần `idx_seat_holds_expiry` cho đúng các lượt `ACTIVE`, nên câu quét chỉ đọc các lượt đang hiệu lực.
   > 
-  > Đặc biệt, nhóm em cài đặt cơ chế **Stale Hold Stealing (Chiếm lượt giữ quá hạn)**: Nếu ghế vừa hết hạn 5 phút mà HoldReaper chưa kịp quét tới, một người khác bấm vào ghế đó thì hệ thống dùng câu lệnh UPDATE nguyên tử kiểm tra `expires_at < now()`, tự động hủy hold cũ và cấp hold mới cho người thứ hai trong cùng 1 transaction đơn nhất. Do đó, hệ thống hoàn toàn không có độ trễ chết."*
+  > Đặc biệt, nhóm em cài đặt cơ chế **Stale Hold Stealing (Chiếm lượt giữ quá hạn)**: Nếu ghế vừa hết hạn 5 phút mà HoldReaper chưa kịp quét tới, một người khác bấm vào ghế đó thì hệ thống dùng câu lệnh UPDATE nguyên tử kiểm tra `expires_at < now()`, tự động hủy hold cũ và cấp hold mới cho người thứ hai trong cùng 1 transaction đơn nhất. Nhờ đó ghế hết hạn không bị khóa chờ `HoldReaper`, tối đa trễ 5 giây là ghế trống lại trên giao diện."*
 
-### Câu 3: *"Tại sao nhóm lại bãi bỏ Dynamic Pricing? Không phải doanh nghiệp luôn muốn tối đa hóa doanh thu bằng giá động sao?"*
+### Câu 3: *"Định giá động gây tranh cãi, tại sao nhóm vẫn thiết kế FR-22?"*
 * **Đáp án chuẩn**:
-  > *"Thưa cô, đó là góc nhìn lý thuyết sơ bộ. Khi phân tích sâu về kỹ nghệ và đạo đức hệ thống, Dynamic Pricing trong vé concert là một thảm họa niềm tin:
-  > 1. Về mặt pháp lý: Vụ việc Oasis Live '25 tại Anh khiến cơ quan quản lý CMA vào cuộc điều tra Ticketmaster vì vi phạm luật bảo vệ người tiêu dùng do giá nhảy vọt khi đang xếp hàng; EU và UEFA Euro 2028 đã cấm hẳn surge pricing.
-  > 2. Về mặt thực nghiệm: Khi nhóm em thử nghiệm mô hình, giá vé nhảy vọt khiến **tỷ lệ bỏ giỏ hàng tăng tới 42%**, khách hàng bức xúc và tẩy chay sự kiện.
-  > 
-  > Do đó, nhóm em chọn cách tiếp cận bền vững: Cố định giá minh bạch theo từng phân khu, và dùng **Hệ thống Gợi ý Thông minh (Recommendation Engine)** giúp dẫn dắt khán giả vào đúng chỗ ngồi phù hợp với ngân sách của họ. Doanh thu được tối đa hóa thông qua **tỷ lệ lấp đầy tự nhiên (Fill Rate)** chứ không phải bằng cách ép giá người hâm mộ."*
+  > *"Thưa cô, nhóm em thiết kế Định giá động theo hướng **chỉ đề xuất**. Hệ thống không bao giờ tự đổi giá (W-01): mỗi 5 phút nó sinh đề xuất vào `price_suggestions`, Ban Tổ chức duyệt thì giá mới đổi.
+  >
+  > Các rủi ro đã được nêu: người mua không biết trước giá có thể tăng, và có tiền lệ như cuộc điều tra của CMA ở Anh về cách bán vé Oasis. Thiết kế giảm rủi ro bằng giá sàn và giá trần do Ban Tổ chức đặt, biên độ tối đa 20% mỗi chu kỳ, ngưỡng bỏ qua 5% và nhật ký giá `price_changes` không sửa được.
+  >
+  > FR-22 hiện chưa làm, cờ `dynamic_pricing` đang tắt. Nhóm chưa chạy thực nghiệm nào về hành vi người mua nên em không nêu số liệu thực nghiệm."*
 
 ### Câu 4: *"Sơ đồ ghế realtime dùng SSE hay WebSocket? Tại sao lại chọn SSE?"*
 * **Đáp án chuẩn**:
@@ -222,8 +224,6 @@
   > 
   > So với WebSocket, SSE chạy trên giao thức HTTP tiêu chuẩn, nhẹ hơn rất nhiều, tự động hỗ trợ kết nối lại (Auto Reconnect), thân thiện 100% với các HTTP Proxy/Load Balancer và Nginx, không bị lỗi nghẽn cổng kết nối phức tạp như WebSocket."*
 
-### Câu 5: *"Tại sao trong Use Case, UC-08 lại thuộc về Khán giả mà không phải Ban Tổ chức?"*
+### Câu 5: *"Phần nào của hệ thống đã chạy và phần nào chưa?"*
 * **Đáp án chuẩn**:
-  > *"Thưa cô, ban đầu trong một số bản nháp, UC-08 từng được gán cho việc Ban Tổ chức duyệt giá động. Tuy nhiên, sau khi nhóm chính thức bãi bỏ Dynamic Pricing và chuyển sang xây dựng Hệ thống Gợi ý Thông minh theo yêu cầu FR-22, UC-08 được chuẩn hóa thành ca sử dụng của Khán giả: **'UC-08: Xem Đề xuất Sự kiện & Ghế ngồi Cá nhân hóa'**.
-  > 
-  > Ban Tổ chức chỉ giữ vai trò quản trị khu vực tại UC-07 và xem báo cáo điều hành, đúng theo Bảng 8 và Bảng 9 trong tài liệu đặc tả của đồ án ạ."*
+  > *"Thưa cô, theo `docs/spec.md`, ở Sprint 2 đã xong 6 yêu cầu: danh sách sự kiện, sơ đồ ghế, phiên đăng nhập, ghế realtime, giữ ghế 5 phút và chống bán trùng. Đang làm 4 yêu cầu: đăng nhập OTP (chưa gửi SMS hay email), cấu hình giá (chưa tạo sự kiện), giới hạn vé (cờ tắt) và nhật ký giá (chưa có trang xem). 13 yêu cầu còn lại, gồm thanh toán, phát vé, QR, soát vé và dashboard, chưa làm. Cờ tính năng giúp ẩn các phần chưa làm, API trả `404 feature_disabled`."*
