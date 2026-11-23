@@ -6,10 +6,14 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   bookings: Booking[];
-  sendPhoneOtp: (phoneNumber: string) => Promise<{ success: boolean; demoCode: string; message: string }>;
-  verifyPhoneOtp: (phoneNumber: string, code: string) => Promise<boolean>;
-  sendEmailOtp: (email: string) => Promise<{ success: boolean; demoCode: string; message: string }>;
-  verifyEmailOtp: (email: string, code: string) => Promise<boolean>;
+  /** Asks the server for a login code; `demoCode` is set when the server shows codes on screen. */
+  requestOtp: (destination: string) => Promise<OtpResult & { demoCode?: string }>;
+  /** Signs in with a login code. Succeeds only when the server opened a session. */
+  verifyOtp: (destination: string, code: string) => Promise<OtpResult>;
+  /** One-click demo account; available while the server runs outside production. */
+  demoLogin: () => Promise<OtpResult>;
+  /** Drops the signed-in user after the server reports the session is gone. */
+  sessionExpired: () => void;
   logout: () => void;
   createBooking: (bookingData: {
     eventId: string;
@@ -35,6 +39,27 @@ interface AuthContextType {
   /** Tickets the signed-in user holds in confirmed bookings for one event. */
   ticketsBookedFor: (eventId: string) => number;
 }
+
+/** `error` is a message for the user, set whenever `ok` is false. */
+export type OtpResult = { ok: boolean; error?: string };
+
+const AUTH_ERRORS: Record<string, string> = {
+  invalid_destination: 'Số điện thoại hoặc email không hợp lệ.',
+  otp_rate_limited: 'Bạn vừa yêu cầu mã. Vui lòng đợi một chút rồi thử lại.',
+  otp_invalid: 'Mã OTP không đúng hoặc đã hết hạn.',
+  account_inactive: 'Tài khoản này đã bị khoá.',
+  rate_limited: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'
+};
+
+async function authErrorOf(res: Response): Promise<string> {
+  const code = await res
+    .json()
+    .then((body: { error?: string }) => body.error ?? '')
+    .catch(() => '');
+  return AUTH_ERRORS[code] ?? 'Không đăng nhập được lúc này. Vui lòng thử lại.';
+}
+
+const OFFLINE_ERROR = 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -96,137 +121,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const saveUserSession = (newUser: User | null) => setUser(newUser);
+  // Only the server can open a session: seat holds and orders are checked against its cookie.
+  const signIn = async (path: string, body: object): Promise<OtpResult> => {
+    try {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) return { ok: false, error: await authErrorOf(res) };
+      const data = await res.json();
+      setUser(userFromApi(data.user));
+      return { ok: true };
+    } catch {
+      return { ok: false, error: OFFLINE_ERROR };
+    }
+  };
 
-  const sendPhoneOtp = async (phoneNumber: string) => {
+  const requestOtp = async (destination: string): Promise<OtpResult & { demoCode?: string }> => {
     try {
       const res = await fetch('/api/auth/otp/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: phoneNumber, channel: 'SMS' }),
+        body: JSON.stringify({ destination })
       });
-      if (res.ok) {
-        const data = await res.json();
-        const demoCode = data.mock_code || '123456';
-        return {
-          success: true,
-          demoCode,
-          message: `Mã OTP đã được gửi đến số ${phoneNumber}. Mã thử nghiệm là ${demoCode}`
-        };
-      }
+      if (!res.ok) return { ok: false, error: await authErrorOf(res) };
+      const data: { demoCode?: string } = await res.json();
+      return { ok: true, demoCode: data.demoCode };
     } catch {
-      // API unreachable, use local simulation
+      return { ok: false, error: OFFLINE_ERROR };
     }
-
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const demoCode = '123456';
-    return {
-      success: true,
-      demoCode,
-      message: `Mã OTP đã được gửi đến số ${phoneNumber}. Mã thử nghiệm là ${demoCode}`
-    };
   };
 
-  const verifyPhoneOtp = async (phoneNumber: string, code: string): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/auth/otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: phoneNumber, code }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        saveUserSession(userFromApi(data.user));
-        return true;
-      }
-    } catch {
-      // Fallback to local
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 600));
-    if (code.trim().length === 6) {
-      const newUser: User = {
-        id: `usr_${Date.now()}`,
-        name: `User ${phoneNumber.slice(-4) || 'VIP'}`,
-        phone: phoneNumber,
-        avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${phoneNumber}`,
-        authProvider: 'phone',
-        createdAt: new Date().toISOString()
-      };
-      saveUserSession(newUser);
-      return true;
-    }
-    return false;
-  };
-
-  const sendEmailOtp = async (email: string) => {
-    try {
-      const res = await fetch('/api/auth/otp/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: email, channel: 'EMAIL' }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const demoCode = data.mock_code || '123456';
-        return {
-          success: true,
-          demoCode,
-          message: `Mã xác thực đã được gửi về email ${email}. Mã thử nghiệm là ${demoCode}`
-        };
-      }
-    } catch {
-      // Fallback
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const demoCode = '123456';
-    return {
-      success: true,
-      demoCode,
-      message: `Mã xác thực đã được gửi về email ${email}. Mã thử nghiệm là ${demoCode}`
-    };
-  };
-
-  const verifyEmailOtp = async (email: string, code: string): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/auth/otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: email, code }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        saveUserSession(userFromApi(data.user));
-        return true;
-      }
-    } catch {
-      // Fallback
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 600));
-    if (code.trim().length === 6) {
-      const namePart = email.split('@')[0];
-      const capitalized = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-      const newUser: User = {
-        id: `usr_${Date.now()}`,
-        name: capitalized,
-        email: email,
-        avatar: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${email}`,
-        authProvider: 'email',
-        createdAt: new Date().toISOString()
-      };
-      saveUserSession(newUser);
-      return true;
-    }
-    return false;
-  };
+  const verifyOtp = (destination: string, code: string) => signIn('/api/auth/otp/verify', { destination, code });
+  const demoLogin = () => signIn('/api/auth/demo-login', { role: 'CUSTOMER' });
+  const sessionExpired = () => setUser(null);
 
   const logout = () => {
-    try {
-      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    } catch {}
-    saveUserSession(null);
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    setUser(null);
   };
 
   const createBooking = (bookingData: {
@@ -304,10 +237,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         bookings,
-        sendPhoneOtp,
-        verifyPhoneOtp,
-        sendEmailOtp,
-        verifyEmailOtp,
+        requestOtp,
+        verifyOtp,
+        demoLogin,
+        sessionExpired,
         logout,
         createBooking,
         cancelBooking,

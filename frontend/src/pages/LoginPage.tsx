@@ -12,7 +12,7 @@ export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
   const navigate = useNavigate();
-  const { isAuthenticated, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
+  const { isAuthenticated, requestOtp, verifyOtp, demoLogin } = useAuth();
   const { getEventById, events } = useEvents();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
 
@@ -63,42 +63,39 @@ export const LoginPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [otpSent, timer]);
 
+  // The code is issued for one destination, so sending and verifying must spell it the same way.
+  const phoneDestination = () => `${countryCode}${phoneNumber.replace(/\D/g, '').replace(/^0+/, '')}`;
+  const destination = () => (authMethod === 'phone' ? phoneDestination() : email.trim());
+
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
-    setIsSending(true);
 
-    try {
-      if (authMethod === 'phone') {
-        const cleanNumber = phoneNumber.trim().replace(/^0+/, '');
-        if (!cleanNumber || cleanNumber.length < 7) {
-          setErrorMsg('Vui lòng nhập số điện thoại hợp lệ (từ 8-11 chữ số).');
-          setIsSending(false);
-          return;
-        }
-        const fullPhone = `${countryCode} ${cleanNumber}`;
-        const res = await sendPhoneOtp(fullPhone);
-        setOtpSent(true);
-        setTimer(60);
-        setSuccessMsg(res.message);
-      } else {
-        const trimmedEmail = email.trim();
-        if (!trimmedEmail || !trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
-          setErrorMsg('Vui lòng nhập địa chỉ email hợp lệ.');
-          setIsSending(false);
-          return;
-        }
-        const res = await sendEmailOtp(trimmedEmail);
-        setOtpSent(true);
-        setTimer(60);
-        setSuccessMsg(res.message);
+    if (authMethod === 'phone') {
+      if (phoneNumber.replace(/\D/g, '').replace(/^0+/, '').length < 8) {
+        setErrorMsg('Vui lòng nhập số điện thoại hợp lệ (từ 8-11 chữ số).');
+        return;
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Lỗi khi gửi mã OTP. Vui lòng thử lại.');
-    } finally {
-      setIsSending(false);
+    } else {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
+        setErrorMsg('Vui lòng nhập địa chỉ email hợp lệ.');
+        return;
+      }
     }
+
+    setIsSending(true);
+    const res = await requestOtp(destination());
+    setIsSending(false);
+    if (!res.ok) {
+      setErrorMsg(res.error ?? null);
+      return;
+    }
+    setOtpSent(true);
+    setTimer(60);
+    const sentTo = authMethod === 'phone' ? `số ${countryCode} ${phoneNumber.trim()}` : `email ${email.trim()}`;
+    setSuccessMsg(res.demoCode ? `Mã OTP đã được gửi đến ${sentTo}. Mã thử nghiệm là ${res.demoCode}.` : `Mã OTP đã được gửi đến ${sentTo}.`);
   };
 
   const handleOtpChange = (index: number, val: string) => {
@@ -133,52 +130,28 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleVerifyOtp = async (codeToVerify?: string) => {
+  const handleVerifyOtp = async () => {
     setErrorMsg(null);
-    setIsVerifying(true);
-    const code = codeToVerify || otpValues.join('');
-
+    const code = otpValues.join('');
     if (code.length !== 6) {
       setErrorMsg('Vui lòng nhập đủ 6 chữ số mã OTP.');
-      setIsVerifying(false);
       return;
     }
 
-    try {
-      let success = false;
-      if (authMethod === 'phone') {
-        const fullPhone = `${countryCode} ${phoneNumber.trim()}`;
-        success = await verifyPhoneOtp(fullPhone, code);
-      } else {
-        success = await verifyEmailOtp(email.trim(), code);
-      }
-
-      if (success) {
-        setSuccessMsg('Xác thực thành công! Đang chuyển hướng...');
-        setTimeout(() => {
-          navigate(redirectUrl, { replace: true });
-        }, 600);
-      } else {
-        setErrorMsg('Mã OTP không chính xác. Mã thử nghiệm hợp lệ là: 123456');
-      }
-    } catch (err: any) {
-      setErrorMsg('Đã có lỗi xảy ra khi xác thực OTP.');
-    } finally {
-      setIsVerifying(false);
-    }
+    setIsVerifying(true);
+    const res = await verifyOtp(destination(), code);
+    setIsVerifying(false);
+    // On success the signed-in user sends the page on to the redirect target (effect above).
+    if (res.ok) setSuccessMsg('Xác thực thành công! Đang chuyển hướng...');
+    else setErrorMsg(res.error ?? null);
   };
 
-  // Fast demo test filler
   const handleQuickDemoLogin = async () => {
-    const demoPhone = '0987654321';
-    setPhoneNumber(demoPhone);
-    setAuthMethod('phone');
+    setErrorMsg(null);
     setIsSending(true);
-    await new Promise(r => setTimeout(r, 300));
-    setOtpSent(true);
-    setOtpValues(['1', '2', '3', '4', '5', '6']);
+    const res = await demoLogin();
     setIsSending(false);
-    await handleVerifyOtp('123456');
+    if (!res.ok) setErrorMsg(res.error ?? null);
   };
 
   const inputClass = 'field min-w-0';
@@ -469,16 +442,15 @@ export const LoginPage: React.FC = () => {
           {/* Quick Demo Test Helper Banner */}
           <div className="mt-6 pt-5 border-t border-kumo-hairline">
             <button
+              type="button"
               onClick={handleQuickDemoLogin}
+              disabled={isSending}
               className="btn btn-secondary w-full"
             >
               <Sparkles className="w-4 h-4 text-kumo-warning" />
               <span>Đăng nhập thử nhanh (Demo 1-Click)</span>
             </button>
-            <p className="text-xs text-kumo-subtle mt-2 text-center">
-              Mã OTP thử nghiệm định sẵn:{' '}
-              <strong className="font-medium text-kumo-default tabular-nums">123456</strong>
-            </p>
+            <p className="text-xs text-kumo-subtle mt-2 text-center">Đăng nhập bằng tài khoản khán giả mẫu, không cần mã OTP.</p>
           </div>
         </div>
       </div>

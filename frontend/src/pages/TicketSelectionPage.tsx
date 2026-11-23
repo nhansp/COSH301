@@ -58,7 +58,7 @@ export const TicketSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { getEventById, loadEventDetail, isLoading } = useEvents();
-  const { isAuthenticated, ticketsBookedFor } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, sessionExpired, ticketsBookedFor } = useAuth();
   const { isEnabled } = useFeatures();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -169,6 +169,13 @@ export const TicketSelectionPage: React.FC = () => {
   const goToLogin = useCallback(() => {
     navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
   }, [navigate, location.pathname]);
+  // The server no longer knows this session: forget the user first, or the login page sends them straight back.
+  const reLogin = useCallback(() => {
+    sessionExpired();
+    goToLogin();
+  }, [sessionExpired, goToLogin]);
+  // While the session is still being restored, let the server decide.
+  const signedOut = !isAuthenticated && !authLoading;
 
   const handleSeat = useCallback(
     async (seat: SeatItem) => {
@@ -184,24 +191,24 @@ export const TicketSelectionPage: React.FC = () => {
         await inventory.release(seat);
         return;
       }
-      if (!isAuthenticated) {
+      if (signedOut) {
         goToLogin();
         return;
       }
       const result = await inventory.hold(seat);
-      if (result.needsLogin) goToLogin();
+      if (result.needsLogin) reLogin();
     },
-    [inventory, isAuthenticated, goToLogin]
+    [inventory, signedOut, goToLogin, reLogin]
   );
 
   const handleStandingCount = async (count: number) => {
     if (!activeZone) return;
-    if (!isAuthenticated) {
+    if (signedOut) {
       goToLogin();
       return;
     }
     const result = await inventory.setZoneCount(activeZone.id, activeZone.name, Math.max(0, count));
-    if (result.needsLogin) goToLogin();
+    if (result.needsLogin) reLogin();
   };
 
   const goToCheckout = () => {
