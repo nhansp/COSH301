@@ -1,7 +1,15 @@
 import { EventItem, SeatItem } from '../types';
+import { zoneKindOf } from './venue';
 
 export const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80';
 export const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1600&q=80';
+
+// Matches the events.max_tickets_per_user column default.
+export const DEFAULT_MAX_TICKETS_PER_USER = 4;
+
+export function ticketLimitOf(event: EventItem): number {
+  return event.maxTicketsPerUser ?? DEFAULT_MAX_TICKETS_PER_USER;
+}
 
 /**
  * Loads events from the backend only. Seat maps, holds and checkout need the
@@ -20,6 +28,7 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
       title: ev.title || ev.name,
       subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
       imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
+      imageCredit: ev.imageCredit || undefined,
       bannerUrl: ev.imageUrl || DEFAULT_BANNER_IMAGE,
       date: d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
       time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -52,8 +61,24 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
   });
 }
 
+/** Booking fee the checkout adds on top of the tickets (a frontend rule until orders exist server-side). */
+export const SERVICE_FEE_RATE = 0.03;
+
+export function serviceFeeOf(subtotal: number): number {
+  return subtotal > 0 ? Math.round(subtotal * SERVICE_FEE_RATE) : 0;
+}
+
+/** Compact price for dense places such as the schedule and 3D labels: "9,8 tr". */
+export function formatPriceShort(amount: number): string {
+  if (amount >= 1_000_000) {
+    return `${(amount / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`;
+  }
+  if (amount >= 1_000) return `${Math.round(amount / 1_000)}k`;
+  return `${amount}₫`;
+}
+
 export function formatPrice(amount: number, currency: string = '₹'): string {
-  if (amount === 0) return 'Free Onwards';
+  if (amount === 0) return 'Miễn phí';
   if (currency === '₫') {
     return `${amount.toLocaleString('vi-VN')}₫`;
   }
@@ -102,6 +127,7 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
       title: ev.name || ev.title,
       subTitle: ev.description || 'Đêm nhạc đặc sắc hội tụ các nghệ sĩ hàng đầu Việt Nam',
       imageUrl: ev.imageUrl || DEFAULT_EVENT_IMAGE,
+      imageCredit: ev.imageCredit || undefined,
       bannerUrl: ev.imageUrl || DEFAULT_BANNER_IMAGE,
       date: d.toLocaleDateString('vi-VN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
       time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -110,6 +136,10 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
       city: ev.city || 'Hà Nội',
       address: ev.venueAddress || 'Số 57 Phạm Hùng, Mễ Trì, Nam Từ Liêm, Hà Nội',
       priceStart: zones.length > 0 ? Math.min(...zones.map((z: any) => z.basePrice)) : 0,
+      maxTicketsPerUser:
+        typeof ev.maxTicketsPerUser === 'number' && ev.maxTicketsPerUser > 0
+          ? ev.maxTicketsPerUser
+          : DEFAULT_MAX_TICKETS_PER_USER,
       currency: '₫',
       genre: ev.genre || 'Classical & Symphony',
       isTrending: true,
@@ -130,7 +160,10 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
       ],
       ticketTiers: zones.map((z: any) => ({
         id: z.zoneId,
+        code: z.zoneCode,
         name: z.zoneName,
+        kind: zoneKindOf(z.zoneName || ''),
+        capacity: z.capacity,
         description: `Khu vực ${z.zoneName} (${z.zoneCode})${z.floor ? ` - ${z.floor}` : ''}`,
         price: z.basePrice,
         available: availableByZone?.get(z.zoneId) ?? z.capacity,
@@ -151,7 +184,9 @@ export async function apiFetchSeats(eventId: string): Promise<SeatItem[] | null>
     const data = await res.json();
     const seats: SeatItem[] = data.map((item: any) => ({
       id: item.seatId || item.label,
+      label: item.label || `${item.row}${item.number}`,
       zoneId: item.zoneId,
+      zoneCode: item.zoneCode,
       zoneName: item.zoneName,
       row: item.row,
       number: parseInt(item.number) || 1,

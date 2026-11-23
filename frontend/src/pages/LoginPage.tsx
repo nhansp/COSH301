@@ -5,13 +5,15 @@ import { useAuth } from '../context/AuthContext';
 import { useEvents } from '../context/EventContext';
 import { useFeatures } from '../context/FeatureContext';
 import { Logo } from '../components/Logo';
+import { ImageCredit } from '../components/ImageCredit';
+import { PageShell } from '../components/layout/PageShell';
 
 export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
   const navigate = useNavigate();
-  const { isAuthenticated, loginDemo, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
-  const { getEventById } = useEvents();
+  const { isAuthenticated, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
+  const { getEventById, events } = useEvents();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
 
   // Extract event info if redirecting to checkout
@@ -19,6 +21,8 @@ export const LoginPage: React.FC = () => {
     ? redirectUrl.replace('/checkout/', '').split('?')[0]
     : null;
   const targetEvent = checkoutEventId ? getEventById(checkoutEventId) : null;
+  // The photo beside the form: the show being bought, or the first one in the schedule.
+  const poster = targetEvent ?? events[0];
 
   // Active method tab: 'phone' or 'email'
   const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone');
@@ -164,63 +168,67 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Fast demo test 1-click login - bypass OTP with a real authenticated session
-  const handleQuickDemoLogin = async (role: 'CUSTOMER' | 'ORGANIZER' = 'CUSTOMER') => {
-    setErrorMsg(null);
-    setSuccessMsg(null);
-    setIsVerifying(true);
-    try {
-      const ok = await loginDemo(role);
-      if (ok) {
-        setSuccessMsg(
-          role === 'ORGANIZER'
-            ? 'Đăng nhập Ban Tổ Chức thành công! Đang chuyển hướng...'
-            : 'Đăng nhập Khán giả Demo thành công! Đang chuyển hướng đến trang mua vé...'
-        );
-        setTimeout(() => {
-          navigate(redirectUrl, { replace: true });
-        }, 300);
-      } else {
-        setErrorMsg('Không thể đăng nhập thử nhanh. Vui lòng thử lại.');
-      }
-    } catch {
-      setErrorMsg('Đã có lỗi xảy ra khi đăng nhập thử nhanh.');
-    } finally {
-      setIsVerifying(false);
-    }
+  // Fast demo test filler
+  const handleQuickDemoLogin = async () => {
+    const demoPhone = '0987654321';
+    setPhoneNumber(demoPhone);
+    setAuthMethod('phone');
+    setIsSending(true);
+    await new Promise(r => setTimeout(r, 300));
+    setOtpSent(true);
+    setOtpValues(['1', '2', '3', '4', '5', '6']);
+    setIsSending(false);
+    await handleVerifyOtp('123456');
   };
 
-  const inputClass =
-    'h-11 sm:h-9 w-full min-w-0 rounded-lg bg-kumo-control px-3 text-base text-kumo-default ring ring-kumo-line placeholder:text-kumo-placeholder focus:outline-none focus:ring-2 focus:ring-kumo-brand';
-  const primaryButtonClass =
-    'flex h-11 sm:h-10 w-full items-center justify-center gap-2 rounded-lg bg-kumo-brand px-3.5 font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover disabled:cursor-not-allowed disabled:opacity-50';
+  const inputClass = 'field min-w-0';
+  const primaryButtonClass = 'btn btn-primary btn-lg w-full';
   const tabClass = (active: boolean) =>
-    `flex h-11 sm:h-8 min-w-0 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors ${
-      active
-        ? 'bg-kumo-base text-kumo-strong shadow-xs ring ring-kumo-line'
-        : 'text-kumo-subtle hover:text-kumo-default'
+    `flex h-11 min-w-0 items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors ${
+      active ? 'bg-kumo-contrast text-kumo-inverse' : 'text-kumo-subtle hover:text-kumo-strong'
     }`;
 
 
   if (featuresLoading || !isEnabled('otp_login')) {
     return (
-      <div className="min-h-dvh flex items-center justify-center px-4 text-center">
+      <PageShell tone="stage" className="items-center justify-center px-4 text-center">
         {featuresLoading ? (
           <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin" />
         ) : (
           <div>
             <p className="mb-4 text-kumo-default">Tính năng đăng nhập hiện chưa được mở.</p>
-            <Link to="/" className="text-kumo-link underline decoration-kumo-interact hover:decoration-current underline-offset-2">
+            <Link to="/" className="link">
               Về trang chủ
             </Link>
           </div>
         )}
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="min-h-dvh flex flex-col py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+    <PageShell tone="stage" className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <aside className="relative hidden overflow-hidden bg-plum lg:block">
+        {poster && (
+          <img
+            src={poster.imageUrl}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="absolute inset-0 size-full object-cover opacity-75 motion-safe:animate-[house-up_1400ms_var(--ease-encore)_both]"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-midnight via-midnight/45 to-midnight/10" />
+        <div className="relative flex h-full min-h-dvh flex-col justify-between p-10 xl:p-14">
+          <Logo />
+          <div className="max-w-xl">
+            <p className="type-display text-display-lg">Vé của bạn, ngay trên điện thoại.</p>
+            <p className="mt-5 text-lg text-kumo-default">Đăng nhập bằng mã 6 số gửi qua tin nhắn hoặc email. Không cần mật khẩu.</p>
+            {poster && <ImageCredit credit={poster.imageCredit} className="mt-10 text-kumo-subtle" />}
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex min-h-dvh flex-col px-4 py-4 sm:px-8 sm:py-8">
       {/* Top bar with back to home */}
       <div className="max-w-md w-full mx-auto flex items-center justify-between gap-3">
         <Link
@@ -231,16 +239,16 @@ export const LoginPage: React.FC = () => {
           <ArrowLeft className="w-4 h-4" />
           <span className="hidden sm:inline">Quay lại trang chủ</span>
         </Link>
-        <Logo />
+        <Logo className="lg:invisible" />
       </div>
 
       {/* Main Login Card */}
       <div className="flex-1 w-full sm:flex sm:items-center">
       <div className="max-w-md w-full mx-auto pt-6 pb-8 sm:py-8">
-        <div className="sm:rounded-xl sm:bg-kumo-base sm:p-8 sm:shadow-xs sm:ring sm:ring-kumo-line">
+        <div className="page-enter">
           {/* Informational Banner if redirected from Buy Tickets button */}
           {targetEvent && (
-            <div className="mb-6 p-3 rounded-lg bg-kumo-recessed flex items-start gap-3">
+            <div className="mb-8 flex items-start gap-3 rounded-2xl bg-kumo-base p-3 ring ring-kumo-line">
               <img
                 src={targetEvent.imageUrl}
                 alt={targetEvent.title}
@@ -258,21 +266,18 @@ export const LoginPage: React.FC = () => {
           )}
 
           {/* Header */}
-          <div className="mb-6">
-            <div className="size-10 rounded-lg bg-kumo-recessed ring ring-kumo-line grid place-items-center mb-4 text-kumo-default">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-kumo-strong tracking-tight">
-              Đăng nhập / Xác thực OTP
+          <div className="mb-8">
+            <h1 className="type-display text-display-md">
+              Đăng nhập
             </h1>
-            <p className="text-kumo-subtle mt-1">
-              Bảo mật tài khoản và lưu trữ vé điện tử chính hãng của bạn
+            <p className="text-kumo-subtle mt-3">
+              Nhận mã 6 số qua tin nhắn hoặc email. Không cần mật khẩu.
             </p>
           </div>
 
           {/* Method Tabs: Phone OTP vs Email OTP */}
           {!otpSent && (
-            <div className="grid grid-cols-2 gap-0.5 p-0.5 rounded-lg bg-kumo-recessed ring ring-kumo-line mb-6">
+            <div className="grid grid-cols-2 gap-1 rounded-full bg-kumo-recessed p-1 mb-6">
               <button
                 type="button"
                 onClick={() => {
@@ -319,7 +324,7 @@ export const LoginPage: React.FC = () => {
             <form onSubmit={handleSendOtp} className="space-y-4">
               {authMethod === 'phone' ? (
                 <div>
-                  <label htmlFor="login-phone" className="block text-sm font-medium text-kumo-default mb-1.5">
+                  <label htmlFor="login-phone" className="field-label">
                     Số điện thoại nhận mã OTP *
                   </label>
                   <div className="flex gap-2">
@@ -327,7 +332,7 @@ export const LoginPage: React.FC = () => {
                       aria-label="Mã quốc gia"
                       value={countryCode}
                       onChange={e => setCountryCode(e.target.value)}
-                      className="h-11 sm:h-9 w-[5.75rem] shrink-0 rounded-lg bg-kumo-control px-2 text-base text-kumo-default ring ring-kumo-line focus:outline-none focus:ring-2 focus:ring-kumo-brand"
+                      className="field w-[6.25rem] shrink-0 px-3"
                     >
                       <option value="+84">🇻🇳 +84</option>
                       <option value="+91">🇮🇳 +91</option>
@@ -353,7 +358,7 @@ export const LoginPage: React.FC = () => {
                 </div>
               ) : (
                 <div>
-                  <label htmlFor="login-email" className="block text-sm font-medium text-kumo-default mb-1.5">
+                  <label htmlFor="login-email" className="field-label">
                     Địa chỉ Email nhận mã xác thực *
                   </label>
                   <div className="relative">
@@ -379,7 +384,7 @@ export const LoginPage: React.FC = () => {
 
               <button type="submit" disabled={isSending} className={primaryButtonClass}>
                 {isSending ? (
-                  <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  <div className="size-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 ) : (
                   <span>Gửi mã OTP xác thực</span>
                 )}
@@ -402,7 +407,7 @@ export const LoginPage: React.FC = () => {
                     setOtpValues(['', '', '', '', '', '']);
                     setErrorMsg(null);
                   }}
-                  className="min-h-9 text-sm text-kumo-link underline decoration-kumo-interact hover:decoration-current underline-offset-2 inline-flex items-center"
+                  className="link min-h-9 inline-flex items-center text-sm"
                 >
                   Đổi số điện thoại / email khác
                 </button>
@@ -413,7 +418,9 @@ export const LoginPage: React.FC = () => {
                 {otpValues.map((digit, idx) => (
                   <input
                     key={idx}
-                    ref={el => (otpInputsRef.current[idx] = el)}
+                    ref={el => {
+                      otpInputsRef.current[idx] = el;
+                    }}
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
@@ -422,7 +429,7 @@ export const LoginPage: React.FC = () => {
                     value={digit}
                     onChange={e => handleOtpChange(idx, e.target.value)}
                     onKeyDown={e => handleKeyDown(idx, e)}
-                    className="h-12 flex-1 min-w-0 max-w-12 rounded-lg bg-kumo-control text-center text-xl font-semibold tabular-nums text-kumo-strong ring ring-kumo-line focus:outline-none focus:ring-2 focus:ring-kumo-brand transition-shadow"
+                    className="type-figure h-14 flex-1 min-w-0 max-w-14 rounded-xl bg-kumo-control text-center text-2xl text-kumo-strong ring ring-kumo-line ring-inset focus:outline-none focus:ring-2 focus:ring-kumo-focus transition-shadow"
                   />
                 ))}
               </div>
@@ -437,7 +444,7 @@ export const LoginPage: React.FC = () => {
                   <button
                     onClick={() => handleSendOtp()}
                     disabled={isSending}
-                    className="min-h-9 text-kumo-link font-medium underline decoration-kumo-interact hover:decoration-current underline-offset-2 disabled:opacity-50"
+                    className="link min-h-9 font-medium disabled:opacity-50"
                   >
                     Gửi lại mã OTP ngay
                   </button>
@@ -451,7 +458,7 @@ export const LoginPage: React.FC = () => {
                 className={primaryButtonClass}
               >
                 {isVerifying ? (
-                  <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  <div className="size-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 ) : (
                   <span>Xác nhận &amp; Đăng nhập</span>
                 )}
@@ -460,25 +467,17 @@ export const LoginPage: React.FC = () => {
           )}
 
           {/* Quick Demo Test Helper Banner */}
-          <div className="mt-6 pt-5 border-t border-kumo-hairline text-center space-y-2">
+          <div className="mt-6 pt-5 border-t border-kumo-hairline">
             <button
-              onClick={() => handleQuickDemoLogin('CUSTOMER')}
-              disabled={isVerifying}
-              className="flex h-11 sm:h-9 w-full items-center justify-center gap-2 rounded-lg bg-kumo-base px-3 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint disabled:opacity-50 cursor-pointer"
+              onClick={handleQuickDemoLogin}
+              className="btn btn-secondary w-full"
             >
               <Sparkles className="w-4 h-4 text-kumo-warning" />
-              <span>⚡ Đăng nhập thử nhanh (Demo Khán giả)</span>
+              <span>Đăng nhập thử nhanh (Demo 1-Click)</span>
             </button>
-            <button
-              onClick={() => handleQuickDemoLogin('ORGANIZER')}
-              disabled={isVerifying}
-              className="flex h-11 sm:h-9 w-full items-center justify-center gap-2 rounded-lg bg-kumo-base px-3 text-sm font-medium text-kumo-subtle ring ring-kumo-line transition-colors hover:bg-kumo-tint hover:text-kumo-default disabled:opacity-50 cursor-pointer"
-            >
-              <ShieldCheck className="w-4 h-4 text-kumo-subtle" />
-              <span>Đăng nhập thử Ban Tổ Chức (Organizer Demo)</span>
-            </button>
-            <p className="text-xs text-kumo-subtle mt-2">
-              Chế độ Demo: Tự động khởi tạo phiên xác thực thực tế trên máy chủ mà không cần gửi OTP.
+            <p className="text-xs text-kumo-subtle mt-2 text-center">
+              Mã OTP thử nghiệm định sẵn:{' '}
+              <strong className="font-medium text-kumo-default tabular-nums">123456</strong>
             </p>
           </div>
         </div>
@@ -490,6 +489,7 @@ export const LoginPage: React.FC = () => {
       <div className="text-center text-xs text-kumo-subtle">
         SortMyScene Authentication System, Firebase OTP Architecture
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 };

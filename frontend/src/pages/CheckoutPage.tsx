@@ -1,32 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Minus, Plus } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
-import { TicketQr } from '../components/TicketQr';
 import { Footer } from '../components/Footer';
+import { PageShell } from '../components/layout/PageShell';
+import { EmptyState } from '../components/ui/EmptyState';
+import { TicketStub } from '../components/TicketStub';
+import { HoldTimer } from '../components/tickets/HoldTimer';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
-import { formatPrice } from '../services/eventService';
-import { Booking, TicketTier } from '../types';
-import {
-  ArrowLeft,
-  CheckCircle2,
-  CreditCard,
-  QrCode,
-  ShieldCheck,
-  Ticket,
-  Calendar,
-  Clock,
-  MapPin,
-  Download,
-  Share2,
-  ExternalLink,
-  Armchair,
-  AlertCircle,
-  X
-} from 'lucide-react';
-import { SeatMap } from '../components/SeatMap';
-import { LogoMark } from '../components/Logo';
-import { SeatItem } from '../types';
+import { useFeatures } from '../context/FeatureContext';
+import { readHoldExpiries } from '../hooks/useSeatInventory';
+import { apiFetchSeats, formatPrice, serviceFeeOf, ticketLimitOf } from '../services/eventService';
+import { ticketLabelOf, zoneKindOf } from '../services/venue';
+import { PAYMENT_METHODS } from '../services/paymentMethods';
+import { Booking, SeatItem, TicketTier } from '../types';
+
+/** Fallback when the hold was made in another tab and its expiry is unknown here. */
+const DEFAULT_HOLD_SECONDS = 300;
 
 export const CheckoutPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -34,7 +25,8 @@ export const CheckoutPage: React.FC = () => {
   const initialTierId = searchParams.get('tier');
   const navigate = useNavigate();
   const { getEventById, loadEventDetail, isLoading } = useEvents();
-  const { user, createBooking } = useAuth();
+  const { user, createBooking, ticketsBookedFor } = useAuth();
+  const { isEnabled } = useFeatures();
 
   const event = eventId ? getEventById(eventId) : undefined;
   const needsDetail = !event || event.ticketTiers.length === 0;
@@ -50,19 +42,61 @@ export const CheckoutPage: React.FC = () => {
   }, [eventId, needsDetail, loadEventDetail]);
 
   const seatsParam = searchParams.get('seats');
-  const initialSeatIds = seatsParam ? decodeURIComponent(seatsParam).split(',').filter(Boolean) : [];
-  const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>(initialSeatIds);
-  const [showSeatMapModal, setShowSeatMapModal] = useState<boolean>(false);
-  const [holdTimeLeft, setHoldTimeLeft] = useState<number | null>(initialSeatIds.length > 0 ? 300 : null);
+  const selectedSeatIds = useMemo(
+    () => (seatsParam ? decodeURIComponent(seatsParam).split(',').filter(Boolean) : []),
+    [seatsParam]
+  );
+  const isSeatBooking = selectedSeatIds.length > 0;
+
+  // The URL only carries seat IDs; labels, zones and live prices come from the seat API.
+  const [seatLookup, setSeatLookup] = useState<Record<string, SeatItem>>({});
+  const [seatLoadFailed, setSeatLoadFailed] = useState(false);
+  const resolvedEventId = event?.id;
+
+  useEffect(() => {
+    if (!resolvedEventId || !isSeatBooking) return;
+    let cancelled = false;
+    setSeatLoadFailed(false);
+    apiFetchSeats(resolvedEventId).then(seats => {
+      if (cancelled) return;
+      if (seats) setSeatLookup(Object.fromEntries(seats.map(s => [s.id, s])));
+      else setSeatLoadFailed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedEventId, isSeatBooking]);
+
+  // Count down to the server's expiry for these holds, recorded when they were made.
+  const holdDeadline = useMemo(() => {
+    if (!resolvedEventId || !isSeatBooking) return null;
+    const stored = readHoldExpiries(resolvedEventId);
+    const known = selectedSeatIds.map(id => stored[id]).filter((at): at is number => at !== undefined);
+    return known.length > 0 ? Math.min(...known) : Date.now() + DEFAULT_HOLD_SECONDS * 1000;
+  }, [resolvedEventId, isSeatBooking, selectedSeatIds]);
+  const [now, setNow] = useState(() => Date.now());
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
+  const holdSecondsLeft = holdDeadline === null ? null : Math.max(0, Math.ceil((holdDeadline - now) / 1000));
+
+  useEffect(() => {
+    if (holdDeadline === null || confirmedBooking) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [holdDeadline, confirmedBooking]);
+
+  useEffect(() => {
+    if (holdSecondsLeft === 0 && event && !confirmedBooking) {
+      navigate(`/events/${event.id}/tickets?expired=1`, { replace: true });
+    }
+  }, [holdSecondsLeft, event, confirmedBooking, navigate]);
 
   const [selectedTier, setSelectedTier] = useState<TicketTier | null>(null);
-  const [quantity, setQuantity] = useState(initialSeatIds.length > 0 ? initialSeatIds.length : 1);
+  const [quantity, setQuantity] = useState(1);
   const [attendeeName, setAttendeeName] = useState(user?.name || '');
   const [attendeePhone, setAttendeePhone] = useState(user?.phone || '');
   const [attendeeEmail, setAttendeeEmail] = useState(user?.email || '');
-  const [paymentMethod, setPaymentMethod] = useState('momo_qr');
+  const [paymentMethod, setPaymentMethod] = useState<string>('momo_qr');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     if (event && event.ticketTiers.length > 0) {
@@ -71,69 +105,78 @@ export const CheckoutPage: React.FC = () => {
     }
   }, [event, initialTierId]);
 
-  // Keep quantity in sync with selected seats
-  useEffect(() => {
-    if (selectedSeatIds.length > 0) {
-      setQuantity(selectedSeatIds.length);
-      if (holdTimeLeft === null) setHoldTimeLeft(300);
-    }
-  }, [selectedSeatIds.length]);
-
-  // 5-minute hold timer countdown effect (US-03)
-  useEffect(() => {
-    if (holdTimeLeft === null) return;
-    if (holdTimeLeft <= 0) {
-      alert('Đã hết hạn giữ chỗ 5 phút! Vui lòng chọn lại ghế để tiếp tục.');
-      navigate(`/event/${event?.id}`);
-      return;
-    }
-    const timer = setInterval(() => {
-      setHoldTimeLeft(prev => (prev !== null ? prev - 1 : null));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [holdTimeLeft, event?.id, navigate]);
 
   if (isLoading || (isFetchingDetail && needsDetail)) {
     return (
-      <div className="min-h-screen flex flex-col justify-between">
-        <Navbar />
-        <div className="max-w-md mx-auto my-auto text-center py-20 px-4">
-          <div className="size-8 rounded-full border-2 border-kumo-interact border-t-kumo-brand animate-spin mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-kumo-strong">Đang tải thông tin sự kiện...</h2>
-        </div>
-        <Footer />
-      </div>
+      <PageShell tone="stage">
+        <Navbar tone="stage" />
+        <main aria-busy="true" className="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:px-10">
+          <div className="space-y-5">
+            <div className="skeleton h-14 w-64" />
+            <div className="skeleton h-40 w-full rounded-card" />
+            <div className="skeleton h-56 w-full rounded-card" />
+          </div>
+          <div className="skeleton h-80 rounded-card" />
+        </main>
+      </PageShell>
     );
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen flex flex-col justify-between">
-        <Navbar />
-        <div className="max-w-md mx-auto my-auto text-center py-20 px-4">
-          <h2 className="mb-4 text-2xl font-semibold tracking-tight text-kumo-strong">Không tìm thấy sự kiện</h2>
-          <Link
-            to="/"
-            className="inline-flex h-10 items-center rounded-lg bg-kumo-brand px-3.5 font-medium sm:h-9 text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover"
-          >
-            Quay lại trang chủ
-          </Link>
-        </div>
-        <Footer />
-      </div>
+      <PageShell tone="stage">
+        <Navbar tone="stage" />
+        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-16 sm:px-6">
+          <EmptyState
+            title="Không tìm thấy sự kiện"
+            body="Sự kiện có thể đã kết thúc hoặc không còn mở bán."
+            action={
+              <Link to="/" className="btn btn-primary">
+                Xem lịch diễn
+              </Link>
+            }
+          />
+        </main>
+      </PageShell>
     );
   }
 
+  const kindOfZone = (zoneId: string, zoneName: string) =>
+    event.ticketTiers.find(t => t.id === zoneId)?.kind ?? zoneKindOf(zoneName);
+
+  // Seats picked on the map already fix the zone, so they skip tier selection and keep their own price.
+  const selectedSeats = selectedSeatIds.map(id => seatLookup[id]).filter((seat): seat is SeatItem => seat !== undefined);
+  const seatsReady = selectedSeats.length === selectedSeatIds.length;
+  const seatZoneNames = Array.from(new Set(selectedSeats.map(s => s.zoneName)));
+  const seatedPicks = selectedSeats.filter(s => kindOfZone(s.zoneId, s.zoneName) === 'seated');
+  const standingPicks = Array.from(
+    selectedSeats
+      .filter(s => kindOfZone(s.zoneId, s.zoneName) === 'standing')
+      .reduce((acc, s) => acc.set(s.zoneId, [...(acc.get(s.zoneId) ?? []), s]), new Map<string, SeatItem[]>())
+      .values()
+  );
+
+  const ticketCount = isSeatBooking ? selectedSeatIds.length : quantity;
+  const ticketLimit = ticketLimitOf(event);
+  const seatsLeftForUser = Math.max(0, ticketLimit - ticketsBookedFor(event.id));
+  const exceedsLimit = ticketCount > seatsLeftForUser;
+
   const ticketPrice = selectedTier?.price || 0;
-  const subtotal = ticketPrice * quantity;
-  const bookingFee = ticketPrice > 0 ? Math.round(subtotal * 0.03) : 0;
+  const subtotal = isSeatBooking ? selectedSeats.reduce((sum, seat) => sum + seat.price, 0) : ticketPrice * quantity;
+  const bookingFee = serviceFeeOf(subtotal);
   const totalAmount = subtotal + bookingFee;
+  const canConfirm =
+    !isProcessing && !exceedsLimit && (isSeatBooking ? seatsReady && selectedSeats.length > 0 : !!selectedTier);
+
+  const changeSeatsUrl = `/events/${event.id}/tickets`;
 
   const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTier) return;
+    const tier = isSeatBooking ? { id: selectedSeats[0]?.zoneId, name: seatZoneNames.join(', ') } : selectedTier;
+    if (!canConfirm || !tier?.id) return;
 
     setIsProcessing(true);
+    await new Promise(r => setTimeout(r, 1200));
 
     const booking = createBooking({
       eventId: event.id,
@@ -143,585 +186,346 @@ export const CheckoutPage: React.FC = () => {
       venue: event.venue,
       city: event.city,
       imageUrl: event.imageUrl,
-      tierId: selectedTier.id,
-      tierName: selectedTier.name,
-      quantity,
+      tierId: tier.id,
+      tierName: tier.name,
+      quantity: ticketCount,
       totalAmount,
       currency: event.currency,
-      attendeeName: attendeeName || user?.name || 'Guest Attendee',
+      attendeeName: attendeeName || user?.name || 'Khách',
       attendeePhone: attendeePhone || user?.phone || 'N/A',
       attendeeEmail: attendeeEmail || user?.email || 'N/A',
       paymentMethod,
-      selectedSeats: selectedSeatIds.length > 0 ? selectedSeatIds : undefined
-    }, 'pending');
+      selectedSeats: isSeatBooking ? selectedSeatIds : undefined,
+      seatLabels: isSeatBooking ? selectedSeats.map(s => ticketLabelOf(s, kindOfZone(s.zoneId, s.zoneName))) : undefined
+    });
 
     setIsProcessing(false);
-    // Route user to the payment page where the payment QR is located
-    navigate(`/payment/${booking.id}`);
+    setConfirmedBooking(booking);
+    window.scrollTo({ top: 0 });
   };
 
-  const panel = 'rounded-xl bg-kumo-base ring ring-kumo-line shadow-xs';
-  const sectionTitle =
-    'flex items-center gap-2 border-b border-kumo-hairline pb-3 text-lg font-semibold tracking-tight text-kumo-strong';
-  const fieldLabel = 'mb-1.5 block text-sm font-medium text-kumo-default';
-  const input =
-    'h-10 w-full rounded-lg bg-kumo-control px-3 text-lg text-kumo-default ring ring-kumo-line placeholder:text-kumo-placeholder focus:outline-none focus:ring-2 focus:ring-kumo-brand sm:h-9 sm:text-base';
+  if (confirmedBooking) {
+    return (
+      <PageShell tone="stage">
+        <Navbar tone="stage" />
+        <main className="mx-auto w-full max-w-xl flex-1 px-4 py-12 sm:py-16">
+          <p className="inline-flex h-7 items-center rounded-full bg-kumo-success-tint px-3 text-sm font-semibold text-kumo-success">Đã thanh toán</p>
+          <h1 className="type-display mt-4 text-display-md">Vé của bạn đã sẵn sàng</h1>
+          <p className="mt-3 mb-10 text-kumo-subtle">Đưa mã QR này cho nhân viên soát vé ở cổng. Vé cũng được lưu trong mục Vé của tôi.</p>
+          <TicketStub booking={confirmedBooking} reveal />
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link to="/my-tickets" className="btn btn-primary btn-lg">
+              Xem vé của tôi
+            </Link>
+            <button type="button" onClick={() => window.print()} className="btn btn-secondary btn-lg">
+              In vé
+            </button>
+          </div>
+        </main>
+        <Footer />
+      </PageShell>
+    );
+  }
+
+  const stepTitle = 'type-display mb-5 flex items-baseline gap-3 text-title';
+  const stepNumber = 'type-figure text-base text-violet';
   const option = (active: boolean) =>
-    `flex cursor-pointer items-center gap-3 rounded-lg p-3 ring transition-colors ${
-      active ? 'bg-kumo-info-tint ring-2 ring-kumo-brand' : 'bg-kumo-base ring-kumo-line hover:bg-kumo-tint'
+    `flex cursor-pointer items-center gap-3 rounded-2xl p-4 ring transition-[background-color,box-shadow] ring-inset ${
+      active ? 'bg-kumo-tint ring-2 ring-violet' : 'bg-kumo-recessed ring-kumo-line hover:bg-kumo-tint'
     }`;
-  const stepper =
-    'grid size-10 place-items-center rounded-lg bg-kumo-base text-lg font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint disabled:cursor-not-allowed disabled:opacity-50 sm:size-8';
-  const isHolding = selectedSeatIds.length > 0 && holdTimeLeft !== null;
-  const holdClock =
-    holdTimeLeft !== null ? `${Math.floor(holdTimeLeft / 60)}:${String(holdTimeLeft % 60).padStart(2, '0')}` : '';
 
-  const confirmButtonContent = isProcessing ? (
-    <div className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-  ) : (
-    <>
-      <QrCode className="size-4" />
-      <span>Tiến hành thanh toán QR</span>
-    </>
-  );
-  const confirmButtonClass =
-    'flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-kumo-brand font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover disabled:cursor-not-allowed disabled:opacity-50';
+  const confirmLabel = isProcessing ? 'Đang xử lý…' : `Thanh toán ${formatPrice(totalAmount, event.currency)}`;
 
-  const orderSummary = (
-    <dl className="space-y-2.5">
-      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
-        <dt className="text-kumo-subtle">Hạng vé</dt>
-        <dd className="text-right font-medium text-kumo-strong">{selectedTier?.name}</dd>
+  const summary = (
+    <dl className="space-y-3">
+      {isSeatBooking ? (
+        <>
+          {seatedPicks.map(seat => (
+            <div key={seat.id} className="flex items-baseline justify-between gap-4">
+              <dt className="min-w-0 text-kumo-default">
+                <span className="type-figure text-lg text-spot">{seat.label}</span> <span className="text-sm text-kumo-subtle">{seat.zoneName}</span>
+              </dt>
+              <dd className="tabular-nums text-kumo-default">{formatPrice(seat.price, event.currency)}</dd>
+            </div>
+          ))}
+          {standingPicks.map(group => (
+            <div key={group[0].zoneId} className="flex items-baseline justify-between gap-4">
+              <dt className="min-w-0 text-kumo-default">
+                <span className="type-figure text-lg text-spot">{group.length}×</span>{' '}
+                <span className="text-sm text-kumo-subtle">{group[0].zoneName}, vé đứng</span>
+              </dt>
+              <dd className="tabular-nums text-kumo-default">{formatPrice(group.reduce((sum, s) => sum + s.price, 0), event.currency)}</dd>
+            </div>
+          ))}
+          {!seatsReady && !seatLoadFailed && (
+            <div aria-hidden="true" className="space-y-2">
+              <div className="skeleton h-5 w-full" />
+              <div className="skeleton h-5 w-2/3" />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex items-baseline justify-between gap-4">
+          <dt className="text-kumo-default">
+            {quantity} × {selectedTier?.name}
+          </dt>
+          <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, event.currency)}</dd>
+        </div>
+      )}
+      <div className="flex items-baseline justify-between gap-4 border-t border-kumo-hairline pt-3 text-sm">
+        <dt className="text-kumo-subtle">Tạm tính</dt>
+        <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal, event.currency)}</dd>
       </div>
-
-      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
-        <dt className="text-kumo-subtle">Đơn giá</dt>
-        <dd className="text-kumo-default tabular-nums">{formatPrice(ticketPrice, event.currency)}</dd>
+      <div className="flex items-baseline justify-between gap-4 text-sm">
+        <dt className="text-kumo-subtle">Phí dịch vụ (3%)</dt>
+        <dd className="tabular-nums text-kumo-default">{formatPrice(bookingFee, event.currency)}</dd>
       </div>
-
-      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
-        <dt className="text-kumo-subtle">Số lượng</dt>
-        <dd className="font-medium text-kumo-strong tabular-nums">{quantity} vé</dd>
-      </div>
-
-      <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
-        <dt className="text-kumo-subtle">Phí dịch vụ &amp; Bảo hiểm vé</dt>
-        <dd className="text-kumo-default tabular-nums">
-          {bookingFee === 0 ? 'Miễn phí' : formatPrice(bookingFee, event.currency)}
-        </dd>
-      </div>
-
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t border-kumo-hairline pt-3">
-        <dt className="text-lg font-medium text-kumo-strong">Tổng thanh toán</dt>
-        <dd className="text-2xl font-bold tracking-tight text-kumo-strong tabular-nums">
-          {formatPrice(totalAmount, event.currency)}
-        </dd>
+      <div className="flex items-baseline justify-between gap-4 border-t border-kumo-hairline pt-4">
+        <dt className="font-medium text-kumo-strong">Tổng cộng</dt>
+        <dd className="type-figure text-3xl text-kumo-strong">{formatPrice(totalAmount, event.currency)}</dd>
       </div>
     </dl>
   );
 
   return (
-    <div className={`min-h-screen flex flex-col ${confirmedBooking ? '' : 'pb-36 lg:pb-0'}`}>
-      <Navbar />
+    <PageShell tone="stage" className="pb-32 lg:pb-0">
+      <Navbar tone="stage" />
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        {/* Navigation back */}
-        <div className="mb-4 sm:mb-6">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="-ml-2 inline-flex h-10 items-center sm:h-8 gap-1.5 rounded-md px-2 text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-default"
-          >
-            <ArrowLeft className="size-4" />
-            <span>Quay lại trang sự kiện</span>
-          </button>
+      <main className="page-enter mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-16 sm:px-6 lg:px-10">
+        <Link to={isSeatBooking ? changeSeatsUrl : `/event/${event.id}`} className="btn btn-quiet btn-sm -ml-3">
+          <ArrowLeft className="size-4" />
+          {isSeatBooking ? 'Đổi vị trí' : 'Quay lại sự kiện'}
+        </Link>
+
+        <div className="mt-4 mb-10 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <h1 className="type-display text-display-lg">Thanh toán</h1>
+            <p className="mt-2 text-kumo-subtle">
+              {event.title}, {event.date}, {event.time}
+            </p>
+          </div>
+          {holdSecondsLeft !== null && (
+            <div className="rounded-full bg-kumo-base px-4 py-2 ring ring-kumo-line">
+              <HoldTimer secondsLeft={holdSecondsLeft} />
+            </div>
+          )}
         </div>
 
-        {/* 5-minute hold timer banner (US-03) */}
-        {isHolding && holdTimeLeft !== null && (
-          <div
-            className={`mb-6 flex flex-col gap-3 rounded-xl p-4 ring ring-kumo-line sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
-              holdTimeLeft < 60 ? 'bg-kumo-danger-tint animate-pulse' : 'bg-kumo-warning-tint'
-            }`}
-          >
-            <div className="flex min-w-0 items-start gap-3">
-              <Clock
-                className={`mt-0.5 size-5 flex-shrink-0 ${holdTimeLeft < 60 ? 'text-kumo-danger' : 'text-kumo-warning'}`}
-              />
-              <div>
-                <div className="flex flex-wrap items-center gap-2 font-semibold text-kumo-strong">
-                  <span className="tabular-nums">Khóa giữ chỗ: {holdClock}</span>
-                  <span className="rounded-full bg-kumo-success-tint px-2 py-0.5 text-xs font-medium text-kumo-success ring ring-kumo-line">
-                    Độc quyền (US-03)
-                  </span>
-                </div>
-                <div className="break-words text-sm text-kumo-default">
-                  Ghế của bạn ({selectedSeatIds.join(', ')}) đang được bảo vệ chống bán trùng (Zero Double-Booking).
-                </div>
-              </div>
-            </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10">
+          <div className="space-y-5">
+            <section className="panel p-5 sm:p-7" aria-labelledby="step-places">
+              <h2 id="step-places" className={stepTitle}>
+                <span className={stepNumber}>1</span>
+                {isSeatBooking ? 'Vị trí của bạn' : 'Hạng vé và số lượng'}
+              </h2>
 
-            <button
-              type="button"
-              onClick={() => setShowSeatMapModal(true)}
-              className="h-10 w-full flex-shrink-0 rounded-lg bg-kumo-base px-3 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint sm:h-8 sm:w-auto"
-            >
-              Đổi vị trí ghế
-            </button>
-          </div>
-        )}
-
-        {/* E-Ticket Confirmation Screen if order is finalized */}
-        {confirmedBooking ? (
-          <div className="space-y-8">
-            {/* Success Header */}
-            <div className="mx-auto max-w-lg text-center">
-              <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-kumo-success-tint text-kumo-success ring ring-kumo-line">
-                <CheckCircle2 className="size-6" />
-              </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-kumo-strong sm:text-3xl">Đặt vé thành công!</h1>
-              <p className="mt-1.5 text-kumo-subtle">
-                Vé điện tử chính hãng của bạn đã được xuất bản và lưu trữ trong tài khoản.
-              </p>
-            </div>
-
-            {/* Digital E-Ticket Card */}
-            <div className="relative mx-auto max-w-xl overflow-hidden rounded-xl bg-kumo-base shadow-md ring ring-kumo-line">
-              {/* Top Ticket Header */}
-              <div className="flex items-center justify-between gap-3 border-b border-kumo-hairline bg-kumo-elevated px-4 py-4 sm:px-6">
-                <div className="flex items-center gap-2.5">
-                  <LogoMark className="size-8" />
-                  <div>
-                    <div className="font-semibold tracking-tight text-kumo-strong">SortMyScene</div>
-                    <div className="text-xs text-kumo-subtle">Official e-ticket</div>
-                  </div>
-                </div>
-                <span className="rounded-full bg-kumo-success-tint px-2 py-0.5 text-xs font-medium text-kumo-success ring ring-kumo-line">
-                  Confirmed
-                </span>
-              </div>
-
-              {/* Event Main Banner in Ticket */}
-              <div className="p-4 sm:p-6">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <img
-                    src={confirmedBooking.imageUrl}
-                    alt={confirmedBooking.eventTitle}
-                    className="size-20 flex-shrink-0 sm:size-24 rounded-lg object-cover ring ring-kumo-line"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <h2 className="truncate text-lg font-semibold leading-snug tracking-tight text-kumo-strong">
-                      {confirmedBooking.eventTitle}
-                    </h2>
-                    <div className="flex flex-wrap items-center gap-x-1.5 text-sm text-kumo-subtle">
-                      <Calendar className="size-3.5 flex-shrink-0" />
-                      <span>{confirmedBooking.eventDate}</span>
-                      <span>{confirmedBooking.eventTime}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm text-kumo-subtle">
-                      <MapPin className="size-3.5 flex-shrink-0" />
-                      <span className="truncate">{confirmedBooking.venue}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      <span className="rounded-full bg-kumo-tint px-2 py-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line">
-                        {confirmedBooking.tierName}
+              {isSeatBooking ? (
+                <div className="space-y-3">
+                  <ul className="flex flex-wrap gap-2">
+                    {seatedPicks.map(seat => (
+                      <li key={seat.id} className="flex items-baseline gap-2 rounded-xl bg-spot px-3.5 py-2 text-spot-ink">
+                        <span className="type-figure text-xl leading-none">{seat.label}</span>
+                        <span className="text-xs">{seat.zoneName}</span>
+                      </li>
+                    ))}
+                    {standingPicks.map(group => (
+                      <li key={group[0].zoneId} className="flex items-baseline gap-2 rounded-xl bg-spot px-3.5 py-2 text-spot-ink">
+                        <span className="type-figure text-xl leading-none">{group.length}×</span>
+                        <span className="text-xs">{group[0].zoneName}, vé đứng</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {seatLoadFailed && (
+                    <p role="alert" className="flex items-start gap-2 rounded-xl bg-kumo-danger-tint px-3.5 py-2.5 text-sm text-kumo-danger">
+                      <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                      <span>
+                        Chưa tải được thông tin vé.{' '}
+                        <Link to={changeSeatsUrl} className="underline underline-offset-2">
+                          Chọn lại vị trí
+                        </Link>
                       </span>
-                      <span className="rounded-full bg-kumo-tint px-2 py-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line tabular-nums">
-                        Số lượng: {confirmedBooking.quantity} vé
-                      </span>
-                    </div>
-                    {confirmedBooking.selectedSeats && confirmedBooking.selectedSeats.length > 0 && (
-                      <div className="flex items-start gap-1.5 pt-0.5 text-sm font-medium text-kumo-success">
-                        <Armchair className="mt-0.5 size-3.5 flex-shrink-0" />
-                        <span>Vị trí ghế: {confirmedBooking.selectedSeats.join(', ')}</span>
-                      </div>
-                    )}
-                  </div>
+                    </p>
+                  )}
                 </div>
-
-                {/* Perforated Divider Ticket Notch */}
-                <div className="relative my-6">
-                  <div className="border-b-2 border-dashed border-kumo-hairline" />
-                  <div className="absolute -left-7 -top-3 size-6 sm:-left-9 rounded-full bg-kumo-canvas ring ring-kumo-line" />
-                  <div className="absolute -right-7 -top-3 size-6 sm:-right-9 rounded-full bg-kumo-canvas ring ring-kumo-line" />
-                </div>
-
-                {/* QR Code and Attendee details */}
-                <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-                  <dl className="space-y-2.5 text-center sm:text-left">
-                    <div>
-                      <dt className="text-xs text-kumo-subtle">Người nhận vé:</dt>
-                      <dd className="font-medium text-kumo-strong">{confirmedBooking.attendeeName}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-kumo-subtle">Liên hệ:</dt>
-                      <dd className="break-all text-kumo-default">
-                        {confirmedBooking.attendeePhone || confirmedBooking.attendeeEmail}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-kumo-subtle">Mã tra cứu vé:</dt>
-                      <dd className="text-lg font-semibold tracking-wide text-kumo-strong tabular-nums">
-                        {confirmedBooking.bookingCode}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  {/* QR stays on white in both modes so scanners can read it */}
-                  <div className="flex flex-col items-center rounded-lg bg-white p-3 ring ring-kumo-line">
-                    <TicketQr code={confirmedBooking.bookingCode} className="size-32" />
-                    <span className="mt-1 text-xs text-neutral-500">Quét tại cổng soát vé</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Actions */}
-              <div className="flex flex-col gap-2 border-t border-kumo-hairline bg-kumo-elevated px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
-                <Link
-                  to="/my-tickets"
-                  className="inline-flex h-10 items-center justify-center rounded-lg sm:h-9 bg-kumo-brand px-3.5 font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover"
-                >
-                  Xem danh sách vé của tôi
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-kumo-base px-3 font-medium sm:h-9 text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint"
-                >
-                  <Download className="size-4" />
-                  <span>In / Tải vé PDF</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Checkout Booking Form */
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-            {/* Left 2 Cols: Tier selection, Attendee info, Payment options */}
-            <div className="space-y-5 lg:col-span-2">
-              {/* Event Brief Header */}
-              <div className={`${panel} flex items-center gap-4 p-4`}>
-                <img
-                  src={event.imageUrl}
-                  alt={event.title}
-                  className="size-16 flex-shrink-0 rounded-lg object-cover ring ring-kumo-line sm:size-20"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-kumo-subtle">{event.genre}</div>
-                  <h2 className="truncate text-lg font-semibold tracking-tight text-kumo-strong">{event.title}</h2>
-                  <p className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-kumo-subtle">
-                    <span>{event.date}</span>
-                    <span>{event.venue}</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 1: Select Tier & Quantity */}
-              <section className={`${panel} space-y-4 p-4 sm:p-6`}>
-                <h3 className={sectionTitle}>
-                  <Ticket className="size-4 text-kumo-subtle" />
-                  <span>1. Chọn loại vé &amp; Số lượng</span>
-                </h3>
-
-                <div className="space-y-2">
-                  {event.ticketTiers.map(tier => (
-                    <label
-                      key={tier.id}
-                      onClick={() => setSelectedTier(tier)}
-                      className={`${option(selectedTier?.id === tier.id)} justify-between`}
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <input
-                          type="radio"
-                          name="ticketTier"
-                          checked={selectedTier?.id === tier.id}
-                          onChange={() => setSelectedTier(tier)}
-                          className="size-4 flex-shrink-0 accent-kumo-brand"
-                        />
-                        <div className="min-w-0">
-                          <div className="font-medium text-kumo-strong">{tier.name}</div>
-                          <div className="text-sm text-kumo-subtle">{tier.description}</div>
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0 text-right font-semibold text-kumo-strong tabular-nums">
-                        {formatPrice(tier.price, event.currency)}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-
-                {/* Selected Seats Display or Quantity selector */}
-                {selectedSeatIds.length > 0 ? (
-                  <div className="space-y-2 border-t border-kumo-hairline pt-3">
-                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                      <span className="flex items-center gap-1.5 font-medium text-kumo-default">
-                        <Armchair className="size-4 text-kumo-success" />
-                        <span>Vị trí ghế đã chọn ({selectedSeatIds.length} vé):</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowSeatMapModal(true)}
-                        className="-my-2 py-2 text-sm font-medium text-kumo-link underline decoration-kumo-interact hover:decoration-current"
-                      >
-                        Đổi vị trí ghế
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedSeatIds.map(seatId => (
-                        <span
-                          key={seatId}
-                          className="rounded-full bg-kumo-tint px-2 py-0.5 text-xs font-medium text-kumo-default ring ring-kumo-line"
-                        >
-                          {seatId}
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2" role="radiogroup" aria-label="Hạng vé">
+                    {event.ticketTiers.map(tier => (
+                      <label key={tier.id} className={`${option(selectedTier?.id === tier.id)} justify-between`}>
+                        <span className="flex min-w-0 items-center gap-3">
+                          <input
+                            type="radio"
+                            name="ticketTier"
+                            checked={selectedTier?.id === tier.id}
+                            onChange={() => setSelectedTier(tier)}
+                            className="size-4 shrink-0 accent-violet"
+                          />
+                          <span className="min-w-0">
+                            <span className="block font-medium text-kumo-strong">{tier.name}</span>
+                            <span className="block text-sm text-kumo-subtle">
+                              {tier.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'}, còn {tier.available} vé
+                            </span>
+                          </span>
                         </span>
-                      ))}
-                    </div>
+                        <span className="type-figure shrink-0 text-lg text-kumo-strong">{formatPrice(tier.price, event.currency)}</span>
+                      </label>
+                    ))}
                   </div>
-                ) : (
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-kumo-hairline pt-3">
-                    <div className="min-w-0">
-                      <span className="block font-medium text-kumo-default">Số lượng vé muốn mua:</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowSeatMapModal(true)}
-                        className="inline-flex min-h-10 items-center gap-1 text-left text-sm text-kumo-link underline decoration-kumo-interact hover:decoration-current sm:mt-0.5 sm:min-h-0"
-                      >
-                        <Armchair className="size-3.5" />
-                        <span>Chọn vị trí ghế trực quan</span>
-                      </button>
-                    </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-kumo-hairline pt-4">
+                    <span className="text-kumo-default">Số lượng</span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                         disabled={quantity <= 1}
-                        aria-label="Giảm số lượng"
-                        className={stepper}
+                        aria-label="Bớt một vé"
+                        className="btn-icon ring ring-kumo-line disabled:opacity-40"
                       >
-                        −
+                        <Minus className="size-4" />
                       </button>
-                      <span className="w-8 text-center text-lg font-semibold text-kumo-strong tabular-nums">
-                        {quantity}
-                      </span>
+                      <output className="type-figure w-10 text-center text-3xl text-kumo-strong">{quantity}</output>
                       <button
                         type="button"
-                        onClick={() => setQuantity(Math.min(4, quantity + 1))}
-                        disabled={quantity >= 4}
-                        aria-label="Tăng số lượng"
-                        className={stepper}
-                        title="Tối đa 4 vé theo quy định chống đầu cơ"
+                        onClick={() => setQuantity(Math.min(seatsLeftForUser, quantity + 1))}
+                        disabled={quantity >= seatsLeftForUser}
+                        aria-label="Thêm một vé"
+                        className="btn-icon ring ring-kumo-line disabled:opacity-40"
                       >
-                        +
+                        <Plus className="size-4" />
                       </button>
                     </div>
                   </div>
-                )}
-              </section>
+                  {isEnabled('seat_map_realtime') && (
+                    <Link to={changeSeatsUrl} className="link inline-flex text-sm">
+                      Muốn chọn vị trí cụ thể? Mở sơ đồ chọn vé
+                    </Link>
+                  )}
+                </div>
+              )}
 
-              {/* Step 2: Attendee Information */}
-              <form id="checkout-form" onSubmit={handleConfirmBooking} className={`${panel} space-y-4 p-4 sm:p-6`}>
-                <h3 className={sectionTitle}>
-                  <ShieldCheck className="size-4 text-kumo-subtle" />
-                  <span>2. Thông tin người nhận vé (Xác thực)</span>
-                </h3>
+              {exceedsLimit && (
+                <p role="alert" className="mt-4 flex items-start gap-2 rounded-xl bg-kumo-danger-tint px-3.5 py-2.5 text-sm text-kumo-danger">
+                  <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                  {seatsLeftForUser === 0
+                    ? `Bạn đã mua đủ ${ticketLimit} vé tối đa cho sự kiện này.`
+                    : `Mỗi tài khoản chỉ được mua tối đa ${ticketLimit} vé cho sự kiện này. Bạn còn được mua ${seatsLeftForUser} vé.`}
+                </p>
+              )}
+            </section>
 
+            <form id="checkout-form" onSubmit={handleConfirmBooking} className="panel p-5 sm:p-7" aria-labelledby="step-attendee">
+              <h2 id="step-attendee" className={stepTitle}>
+                <span className={stepNumber}>2</span>
+                Người tham dự
+              </h2>
+              <div className="space-y-4">
                 <div>
-                  <label htmlFor="attendee-name" className={fieldLabel}>
-                    Họ và tên người nhận vé *
+                  <label htmlFor="attendee-name" className="field-label">
+                    Họ và tên
                   </label>
                   <input
                     id="attendee-name"
                     type="text"
                     required
-                    placeholder="Nguyễn Văn A"
+                    autoComplete="name"
                     value={attendeeName}
                     onChange={e => setAttendeeName(e.target.value)}
-                    className={input}
+                    className="field"
                   />
                 </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="attendee-phone" className={fieldLabel}>
-                      Số điện thoại nhận vé *
+                    <label htmlFor="attendee-phone" className="field-label">
+                      Số điện thoại
                     </label>
                     <input
                       id="attendee-phone"
                       type="tel"
                       required
-                      placeholder="0987654321"
+                      autoComplete="tel"
                       value={attendeePhone}
                       onChange={e => setAttendeePhone(e.target.value)}
-                      className={input}
+                      className="field"
                     />
                   </div>
-
                   <div>
-                    <label htmlFor="attendee-email" className={fieldLabel}>
-                      Email nhận mã QR vé *
+                    <label htmlFor="attendee-email" className="field-label">
+                      Email nhận vé
                     </label>
                     <input
                       id="attendee-email"
                       type="email"
                       required
-                      placeholder="email@example.com"
+                      autoComplete="email"
                       value={attendeeEmail}
                       onChange={e => setAttendeeEmail(e.target.value)}
-                      className={input}
+                      className="field"
                     />
                   </div>
                 </div>
-              </form>
+              </div>
+            </form>
 
-              {/* Step 3: Payment Method Selection */}
-              <section className={`${panel} space-y-4 p-4 sm:p-6`}>
-                <h3 className={sectionTitle}>
-                  <CreditCard className="size-4 text-kumo-subtle" />
-                  <span>3. Phương thức thanh toán</span>
-                </h3>
+            <section className="panel p-5 sm:p-7" aria-labelledby="step-payment">
+              <h2 id="step-payment" className={stepTitle}>
+                <span className={stepNumber}>3</span>
+                Thanh toán
+              </h2>
+              <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Phương thức thanh toán">
+                {PAYMENT_METHODS.map(method => (
+                  <label key={method.id} className={option(paymentMethod === method.id)}>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={paymentMethod === method.id}
+                      onChange={() => setPaymentMethod(method.id)}
+                      className="size-4 shrink-0 accent-violet"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-medium text-kumo-strong">{method.name}</span>
+                      <span className="block text-xs text-kumo-subtle">{method.desc}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-4 text-sm text-kumo-subtle">Bản thử nghiệm: chưa kết nối cổng thanh toán, không có khoản tiền nào bị trừ.</p>
+            </section>
+          </div>
 
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {[
-                    { id: 'momo_qr', name: 'Ví MoMo / Quét QR', desc: 'Thanh toán tức thì 24/7' },
-                    { id: 'vnpay', name: 'VNPAY / Thẻ ATM Nội Địa', desc: 'Hơn 40 ngân hàng liên kết' },
-                    { id: 'visa_master', name: 'Thẻ Quốc Tế (Visa / Mastercard)', desc: 'Bảo mật 3D-Secure' },
-                    { id: 'upi_qr', name: 'UPI / NetBanking', desc: 'Chuyển khoản an toàn' }
-                  ].map(method => (
-                    <label
-                      key={method.id}
-                      onClick={() => setPaymentMethod(method.id)}
-                      className={option(paymentMethod === method.id)}
-                    >
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        checked={paymentMethod === method.id}
-                        onChange={() => setPaymentMethod(method.id)}
-                        className="size-4 flex-shrink-0 accent-kumo-brand"
-                      />
-                      <div className="min-w-0">
-                        <div className="font-medium text-kumo-strong">{method.name}</div>
-                        <div className="text-xs text-kumo-subtle">{method.desc}</div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </section>
-
-              {/* Order breakdown below lg; the total + CTA live in the sticky bottom bar */}
-              <section className={`${panel} p-4 sm:p-6 lg:hidden`}>
-                <h3 className={`${sectionTitle} mb-4`}>Tóm tắt đơn đặt vé</h3>
-                {orderSummary}
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-kumo-subtle">
-                  <ShieldCheck className="size-3.5 flex-shrink-0 text-kumo-success" />
-                  <span>Cam kết hoàn tiền 100% nếu sự kiện bị hủy</span>
-                </div>
-              </section>
-            </div>
-
-            {/* Right Col: Order Summary & Checkout CTA */}
-            <aside className="hidden lg:block">
-              <div className={`${panel} sticky top-24 p-5`}>
-                <h3 className="mb-4 border-b border-kumo-hairline pb-3 text-lg font-semibold tracking-tight text-kumo-strong">
-                  Tóm tắt đơn đặt vé
-                </h3>
-
-                {orderSummary}
-
-                <button type="submit" form="checkout-form" disabled={isProcessing} className={`mt-5 ${confirmButtonClass}`}>
-                  {confirmButtonContent}
-                </button>
-
-                <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-kumo-subtle">
-                  <ShieldCheck className="size-3.5 text-kumo-success" />
-                  <span>Cam kết hoàn tiền 100% nếu sự kiện bị hủy</span>
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <div className="panel overflow-hidden">
+              <div className="flex items-center gap-4 border-b border-kumo-hairline p-5 sm:p-6">
+                <img src={event.imageUrl} alt="" referrerPolicy="no-referrer" className="size-16 shrink-0 rounded-xl object-cover" />
+                <div className="min-w-0">
+                  <p className="type-display line-clamp-2 text-lg leading-snug">{event.title}</p>
+                  <p className="mt-0.5 truncate text-sm text-kumo-subtle">{event.venue}</p>
                 </div>
               </div>
-            </aside>
-          </div>
-        )}
+              <div className="p-5 sm:p-6">
+                <h2 className="mb-4 text-sm text-kumo-subtle">Đơn của bạn</h2>
+                {summary}
+                <button type="submit" form="checkout-form" disabled={!canConfirm} className="btn btn-primary btn-lg mt-6 hidden w-full lg:flex">
+                  {confirmLabel}
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
       </main>
 
-      {/* Mobile checkout bar: total, hold timer, confirm CTA */}
-      {!confirmedBooking && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-raised/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
-          <div className="mx-auto max-w-5xl space-y-2.5">
-            <div className="flex items-end justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-xs text-kumo-subtle">Tổng thanh toán</div>
-                <div className="truncate text-xl font-semibold tracking-tight text-kumo-strong tabular-nums">
-                  {formatPrice(totalAmount, event.currency)}
-                </div>
-              </div>
-              {isHolding && holdTimeLeft !== null && (
-                <span
-                  className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium tabular-nums ring ring-kumo-line ${
-                    holdTimeLeft < 60 ? 'bg-kumo-danger-tint text-kumo-danger' : 'bg-kumo-warning-tint text-kumo-warning'
-                  }`}
-                  aria-label={`Thời gian giữ chỗ còn lại ${holdClock}`}
-                >
-                  <Clock className="size-3.5" />
-                  {holdClock}
-                </span>
-              )}
-            </div>
-            <button type="submit" form="checkout-form" disabled={isProcessing} className={confirmButtonClass}>
-              {confirmButtonContent}
-            </button>
-          </div>
+      <div
+        style={{ zIndex: 'var(--z-sheet)' }}
+        className="fixed inset-x-0 bottom-0 border-t border-kumo-hairline bg-kumo-canvas/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
+      >
+        <div className="mx-auto max-w-6xl space-y-2">
+          {holdSecondsLeft !== null && <HoldTimer secondsLeft={holdSecondsLeft} className="text-sm" />}
+          <button type="submit" form="checkout-form" disabled={!canConfirm} className="btn btn-primary btn-lg w-full">
+            {confirmLabel}
+          </button>
         </div>
-      )}
-
-      {/* Modal for Selecting / Changing Seats */}
-      {showSeatMapModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Chọn vị trí ghế"
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-6"
-        >
-          <div className="relative h-full w-full overflow-y-auto overscroll-contain bg-kumo-raised sm:h-auto sm:max-h-[90dvh] sm:max-w-4xl sm:rounded-xl sm:bg-transparent">
-            {/* Mobile header with close control */}
-            <div className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-kumo-hairline bg-kumo-raised/95 px-4 backdrop-blur sm:hidden">
-              <span className="font-semibold text-kumo-strong">Chọn vị trí ghế</span>
-              <button
-                type="button"
-                onClick={() => setShowSeatMapModal(false)}
-                aria-label="Đóng sơ đồ ghế"
-                className="grid size-10 place-items-center rounded-lg text-kumo-subtle transition-colors hover:bg-kumo-tint hover:text-kumo-default"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSeatMapModal(false)}
-              aria-label="Đóng sơ đồ ghế"
-              className="absolute top-4 right-4 z-30 hidden size-8 place-items-center rounded-lg bg-kumo-base text-kumo-subtle ring ring-kumo-line transition-colors hover:bg-kumo-tint hover:text-kumo-default sm:grid"
-            >
-              <X className="size-4" />
-            </button>
-            <SeatMap
-              layout="modal"
-              eventId={event.id}
-              currency={event.currency}
-              selectedSeatIds={selectedSeatIds}
-              onSeatsChange={(seats: SeatItem[]) => {
-                setSelectedSeatIds(seats.map(s => s.id));
-              }}
-              onProceedToCheckout={(seats: SeatItem[]) => {
-                setSelectedSeatIds(seats.map(s => s.id));
-                setShowSeatMapModal(false);
-              }}
-              maxSeats={4}
-            />
-          </div>
-        </div>
-      )}
+      </div>
 
       <Footer />
-    </div>
+    </PageShell>
   );
 };

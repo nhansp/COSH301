@@ -1,9 +1,15 @@
+export type ZoneKind = 'seated' | 'standing';
+
 export interface TicketTier {
   id: string;
+  /** Zone code from the API, e.g. VIP or GA1. */
+  code?: string;
   name: string;
   description: string;
   price: number;
   available: number;
+  capacity?: number;
+  kind?: ZoneKind;
   perks: string[];
 }
 
@@ -13,6 +19,8 @@ export interface EventItem {
   title: string;
   subTitle?: string;
   imageUrl: string;
+  /** Photo attribution required by the image licence. */
+  imageCredit?: string;
   bannerUrl?: string;
   date: string;
   time: string;
@@ -39,6 +47,8 @@ export interface EventItem {
   };
   ageRestriction?: string;
   spotifyPlaylistUrl?: string;
+  /** Only present once the event detail has loaded. */
+  maxTicketsPerUser?: number;
 }
 
 export interface User {
@@ -74,59 +84,21 @@ export interface Booking {
   bookingCode: string;
   purchasedAt: string;
   paymentMethod: string;
-  status: 'confirmed' | 'cancelled' | 'pending';
+  status: 'confirmed' | 'cancelled';
+  userId?: string;
+  /** Seat IDs, used to talk to the API. */
   selectedSeats?: string[];
-}
-
-export interface CancelledTicket {
-  id: number | string;
-  bookingId: string;
-  bookingCode: string;
-  eventId: string;
-  eventTitle: string;
-  concert?: {
-    id?: string;
-    name?: string;
-    title?: string;
-    slug?: string;
-    genre?: string;
-    venue?: string;
-    venueAddress?: string;
-    city?: string;
-    date?: string;
-    time?: string;
-    imageUrl?: string;
-    startsAt?: string;
-    endsAt?: string;
-  };
-  ticketDetails?: {
-    eventTitle?: string;
-    eventDate?: string;
-    eventTime?: string;
-    venue?: string;
-    city?: string;
-    tierName?: string;
-    tierId?: string;
-    quantity?: number;
-    totalAmount?: number;
-    currency?: string;
-    attendeeName?: string;
-    attendeeEmail?: string;
-    attendeePhone?: string;
-    paymentMethod?: string;
-    purchasedAt?: string;
-  };
-  seats?: string[];
-  reason: string;
-  cancelledAt: string;
-  userEmail?: string;
+  /** Human-readable seat labels ("A1"), shown to the user. */
+  seatLabels?: string[];
 }
 
 export type SeatStatus = 'available' | 'sold' | 'held' | 'selected';
 
 export interface SeatItem {
   id: string;
+  label: string;
   zoneId: string;
+  zoneCode?: string;
   zoneName: string;
   row: string;
   number: number;

@@ -1,113 +1,180 @@
 @import "tailwindcss";
 
 /*
- * Semantic tokens ported from Cloudflare Kumo (kumo-ui.com).
- * Every token resolves through light-dark(), so the active palette follows
- * `color-scheme`, which is driven by the `data-mode` attribute on <html>.
+ * SortMyScene design system.
+ *
+ * Two tones share one set of semantic tokens (the `kumo-*` names, kept from the first design pass so
+ * every component keeps working):
+ *   - editorial: warm paper, follows the visitor's light/dark choice (home, discovery, event pages);
+ *   - stage: midnight surfaces, forced with `data-mode="dark"` on the page shell (ticket selection,
+ *     checkout, tickets, sign-in). See components/layout/PageShell.tsx.
+ * Every token resolves through light-dark(), so a subtree's `color-scheme` picks the palette.
  */
 
 @custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
 
+/* ---------------------------------------------------------------------------------------------
+ * Brand primitives: the palette from the brief, plus ink-safe variants for text on paper.
+ * ------------------------------------------------------------------------------------------- */
+@theme {
+  --color-midnight: #11121a;
+  --color-plum: #201d30;
+  --color-surface: #282735;
+  --color-paper: #f4f0ea;
+  --color-muted: #777687;
+  /* Electric violet is too light for text on paper; the ink variant keeps 4.5:1. */
+  --color-violet: #9b7bff;
+  --color-violet-ink: light-dark(#5b3fd9, #b9a3ff);
+  --color-coral: #ff8d73;
+  --color-coral-hover: #ff7a5c;
+  --color-coral-ink: #11121a;
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * Type, motion, layout.
+ * ------------------------------------------------------------------------------------------- */
 @theme {
   --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  /* Headlines, editorial numbers and prices. Space Grotesk ships a Vietnamese subset. */
+  --font-display: "Space Grotesk", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+
+  /* Display steps. The two largest are fluid so headlines keep their weight on phones. */
+  --text-display-2xl: clamp(3rem, 1.4rem + 6.6vw, 8.25rem);
+  --text-display-2xl--line-height: 0.92;
+  --text-display-2xl--letter-spacing: -0.045em;
+  --text-display-xl: clamp(2.5rem, 1.5rem + 4.2vw, 5.5rem);
+  --text-display-xl--line-height: 0.96;
+  --text-display-xl--letter-spacing: -0.04em;
+  --text-display-lg: clamp(2.25rem, 1.6rem + 2.6vw, 4rem);
+  --text-display-lg--line-height: 1;
+  --text-display-lg--letter-spacing: -0.035em;
+  --text-display-md: clamp(2rem, 1.6rem + 1.6vw, 3rem);
+  --text-display-md--line-height: 1.05;
+  --text-display-md--letter-spacing: -0.03em;
+  --text-display-sm: clamp(1.625rem, 1.4rem + 0.9vw, 2.25rem);
+  --text-display-sm--line-height: 1.1;
+  --text-display-sm--letter-spacing: -0.025em;
+  --text-title: 1.375rem;
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.015em;
 
   /*
-   * Mobile-first type scale in rem, so browser font-size settings apply.
-   * Phones get a 16px body (Apple HIG: 17pt default, 11pt minimum on iOS);
-   * from md up it steps down to Kumo's desktop scale (12/13/14/16).
+   * Body scale in rem, so browser font-size settings apply. Phones get a 16px body;
+   * from md up it steps to 15px, which reads better than 14px in editorial columns.
    */
   --text-xs: var(--fs-xs);
-  --text-xs--line-height: 1.35;
+  --text-xs--line-height: 1.4;
   --text-sm: var(--fs-sm);
-  --text-sm--line-height: 1.4;
+  --text-sm--line-height: 1.45;
   --text-base: var(--fs-base);
-  --text-base--line-height: 1.5;
+  --text-base--line-height: 1.55;
   --text-lg: var(--fs-lg);
-  --text-lg--line-height: 1.5;
+  --text-lg--line-height: 1.55;
 
-  --default-transition-duration: 100ms;
+  --ease-reveal: cubic-bezier(0.2, 0, 0, 1);
+  --ease-scene: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-encore: cubic-bezier(0.16, 1, 0.3, 1);
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 
-  /* Neutral primitives */
-  --color-kumo-neutral-25: oklch(98.75% 0 0);
-  --color-kumo-neutral-75: oklch(98% 0 0);
-  --color-kumo-neutral-125: oklch(96.5% 0 0);
-  --color-kumo-neutral-150: oklch(93.5% 0 0);
-  --color-kumo-neutral-750: oklch(32% 0 0);
-  --color-kumo-neutral-925: oklch(17% 0 0);
-  --color-kumo-neutral-950: oklch(15% 0 0);
-  --color-kumo-neutral-975: oklch(12% 0 0);
-  --color-kumo-neutral-1000: oklch(10% 0 0);
+  /* Page widths: wide for editorial grids, narrow for forms and reading. */
+  --container-page: 84rem;
+  --container-reading: 42rem;
+
+  --radius-card: 1.25rem;
+  --radius-pill: 999px;
+
+  --shadow-lift: 0 30px 60px -30px rgb(17 18 26 / 0.45);
+  --shadow-pop: 0 12px 32px -12px rgb(17 18 26 / 0.35), 0 0 0 1px rgb(17 18 26 / 0.06);
 }
 
+/* ---------------------------------------------------------------------------------------------
+ * Semantic tokens. Utilities read them as bg-kumo-*, text-kumo-*, ring-kumo-*.
+ * ------------------------------------------------------------------------------------------- */
 @theme {
-  /* Surfaces - Calming eye-friendly sage/forest green tinted palette */
-  --color-kumo-canvas: light-dark(oklch(98.8% 0.012 155), oklch(14.5% 0.02 155));
-  --color-kumo-elevated: light-dark(#ffffff, oklch(18.5% 0.024 155));
-  --color-kumo-recessed: light-dark(oklch(96.2% 0.016 155), oklch(16.5% 0.022 155));
-  --color-kumo-base: light-dark(#ffffff, oklch(20% 0.025 155));
-  --color-kumo-tint: light-dark(oklch(95.5% 0.022 155), oklch(26% 0.032 155));
-  --color-kumo-contrast: light-dark(oklch(18% 0.04 155), oklch(98.5% 0.01 155));
-  --color-kumo-overlay: light-dark(oklch(97.2% 0.018 155), oklch(25% 0.032 155));
-  --color-kumo-control: light-dark(#ffffff, oklch(21% 0.02 155));
-  --color-kumo-interact: light-dark(oklch(89% 0.03 155), oklch(37% 0.04 155));
-  --color-kumo-fill: light-dark(oklch(93.5% 0.02 155), oklch(27% 0.035 155));
-  --color-kumo-fill-hover: light-dark(oklch(96.8% 0.015 155), oklch(36% 0.04 155));
+  /* Surfaces: paper by day, midnight and plum by night. */
+  --color-kumo-canvas: light-dark(#f4f0ea, #11121a);
+  --color-kumo-elevated: light-dark(#faf7f2, #0d0e14);
+  --color-kumo-recessed: light-dark(#ebe5da, #17171f);
+  --color-kumo-base: light-dark(#fbf9f5, #1b1a27);
+  --color-kumo-tint: light-dark(#e9e2d6, #2a2839);
+  --color-kumo-contrast: light-dark(#11121a, #f4f0ea);
+  --color-kumo-overlay: light-dark(#f1ece4, #282735);
+  --color-kumo-control: light-dark(#fffdf9, #201d30);
+  --color-kumo-interact: light-dark(#cfc6b7, #3d3b52);
+  --color-kumo-fill: light-dark(#e4ddd0, #2a2839);
+  --color-kumo-fill-hover: light-dark(#eee8de, #34324a);
 
-  /*
-   * Brand is a soothing, premium emerald green:
-   * Pair every brand fill with `text-kumo-on-brand`.
-   */
-  --color-kumo-brand: light-dark(oklch(46% 0.145 152), oklch(76% 0.14 152));
-  --color-kumo-brand-hover: light-dark(oklch(40% 0.155 152), oklch(83% 0.15 152));
+  --color-kumo-brand: light-dark(#11121a, #f4f0ea);
+  --color-kumo-brand-hover: light-dark(#2b2c38, #ffffff);
 
-  /* Menus, sheets and dialogs: brighter than the page in dark mode (HIG base vs elevated). */
-  --color-kumo-raised: light-dark(#ffffff, oklch(22.5% 0.025 155));
+  /* Menus, sheets and dialogs: one step brighter than the page at night. */
+  --color-kumo-raised: light-dark(#fffdf9, #282735);
 
   /* Structure */
-  --color-kumo-line: light-dark(oklch(20% 0.025 155 / 0.12), oklch(33% 0.03 155));
-  --color-kumo-hairline: light-dark(oklch(92% 0.018 155), oklch(27% 0.03 155));
-  --color-kumo-focus: light-dark(oklch(46% 0.145 152), oklch(76% 0.14 152));
+  --color-kumo-line: light-dark(rgb(17 18 26 / 0.14), rgb(244 240 234 / 0.13));
+  --color-kumo-hairline: light-dark(#e0d8ca, #272637);
+  --color-kumo-focus: light-dark(#5b3fd9, #b9a3ff);
 
   /* Status */
-  --color-kumo-info: oklch(68.5% 0.169 237.323);
-  --color-kumo-info-tint: light-dark(oklch(93.2% 0.032 255.6 / 0.45), oklch(38% 0.145 265.5 / 0.22));
-  --color-kumo-success: light-dark(oklch(52% 0.15 152), oklch(76% 0.14 152));
-  --color-kumo-success-tint: light-dark(oklch(96.2% 0.043 156.7 / 0.57), oklch(39.3% 0.096 152.3 / 0.2));
-  --color-kumo-warning: light-dark(oklch(73.9% 0.177 58.2), oklch(64.5% 0.168 50));
-  --color-kumo-warning-tint: light-dark(oklch(93.1% 0.107 94.6 / 0.2), oklch(35.3% 0.079 65 / 0.37));
-  --color-kumo-danger: light-dark(oklch(63.7% 0.237 25.331), oklch(57.7% 0.245 27.325));
-  --color-kumo-danger-tint: light-dark(oklch(93.6% 0.032 17.7 / 0.42), oklch(42.9% 0.176 28.7 / 0.17));
+  --color-kumo-info: light-dark(#4c5fd5, #8fa0ff);
+  --color-kumo-info-tint: light-dark(rgb(76 95 213 / 0.1), rgb(143 160 255 / 0.14));
+  --color-kumo-success: light-dark(#1f8a5b, #4fd39a);
+  --color-kumo-success-tint: light-dark(rgb(31 138 91 / 0.1), rgb(79 211 154 / 0.14));
+  --color-kumo-warning: light-dark(#a86400, #f2b45a);
+  --color-kumo-warning-tint: light-dark(rgb(168 100 0 / 0.1), rgb(242 180 90 / 0.14));
+  /* Deliberately redder than the coral action colour, so an error never reads as a button. */
+  --color-kumo-danger: light-dark(#c2343b, #ff6f78);
+  --color-kumo-danger-tint: light-dark(rgb(194 52 59 / 0.1), rgb(255 111 120 / 0.14));
 
-  /* Categorical fills (seat tiers, genres) */
-  --color-kumo-badge-red: light-dark(oklch(57.7% 0.245 27.325), oklch(50.5% 0.213 27.518));
-  --color-kumo-badge-green: light-dark(oklch(50% 0.145 152), oklch(74% 0.14 152));
-  --color-kumo-badge-orange: oklch(81.5% 0.197 76);
-  --color-kumo-badge-purple: light-dark(oklch(55.8% 0.288 302.321), oklch(49.6% 0.265 301.924));
-  --color-kumo-badge-teal: light-dark(oklch(50% 0.11 170), oklch(72% 0.12 170));
-  --color-kumo-badge-blue: light-dark(oklch(54.6% 0.245 262.881), oklch(48.8% 0.243 264.376));
-  --color-kumo-badge-neutral: oklch(55.6% 0 0);
+  /* Categorical fills */
+  --color-kumo-badge-red: light-dark(#c2343b, #b8323a);
+  --color-kumo-badge-green: light-dark(#1f8a5b, #1d7a52);
+  --color-kumo-badge-orange: #f2b45a;
+  --color-kumo-badge-purple: #7b5cf0;
+  --color-kumo-badge-teal: light-dark(#167a7a, #1b6c6c);
+  --color-kumo-badge-blue: light-dark(#4c5fd5, #3f50bf);
+  --color-kumo-badge-neutral: #777687;
 
-  /* Emerald specific accents */
-  --color-emerald-primary: light-dark(oklch(46% 0.145 152), oklch(76% 0.14 152));
-  --color-emerald-soft: light-dark(oklch(96% 0.03 152), oklch(22% 0.04 152));
-  --color-emerald-border: light-dark(oklch(86% 0.05 152), oklch(30% 0.05 152));
+  /* The darkened house behind the 3D venue. Fixed: the venue scene is tuned against these. */
+  --color-stage: #0b0e26;
+  --color-stage-raised: #1d2246;
+  --color-stage-line: #2e3563;
+  --color-stage-ink: #e7e9f5;
+  --color-stage-muted: #a5abcf;
+  /* Followspot: reserved for what belongs to the user (held seats, chosen zone, their ticket). */
+  --color-spot: #ffe2a8;
+  --color-spot-ink: #2a1d05;
+
+  /* Seat states from the system design (section 4.1). */
+  --color-seat-available: #2fa86b;
+  --color-seat-sold: #8c909c;
+  --color-seat-held: #e8a23a;
+}
+
+/*
+ * Per-event accent borrowed from the poster. `inline` makes utilities read `--event-accent` where
+ * they are used, so a page can scope it with an inline style. Decoration only; actions stay coral.
+ */
+@theme inline {
+  --color-accent: var(--event-accent, var(--color-violet));
+  --color-accent-ink: var(--event-accent-ink, #ffffff);
 }
 
 @theme {
-  /* Text-only tokens: `text-kumo-*` */
-  --text-color-kumo-default: light-dark(oklch(24% 0.02 155), oklch(95% 0.015 155));
-  --text-color-kumo-strong: light-dark(oklch(15% 0.025 155), oklch(98.5% 0.01 155));
-  --text-color-kumo-subtle: light-dark(oklch(46% 0.025 155), oklch(74% 0.02 155));
-  --text-color-kumo-on-brand: light-dark(#ffffff, oklch(14% 0.03 155));
-  --text-color-kumo-inactive: light-dark(oklch(87% 0 0), oklch(43.9% 0 0));
-  --text-color-kumo-placeholder: light-dark(oklch(62% 0.02 155), oklch(58% 0.02 155));
-  --text-color-kumo-inverse: light-dark(oklch(97% 0 0), oklch(20.5% 0 0));
-  /* Links are emerald and underline */
-  --text-color-kumo-link: light-dark(oklch(42% 0.13 152), oklch(78% 0.13 152));
-  --text-color-kumo-info: light-dark(oklch(42.4% 0.199 265.638), oklch(70.7% 0.165 254.624));
-  --text-color-kumo-success: light-dark(oklch(43.2% 0.095 166.913), oklch(90.5% 0.093 164.15));
-  --text-color-kumo-danger: light-dark(oklch(50.5% 0.213 27.518), oklch(70.4% 0.191 22.216));
-  --text-color-kumo-warning: light-dark(oklch(59.7% 0.144 57.5), oklch(75% 0.183 55.934));
+  --text-color-kumo-default: light-dark(#1d1e29, #e7e3ec);
+  --text-color-kumo-strong: light-dark(#11121a, #f7f4ef);
+  --text-color-kumo-subtle: light-dark(#5e5d6d, #a7a5b9);
+  --text-color-kumo-on-brand: light-dark(#f4f0ea, #11121a);
+  --text-color-kumo-inactive: light-dark(#b9b2a6, #57556b);
+  --text-color-kumo-placeholder: light-dark(#8f8a93, #737187);
+  --text-color-kumo-inverse: light-dark(#f4f0ea, #11121a);
+  /* Links are ink and always underlined: colour alone never signals interactivity. */
+  --text-color-kumo-link: light-dark(#11121a, #f7f4ef);
+  --text-color-kumo-info: light-dark(#3b4cc0, #a7b4ff);
+  --text-color-kumo-success: light-dark(#17724b, #6fe0ae);
+  --text-color-kumo-danger: light-dark(#ad2a31, #ff8a92);
+  --text-color-kumo-warning: light-dark(#8a5200, #f5c27a);
 }
 
 @layer base {
@@ -116,12 +183,19 @@
     --fs-sm: 0.875rem;
     --fs-base: 1rem;
     --fs-lg: 1.125rem;
+
+    /* Stacking order, low to high. */
+    --z-sticky: 20;
+    --z-sheet: 30;
+    --z-nav: 40;
+    --z-modal: 50;
+    --z-toast: 60;
   }
   @media (width >= 48rem) {
     :root {
       --fs-sm: 0.8125rem;
-      --fs-base: 0.875rem;
-      --fs-lg: 1rem;
+      --fs-base: 0.9375rem;
+      --fs-lg: 1.0625rem;
     }
   }
 
@@ -137,18 +211,29 @@
   }
 
   html {
-    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
     @apply bg-kumo-canvas text-kumo-default font-sans text-base;
     overflow-x: hidden;
   }
+  /* Stage pages paint the overscroll area too. */
+  body[data-tone="stage"] {
+    background-color: var(--color-midnight);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
 
   ::selection {
-    @apply bg-kumo-brand text-kumo-on-brand;
+    background-color: var(--color-violet);
+    color: var(--color-midnight);
   }
 
   :focus-visible {
@@ -160,14 +245,101 @@
   }
 }
 
+/* ---------------------------------------------------------------------------------------------
+ * Primitives. Pages compose these instead of restating button and field styles.
+ * ------------------------------------------------------------------------------------------- */
+@layer components {
+  /* Buttons are pills; panels and images are not, so actions are recognisable by shape. */
+  .btn {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 font-semibold whitespace-nowrap transition-[background-color,color,box-shadow,transform] duration-150 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-lg {
+    @apply h-13 px-7 text-base;
+  }
+  .btn-sm {
+    @apply h-9 px-4 text-sm;
+  }
+  /* The one action that moves a purchase forward. */
+  .btn-primary {
+    @apply bg-coral text-coral-ink hover:bg-coral-hover;
+  }
+  .btn-ink {
+    @apply bg-kumo-contrast text-kumo-inverse hover:bg-kumo-brand-hover;
+  }
+  .btn-secondary {
+    @apply bg-transparent text-kumo-strong ring ring-kumo-line ring-inset hover:bg-kumo-tint;
+  }
+  .btn-quiet {
+    @apply bg-transparent px-3 font-medium text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-strong;
+  }
+  .btn-danger {
+    @apply bg-kumo-danger text-white hover:opacity-90;
+  }
+  .btn-icon {
+    @apply grid size-11 shrink-0 place-items-center rounded-full text-kumo-default transition-colors hover:bg-kumo-tint;
+  }
+
+  .field {
+    @apply h-12 w-full rounded-xl bg-kumo-control px-4 text-base text-kumo-strong ring ring-kumo-line transition-shadow ring-inset placeholder:text-kumo-placeholder focus:ring-2 focus:ring-kumo-focus focus:outline-none;
+  }
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-kumo-default;
+  }
+
+  /* Filter chips: outlined at rest, ink when on. */
+  .chip {
+    @apply inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-medium text-kumo-default ring ring-kumo-line transition-colors ring-inset hover:bg-kumo-tint;
+  }
+  .chip[aria-pressed="true"],
+  .chip[aria-checked="true"],
+  .chip[aria-selected="true"] {
+    @apply bg-kumo-contrast text-kumo-inverse ring-kumo-contrast hover:bg-kumo-contrast;
+  }
+
+  /* Transactional surface: plum at night, paper-white by day. */
+  .panel {
+    @apply rounded-[var(--radius-card)] bg-kumo-base ring ring-kumo-line;
+  }
+
+  .link {
+    @apply text-kumo-link underline decoration-violet-ink/50 decoration-1 underline-offset-4 transition-colors hover:decoration-violet-ink;
+  }
+
+  /* Display type: Space Grotesk, tight, never wrapped in a container that clips descenders. */
+  .type-display {
+    @apply font-display font-bold text-kumo-strong;
+  }
+  /* Prices, dates, seat codes. */
+  .type-figure {
+    @apply font-display font-semibold tabular-nums;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-kumo-fill;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, light-dark(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.06)), transparent);
+    animation: shimmer 1.4s var(--ease-scene) infinite;
+  }
+}
+
 @layer utilities {
   /* Held seats: diagonal hatch so the state reads without colour. */
   .seat-held {
-    background-image: repeating-linear-gradient(
-      135deg,
-      oklch(0% 0 0 / 0.16) 0 2px,
-      transparent 2px 6px
-    );
+    background-image: repeating-linear-gradient(135deg, oklch(0% 0 0 / 0.16) 0 2px, transparent 2px 6px);
+  }
+
+  /* Ticket selection: the house lights go down once, when the venue appears. */
+  .house-lights {
+    background-color: var(--color-kumo-canvas);
+    transition: background-color 700ms var(--ease-scene);
+  }
+  .house-lights[data-dim] {
+    background-color: color-mix(in oklab, var(--color-kumo-canvas) 80%, var(--color-stage));
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -178,19 +350,113 @@
     scrollbar-width: none;
   }
 
-  /* Eye-friendly calming green subtle glow */
-  .emerald-radial-glow {
-    background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+  /* Each route fades in once; nothing else animates on arrival unless it is revealed on scroll. */
+  .page-enter {
+    animation: page-in 420ms var(--ease-reveal) both;
   }
-  .emerald-subtle-gradient {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.03) 100%);
+
+  /* Scroll reveal, driven by useReveal(): content is visible without JS and under reduced motion. */
+  .reveal {
+    transition:
+      opacity 700ms var(--ease-reveal),
+      transform 900ms var(--ease-encore);
+    transition-delay: var(--reveal-delay, 0ms);
   }
-  .emerald-card-hover {
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  .reveal[data-reveal="hidden"] {
+    opacity: 0;
+    transform: translateY(28px);
   }
-  .emerald-card-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 24px -6px rgba(16, 185, 129, 0.12);
+  /*
+   * Photos open like a curtain rather than fading. The clip sits on the child: a fully clipped
+   * element has no visible area, and IntersectionObserver would never report it as on screen.
+   */
+  .reveal-image > * {
+    transition: clip-path 1100ms var(--ease-encore);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .reveal-image[data-reveal="hidden"] > * {
+    clip-path: inset(0 0 100% 0);
+  }
+
+  /* Card photos lean in slightly on hover; the frame does not move. */
+  .zoom-frame {
+    overflow: hidden;
+  }
+  .zoom-frame > img {
+    transition: transform 900ms var(--ease-encore);
+  }
+  .group:hover .zoom-frame > img,
+  .group:focus-visible .zoom-frame > img {
+    transform: scale(1.045);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Home: the opening photo comes up once, like house lights before the show. */
+@keyframes house-up {
+  from {
+    opacity: 0.15;
+    transform: scale(1.04);
+  }
+}
+
+/* Confirmation: the ticket slides up and the followspot crosses the seat codes once. */
+@keyframes ticket-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px) scale(0.98);
+  }
+}
+
+@keyframes spot-sweep {
+  from {
+    background-position: -60% 50%;
+    opacity: 1;
+  }
+  to {
+    background-position: 160% 50%;
+    opacity: 0;
+  }
+}
+
+.spot-sweep {
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--color-spot) 70%, transparent), transparent) no-repeat;
+  background-size: 40% 160%;
+  mix-blend-mode: plus-lighter;
+  opacity: 0;
+  animation: spot-sweep 1100ms var(--ease-scene) 500ms both;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
 }
 
@@ -199,6 +465,14 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .reveal[data-reveal="hidden"] {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal-image[data-reveal="hidden"] > * {
+    clip-path: none;
   }
 }

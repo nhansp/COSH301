@@ -1,282 +1,248 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { X } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
-import { TicketQr } from '../components/TicketQr';
 import { Footer } from '../components/Footer';
+import { PageShell } from '../components/layout/PageShell';
+import { EmptyState } from '../components/ui/EmptyState';
+import { TicketStub, describePlaces } from '../components/TicketStub';
+import { TicketQr } from '../components/TicketQr';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice } from '../services/eventService';
+import { paymentMethodName } from '../services/paymentMethods';
 import { Booking } from '../types';
-import {
-  Ticket,
-  Calendar,
-  Clock,
-  MapPin,
-  Download,
-  ArrowLeft,
-  X,
-  CheckCircle2,
-  Armchair,
-  Trash2
-} from 'lucide-react';
 
-export const MyTicketsPage: React.FC = () => {
-  const { bookings, cancelledBookings, cancelBooking, clearDemoTickets } = useAuth();
-  const [selectedTicket, setSelectedTicket] = useState<Booking | null>(null);
-  const [cancelToast, setCancelToast] = useState<string | null>(null);
-  const [isClearing, setIsClearing] = useState<boolean>(false);
+function placesText(booking: Booking): string {
+  const { codes, standing } = describePlaces(booking);
+  const parts = [...(codes.length > 0 ? [codes.join(' ')] : []), ...standing.map(s => `${s.count} vé đứng`)];
+  return parts.length > 0 ? parts.join(', ') : `${booking.quantity} vé`;
+}
 
-  // Build a set of all cancelled codes and IDs
-  const cancelledCodes = new Set<string>();
-  cancelledBookings.forEach(c => {
-    if (c.bookingCode) cancelledCodes.add(c.bookingCode);
-    if (c.bookingId) cancelledCodes.add(c.bookingId);
-  });
+function purchasedOn(booking: Booking): string {
+  const d = new Date(booking.purchasedAt);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
 
-  // Strictly filter out any cancelled tickets so they completely disappear
-  const activeBookings = bookings.filter(b => 
-    b.status === 'confirmed' && 
-    !cancelledCodes.has(b.bookingCode) && 
-    !cancelledCodes.has(b.id)
-  );
-
-  const handleCancelTicket = async (booking: Booking) => {
-    const code = booking.bookingCode;
-    // 1-click instant cancellation: optimistic state update removes ticket immediately
-    await cancelBooking(booking.id, 'Khách hàng chủ động hủy vé trên giao diện');
-    setCancelToast(`Đã hủy vé ${code} thành công! Vé đã biến mất khỏi danh sách.`);
-    setTimeout(() => setCancelToast(null), 4000);
-  };
-
-  const handleClearDemoData = async () => {
-    setIsClearing(true);
-    await clearDemoTickets();
-    setIsClearing(false);
-    setCancelToast('Đã xóa sạch toàn bộ data vé của người dùng demo!');
-    setTimeout(() => setCancelToast(null), 4000);
-  };
-
-  const secondaryButtonClass =
-    'flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-lg bg-kumo-base px-3 font-medium text-kumo-default ring ring-kumo-line transition-colors hover:bg-kumo-tint disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
-  const primaryButtonClass =
-    'flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-lg bg-kumo-brand px-3.5 font-medium text-kumo-on-brand transition-colors hover:bg-kumo-brand-hover disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer';
-
+/** One booking as an event pass: photo, show, places, and the stub with its code. */
+const TicketPass: React.FC<{ booking: Booking; onOpen: () => void; onCancel: () => void }> = ({ booking, onOpen, onCancel }) => {
+  const confirmed = booking.status === 'confirmed';
+  const bought = purchasedOn(booking);
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
+    <li className="relative grid overflow-hidden rounded-card bg-kumo-base ring ring-kumo-line sm:grid-cols-[11rem_minmax(0,1fr)_13rem]">
+      <div className="relative h-36 bg-kumo-recessed sm:h-auto">
+        <img
+          src={booking.imageUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+          className={`absolute inset-0 size-full object-cover ${confirmed ? '' : 'opacity-40 grayscale'}`}
+        />
+      </div>
 
-      <main className="flex-1 w-full min-w-0 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Toast Notification */}
-        {cancelToast && (
-          <div className="mb-6 p-4 rounded-xl bg-kumo-success-tint ring ring-kumo-line text-kumo-success flex items-center gap-3 animate-in fade-in slide-in-from-top-2 text-sm font-medium">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-            <span>{cancelToast}</span>
-          </div>
-        )}
+      <div className="min-w-0 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold ${
+              confirmed ? 'bg-kumo-success-tint text-kumo-success' : 'bg-kumo-danger-tint text-kumo-danger'
+            }`}
+          >
+            {confirmed ? 'Còn hiệu lực' : 'Đã huỷ'}
+          </span>
+          <span className="text-sm text-kumo-subtle">
+            {booking.eventDate}, {booking.eventTime}
+          </span>
+        </div>
+        <h3 className="type-display mt-3 text-xl leading-snug sm:text-2xl">{booking.eventTitle}</h3>
+        <p className="mt-1 text-kumo-subtle">
+          {booking.venue}
+          {booking.city ? `, ${booking.city}` : ''}
+        </p>
+        <p className="mt-4 flex flex-wrap items-baseline gap-x-3">
+          <span className={`type-figure text-3xl leading-none ${confirmed ? 'text-spot' : 'text-kumo-subtle line-through'}`}>
+            {placesText(booking)}
+          </span>
+          <span className="text-sm text-kumo-subtle">{booking.tierName}</span>
+        </p>
+        <p className="mt-4 text-sm text-kumo-subtle">
+          {formatPrice(booking.totalAmount, booking.currency)}, {paymentMethodName(booking.paymentMethod)}
+          {bought && `, mua ngày ${bought}`}
+        </p>
+      </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8">
+      {/* The stub: perforated from the pass, with the code the gate scans. */}
+      <div className="relative flex flex-col justify-between gap-4 border-t-2 border-dashed border-kumo-line p-5 sm:border-t-0 sm:border-l-2 sm:p-6">
+        <span aria-hidden="true" className="absolute -top-3.5 -left-3.5 hidden size-7 rounded-full bg-kumo-canvas sm:block" />
+        <span aria-hidden="true" className="absolute -bottom-3.5 -left-3.5 hidden size-7 rounded-full bg-kumo-canvas sm:block" />
+        <div className="flex items-center gap-4 sm:flex-col sm:items-start">
+          <button
+            type="button"
+            onClick={onOpen}
+            disabled={!confirmed}
+            aria-label={`Mở mã QR vé ${booking.bookingCode}`}
+            className="shrink-0 rounded-lg bg-white p-1.5 transition-transform hover:scale-[1.03] disabled:opacity-30"
+          >
+            {confirmed ? <TicketQr code={booking.bookingCode} className="size-16" /> : <span className="block size-16" />}
+          </button>
           <div>
-            <Link
-              to="/"
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-1.5 -ml-1.5 mb-2 sm:mb-3 text-sm text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Khám phá thêm sự kiện</span>
-            </Link>
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-kumo-strong">
-              Vé sự kiện của tôi
-            </h1>
-            <p className="text-kumo-subtle mt-1 text-sm sm:text-base">
-              Quản lý vé đã mua, xuất trình mã QR tại cửa và xem lịch trình concert
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-kumo-tint ring ring-kumo-line text-kumo-default tabular-nums">
-              Vé hiệu lực: {activeBookings.length}
-            </span>
-            <button
-              type="button"
-              onClick={handleClearDemoData}
-              disabled={isClearing}
-              title="Xóa toàn bộ vé thử nghiệm và đặt lại trạng thái ghế"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-kumo-base px-2.5 py-1 text-xs font-medium text-kumo-subtle hover:text-kumo-danger hover:bg-kumo-tint ring ring-kumo-line transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-kumo-danger" />
-              <span>{isClearing ? 'Đang xóa...' : 'Xóa data vé demo'}</span>
-            </button>
+            <p className="text-xs text-kumo-subtle">Mã vé</p>
+            <p className="type-figure text-lg text-kumo-strong">{booking.bookingCode}</p>
           </div>
         </div>
+        <div className="flex gap-2 sm:flex-col">
+          <button type="button" onClick={onOpen} disabled={!confirmed} className="btn btn-ink btn-sm flex-1">
+            Mở vé
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={!confirmed}
+            className="btn btn-quiet btn-sm flex-1 hover:bg-kumo-danger-tint hover:text-kumo-danger"
+          >
+            Huỷ vé
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+};
 
-        {/* Active Tickets List */}
-        {activeBookings.length === 0 ? (
-          <div className="py-12 sm:py-16 px-4 sm:px-6 text-center rounded-xl bg-kumo-base ring ring-kumo-line">
-            <div className="size-12 rounded-lg bg-kumo-recessed ring ring-kumo-line text-kumo-subtle grid place-items-center mx-auto mb-4">
-              <Ticket className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-semibold text-kumo-strong mb-1">Bạn chưa có vé sự kiện nào</h3>
-            <p className="text-kumo-subtle max-w-sm mx-auto mb-6 text-sm">
-              Khám phá danh sách concert, EDM festival và các đêm nhạc acoustic đang mở bán vé ngay hôm nay!
-            </p>
-            <Link to="/" className={`${primaryButtonClass} inline-flex`}>
-              Mua vé concert ngay
-            </Link>
-          </div>
+export const MyTicketsPage: React.FC = () => {
+  const { bookings, cancelBooking } = useAuth();
+  const [openTicket, setOpenTicket] = useState<Booking | null>(null);
+  const [ticketToCancel, setTicketToCancel] = useState<Booking | null>(null);
+  const [tab, setTab] = useState<'active' | 'cancelled'>('active');
+
+  const active = bookings.filter(b => b.status === 'confirmed');
+  const cancelled = bookings.filter(b => b.status === 'cancelled');
+  const shown = tab === 'active' ? active : cancelled;
+
+  useEffect(() => {
+    if (!openTicket && !ticketToCancel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenTicket(null);
+        setTicketToCancel(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openTicket, ticketToCancel]);
+
+  return (
+    <PageShell tone="stage">
+      <Navbar tone="stage" />
+
+      <main className="page-enter mx-auto w-full max-w-5xl flex-1 px-4 pt-10 pb-20 sm:px-6 lg:pt-16">
+        <h1 className="type-display text-display-lg">Vé của tôi</h1>
+        <p className="mt-3 text-kumo-subtle">Mở vé để lấy mã QR khi tới cổng soát vé.</p>
+
+        {bookings.length === 0 ? (
+          <EmptyState
+            className="mt-10"
+            title="Bạn chưa có vé nào"
+            body="Vé bạn mua sẽ nằm ở đây, kèm mã QR để vào cổng."
+            action={
+              <Link to="/" className="btn btn-primary">
+                Xem lịch diễn
+              </Link>
+            }
+          />
         ) : (
-          <ul className="rounded-xl bg-kumo-base ring ring-kumo-line divide-y divide-kumo-hairline">
-            {activeBookings.map(booking => (
-              <li
-                key={booking.id}
-                className="p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 transition-all"
-              >
-                <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-                  <img
-                    src={booking.imageUrl}
-                    alt={booking.eventTitle}
-                    className="size-16 sm:size-20 rounded-lg object-cover ring ring-kumo-line flex-shrink-0"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                      <span className="max-w-full truncate rounded-md px-1.5 py-0.5 bg-kumo-recessed text-xs font-medium text-kumo-default tabular-nums">
-                        {booking.bookingCode}
-                      </span>
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-kumo-success-tint text-kumo-success">
-                        <span className="size-1.5 rounded-full bg-kumo-success" />
-                        Đã xác nhận
-                      </span>
-                    </div>
+          <>
+            <div role="tablist" aria-label="Trạng thái vé" className="mt-10 flex gap-2">
+              {([
+                ['active', 'Còn hiệu lực', active.length],
+                ['cancelled', 'Đã huỷ', cancelled.length]
+              ] as const).map(([value, label, count]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  id={`tab-${value}`}
+                  aria-selected={tab === value}
+                  aria-controls="ticket-panel"
+                  onClick={() => setTab(value)}
+                  className="chip"
+                >
+                  {label}
+                  <span className="type-figure opacity-70">{count}</span>
+                </button>
+              ))}
+            </div>
 
-                    <h2 className="text-base sm:text-lg font-semibold tracking-tight text-kumo-strong mt-1 truncate">
-                      {booking.eventTitle}
-                    </h2>
-
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-kumo-subtle">
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="tabular-nums">{booking.eventDate}</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="tabular-nums">{booking.eventTime}</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="truncate max-w-[200px]">{booking.venue}</span>
-                      </span>
-                    </div>
-
-                    <div className="mt-1.5 text-xs text-kumo-default">
-                      <span>Hạng: </span>
-                      <strong className="font-medium text-kumo-strong">{booking.tierName}</strong>{' '}
-                      <span className="text-kumo-subtle tabular-nums">({booking.quantity} vé)</span>
-                      <span className="text-kumo-subtle"> • </span>
-                      <span>Tổng: </span>
-                      <strong className="font-semibold text-kumo-strong tabular-nums">
-                        {formatPrice(booking.totalAmount, booking.currency)}
-                      </strong>
-                    </div>
-
-                    {booking.selectedSeats && booking.selectedSeats.length > 0 && (
-                      <div className="mt-1 flex items-center gap-1 text-xs text-kumo-default">
-                        <Armchair className="w-3.5 h-3.5 text-kumo-subtle" />
-                        <span>Ghế: </span>
-                        <strong className="font-semibold text-kumo-strong tabular-nums">
-                          {booking.selectedSeats.join(', ')}
-                        </strong>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => setSelectedTicket(booking)}
-                    className={primaryButtonClass}
-                  >
-                    <Ticket className="w-4 h-4" />
-                    <span>Xem mã QR</span>
-                  </button>
-                  <button
-                    onClick={() => handleCancelTicket(booking)}
-                    title="Bấm 1 lần để hủy vé ngay lập tức"
-                    className="flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-lg bg-kumo-base px-3 font-medium text-kumo-danger ring ring-kumo-line transition-colors hover:bg-kumo-danger/10 hover:border-kumo-danger cursor-pointer"
-                  >
-                    Hủy vé
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+            <div id="ticket-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="mt-6">
+              {shown.length === 0 ? (
+                <EmptyState
+                  title={tab === 'active' ? 'Không có vé nào còn hiệu lực' : 'Chưa huỷ vé nào'}
+                  body={tab === 'active' ? 'Các vé đã huỷ vẫn xem được ở thẻ bên cạnh.' : undefined}
+                />
+              ) : (
+                <ul className="space-y-5">
+                  {shown.map(b => (
+                    <TicketPass key={b.id} booking={b} onOpen={() => setOpenTicket(b)} onCancel={() => setTicketToCancel(b)} />
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
         )}
       </main>
 
-      {/* Ticket Details & QR Modal */}
-      {selectedTicket && (
-        <div className="fixed inset-0 z-50 sm:flex sm:items-center sm:justify-center sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+      {ticketToCancel && (
+        <div
+          style={{ zIndex: 'var(--z-modal)' }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-4"
+        >
           <div
-            role="dialog"
+            role="alertdialog"
             aria-modal="true"
-            aria-labelledby="ticket-qr-title"
-            className="fixed inset-x-0 bottom-0 max-h-[90dvh] overflow-y-auto rounded-t-2xl bg-kumo-raised p-5 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg ring ring-kumo-line sm:relative sm:inset-auto sm:w-full sm:rounded-xl sm:p-6 sm:max-w-md text-center"
+            aria-labelledby="cancel-title"
+            aria-describedby="cancel-body"
+            className="fixed inset-x-0 bottom-0 rounded-t-card bg-kumo-raised p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-lift)] ring ring-kumo-line motion-safe:animate-[sheet-in_240ms_var(--ease-reveal)] sm:relative sm:max-w-md sm:rounded-card sm:p-8"
           >
-            <button
-              onClick={() => setSelectedTicket(null)}
-              aria-label="Đóng"
-              className="absolute top-3 right-3 grid size-11 sm:size-8 place-items-center rounded-md text-kumo-subtle hover:text-kumo-default hover:bg-kumo-tint transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 bg-kumo-success-tint text-kumo-success text-xs font-medium mb-3">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Vé chính hãng hợp lệ</span>
-            </div>
-
-            <h3 id="ticket-qr-title" className="px-8 text-xl font-semibold tracking-tight text-kumo-strong">
-              {selectedTicket.eventTitle}
-            </h3>
-            <p className="text-kumo-subtle mt-0.5">{selectedTicket.venue}</p>
-            <p className="text-kumo-subtle mt-0.5 flex flex-wrap items-center justify-center gap-x-2">
-              <span>{selectedTicket.eventDate}</span>
-              <span>{selectedTicket.eventTime}</span>
+            <h2 id="cancel-title" className="type-display text-title">
+              Huỷ vé {placesText(ticketToCancel)}?
+            </h2>
+            <p id="cancel-body" className="mt-3 text-kumo-subtle">
+              Vé {ticketToCancel.bookingCode} cho {ticketToCancel.eventTitle} sẽ không dùng được nữa. Thao tác này không hoàn tác được.
             </p>
-
-            {/* QR Code */}
-            <div className="my-5 p-3 rounded-lg bg-white ring ring-kumo-line size-56 sm:size-48 mx-auto flex items-center justify-center">
-              <TicketQr code={selectedTicket.bookingCode} className="w-full h-full object-contain" />
-            </div>
-
-            <dl className="rounded-lg bg-kumo-recessed p-3 text-sm text-left grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 sm:gap-y-1.5 ring ring-kumo-line">
-              <dt className="text-kumo-subtle">Mã vé</dt>
-              <dd className="mb-2 sm:mb-0 min-w-0 break-words font-semibold text-kumo-strong tabular-nums">{selectedTicket.bookingCode}</dd>
-              <dt className="text-kumo-subtle">Người sở hữu</dt>
-              <dd className="mb-2 sm:mb-0 min-w-0 break-words font-medium text-kumo-default">{selectedTicket.attendeeName}</dd>
-              <dt className="text-kumo-subtle">Hạng vé</dt>
-              <dd className="mb-2 sm:mb-0 min-w-0 break-words text-kumo-default">
-                {selectedTicket.tierName} <span className="text-kumo-subtle tabular-nums">({selectedTicket.quantity} vé)</span>
-              </dd>
-              {selectedTicket.selectedSeats && selectedTicket.selectedSeats.length > 0 && (
-                <>
-                  <dt className="text-kumo-subtle">Vị trí ghế</dt>
-                  <dd className="mb-2 sm:mb-0 min-w-0 break-words font-medium text-kumo-default tabular-nums">{selectedTicket.selectedSeats.join(', ')}</dd>
-                </>
-              )}
-            </dl>
-
-            <div className="mt-5 sm:mt-6 grid grid-cols-[1fr_auto] gap-2">
-              <button onClick={() => window.print()} className={primaryButtonClass}>
-                <Download className="w-4 h-4" />
-                <span>In / Tải vé</span>
+            <div className="mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button type="button" autoFocus onClick={() => setTicketToCancel(null)} className="btn btn-secondary">
+                Giữ vé
               </button>
-              <button onClick={() => setSelectedTicket(null)} className={secondaryButtonClass}>
-                Đóng
+              <button
+                type="button"
+                onClick={() => {
+                  cancelBooking(ticketToCancel.id);
+                  setTicketToCancel(null);
+                }}
+                className="btn btn-danger"
+              >
+                Huỷ vé
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {openTicket && (
+        <div style={{ zIndex: 'var(--z-modal)' }} className="fixed inset-0 overflow-y-auto bg-black/80 backdrop-blur-sm" onClick={() => setOpenTicket(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Vé ${openTicket.eventTitle}`}
+            onClick={e => e.stopPropagation()}
+            className="relative mx-auto max-w-md px-4 py-10 motion-safe:animate-[sheet-in_260ms_var(--ease-reveal)]"
+          >
+            <button type="button" autoFocus onClick={() => setOpenTicket(null)} aria-label="Đóng vé" className="btn-icon mb-3 ml-auto bg-kumo-raised ring ring-kumo-line">
+              <X className="size-5" />
+            </button>
+            <TicketStub booking={openTicket} notches={false} />
+            <p className="mt-4 text-center text-sm text-white/80">Đưa mã QR này cho nhân viên soát vé ở cổng.</p>
+          </div>
+        </div>
+      )}
+
       <Footer />
-    </div>
+    </PageShell>
   );
 };
