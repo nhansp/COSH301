@@ -1,37 +1,126 @@
 {
-  "placeholder": true,
   "video": "e2e.mp4",
-  "duration": 103.7,
+  "duration": 159.4,
   "chapters": [
-    { "id": "home", "title": "Trang chủ", "start": 0.0, "end": 8.0, "speaker": "nhan",
-      "caption": "Danh sách sự kiện lấy từ API, giá thấp nhất tính từ giá khu trong database." },
-    { "id": "login", "title": "Đăng nhập OTP", "start": 8.0, "end": 22.0, "speaker": "nhan",
-      "caption": "Khán giả A và B đăng nhập. Mã dùng được 5 phút, sai 5 lần thì khóa." },
-    { "id": "zone", "title": "Chọn khu", "start": 22.0, "end": 30.0, "speaker": "nhan",
-      "caption": "Trang chọn vé mở luồng SSE. Mỗi khu có sơ đồ ghế riêng." },
-    { "id": "hold", "title": "Giữ ghế + realtime", "start": 30.0, "end": 42.0, "speaker": "nhan",
-      "caption": "A giữ ghế A1 trong một giao dịch, hạn 300 giây. Ghế đổi màu ở trình duyệt B, không cần F5." },
-    { "id": "refused", "title": "Không giữ trùng", "start": 42.0, "end": 49.0, "speaker": "nhan",
-      "caption": "B bấm ghế A1 đang có người giữ và bị từ chối." },
-    { "id": "holds", "title": "Ghế đang giữ", "start": 49.0, "end": 54.0, "speaker": "nhan",
-      "caption": "Danh sách đọc từ server qua GET /api/holds, kèm đồng hồ đếm ngược." },
-    { "id": "release", "title": "Trả ghế", "start": 54.0, "end": 62.0, "speaker": "nhan",
-      "caption": "Ghế về trạng thái trống và đổi màu ở trình duyệt B." },
-    { "id": "b-holds", "title": "B giữ được ghế", "start": 62.0, "end": 72.0, "speaker": "nhan",
-      "caption": "Sau khi A trả ghế, B giữ được ghế A1." },
-    { "id": "organizer-login", "title": "Ban tổ chức đăng nhập", "start": 72.0, "end": 78.0, "speaker": "dung",
-      "caption": "Ban Tổ chức mở Quản lý sự kiện và chọn concert vừa demo." },
-    { "id": "price-invalid", "title": "Giá sai bị chặn", "start": 78.0, "end": 84.0, "speaker": "dung",
-      "caption": "Giá cơ bản phải nằm giữa giá sàn và giá trần." },
-    { "id": "price-saved", "title": "Lưu giá hợp lệ", "start": 84.0, "end": 90.0, "speaker": "dung",
-      "caption": "Đổi giá cơ bản ghi một dòng vào price_changes. Ghế đang giữ giữ nguyên giá cũ." },
-    { "id": "otp-app", "title": "OTP qua ứng dụng", "start": 90.0, "end": 96.0, "speaker": "nhan",
-      "caption": "Đăng nhập bằng số điện thoại: mã hiện trong thông báo của ứng dụng COSH301 OTP." },
-    { "id": "race", "title": "Tranh ghế 100 người", "start": 96.0, "end": 100.0, "speaker": "dung",
-      "caption": "100 tài khoản cùng giữ một ghế: đúng 1 thắng, 99 bị từ chối (409)." },
-    { "id": "audit", "title": "Nhật ký giá bất biến", "start": 100.0, "end": 102.7, "speaker": "huy",
-      "caption": "SELECT thấy dòng giá vừa đổi, DELETE bị trigger chặn." },
-    { "id": "end", "title": "Kết thúc", "start": 102.7, "end": 103.7, "speaker": "huy",
-      "caption": "Hết phần demo." }
+    {
+      "id": "home",
+      "title": "Trang chủ",
+      "start": 1.93,
+      "end": 8.98,
+      "caption": "Trang chủ: các sự kiện sắp diễn ra",
+      "speaker": "nhan"
+    },
+    {
+      "id": "login",
+      "title": "Đăng nhập OTP",
+      "start": 8.98,
+      "end": 26.15,
+      "caption": "Đăng nhập bằng mã OTP qua email",
+      "speaker": "nhan"
+    },
+    {
+      "id": "zone",
+      "title": "Chọn khu",
+      "start": 26.15,
+      "end": 39.01,
+      "caption": "Chọn vé → sơ đồ khu → khu SVIP",
+      "speaker": "nhan"
+    },
+    {
+      "id": "hold",
+      "title": "Giữ ghế + realtime",
+      "start": 39.01,
+      "end": 45.69,
+      "caption": "Khách A giữ ghế A1, màn hình B đổi màu ngay",
+      "speaker": "nhan"
+    },
+    {
+      "id": "refused",
+      "title": "Không giữ trùng",
+      "start": 45.69,
+      "end": 51.72,
+      "caption": "Khách B bấm ghế A1 → bị từ chối",
+      "speaker": "nhan"
+    },
+    {
+      "id": "holds",
+      "title": "Ghế đang giữ",
+      "start": 51.72,
+      "end": 55.75,
+      "caption": "Xem ghế đã giữ: đồng hồ đếm ngược",
+      "speaker": "nhan"
+    },
+    {
+      "id": "release",
+      "title": "Trả ghế",
+      "start": 55.75,
+      "end": 61.37,
+      "caption": "Trả ghế A1, B thấy ghế trống lại",
+      "speaker": "nhan"
+    },
+    {
+      "id": "b-holds",
+      "title": "B giữ được ghế",
+      "start": 61.37,
+      "end": 70.06,
+      "caption": "Giờ khách B giữ được ghế A1",
+      "speaker": "nhan"
+    },
+    {
+      "id": "organizer-login",
+      "title": "Ban tổ chức đăng nhập",
+      "start": 70.06,
+      "end": 86.89,
+      "caption": "Ban tổ chức đăng nhập: mã OTP chỉ ghi vào log máy chủ",
+      "speaker": "dung"
+    },
+    {
+      "id": "price-invalid",
+      "title": "Giá sai bị chặn",
+      "start": 86.89,
+      "end": 92.56,
+      "caption": "Giá cơ bản cao hơn giá trần → bị chặn",
+      "speaker": "dung"
+    },
+    {
+      "id": "price-saved",
+      "title": "Lưu giá hợp lệ",
+      "start": 92.56,
+      "end": 103.52,
+      "caption": "Giá hợp lệ → lưu và ghi nhật ký giá",
+      "speaker": "dung"
+    },
+    {
+      "id": "otp-app",
+      "title": "OTP qua ứng dụng",
+      "start": 103.52,
+      "end": 122.16,
+      "caption": "Đăng nhập bằng số điện thoại: mã đến ứng dụng COSH301 OTP",
+      "speaker": "nhan"
+    },
+    {
+      "id": "race",
+      "title": "Tranh ghế 100 người",
+      "start": 122.16,
+      "end": 144.17,
+      "caption": "100 người mua cùng giữ một ghế: đúng 1 người được",
+      "speaker": "dung"
+    },
+    {
+      "id": "audit",
+      "title": "Nhật ký giá bất biến",
+      "start": 144.17,
+      "end": 156.2,
+      "caption": "Nhật ký giá: xem được, không xoá được",
+      "speaker": "huy"
+    },
+    {
+      "id": "end",
+      "title": "Kết thúc",
+      "start": 156.2,
+      "end": 159.4,
+      "caption": "Hết phần demo",
+      "speaker": "huy"
+    }
   ]
 }
