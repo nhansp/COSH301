@@ -25,7 +25,10 @@ export const PortfolioSalesBanner: React.FC<PortfolioOverviewProps> = ({
   selectedEventId,
   onSelectEvent
 }) => {
-  const fillPct = Math.round(overview.fillRate * 100);
+  const fillPct = (overview.fillRate * 100).toLocaleString('vi-VN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 
   return (
     <section aria-labelledby="sales-portfolio-heading" className="mb-8 space-y-4">
