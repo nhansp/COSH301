@@ -7,7 +7,9 @@ export type FeatureFlag =
   | 'zone_pricing'
   | 'organizer_console'
   | 'ticket_limit'
-  | 'payments';
+  | 'payments'
+  | 'dynamic_pricing'
+  | 'recommendations';
 
 interface FeatureContextType {
   isLoading: boolean;

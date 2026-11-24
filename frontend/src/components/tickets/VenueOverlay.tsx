@@ -22,12 +22,14 @@ interface VenueOverlayProps {
   priceRange: [number, number] | null;
   canGoBack: boolean;
   onBack: () => void;
+  /** Organizer view: seats are inspected, not held, so the hints say so. */
+  inspectOnly?: boolean;
 }
 
 const panel = 'rounded-xl bg-[#0f1330]/88 text-stage-ink ring-1 ring-stage-line backdrop-blur-md';
 
 /** Text never sits on the venue itself: section details live in this panel, in a fixed corner. */
-export const VenueOverlay: React.FC<VenueOverlayProps> = ({ mode, zone, isActive, seat, held, priceRange, canGoBack, onBack }) => {
+export const VenueOverlay: React.FC<VenueOverlayProps> = ({ mode, zone, isActive, seat, held, priceRange, canGoBack, onBack, inspectOnly = false }) => {
   const [legendOpen, setLegendOpen] = useState(false);
 
   return (
@@ -42,7 +44,7 @@ export const VenueOverlay: React.FC<VenueOverlayProps> = ({ mode, zone, isActive
             <p className="mt-1.5 text-sm text-stage-muted">{seat.zoneName}</p>
             <p className={`mt-2 text-sm font-medium ${seat.status === 'available' ? 'text-seat-available' : seat.status === 'selected' ? 'text-spot' : 'text-stage-muted'}`}>
               {SEAT_STATUS[seat.status]}
-              {seat.status === 'available' && <span className="font-normal text-stage-muted"> · chạm để giữ</span>}
+              {seat.status === 'available' && !inspectOnly && <span className="font-normal text-stage-muted"> · chạm để giữ</span>}
               {seat.status === 'selected' && <span className="font-normal text-stage-muted"> · chạm để trả</span>}
             </p>
           </div>
@@ -73,11 +75,11 @@ export const VenueOverlay: React.FC<VenueOverlayProps> = ({ mode, zone, isActive
             </dl>
             {(held > 0 || isActive || zone.available === 0) && (
               <p className="mt-3 flex flex-wrap gap-1.5 text-xs font-medium">
-                {held > 0 && <span className="rounded-md bg-spot px-2 py-1 text-spot-ink">Bạn đang giữ {held}</span>}
+                {held > 0 && !inspectOnly && <span className="rounded-md bg-spot px-2 py-1 text-spot-ink">Bạn đang giữ {held}</span>}
                 {zone.available === 0 && <span className="rounded-md bg-stage-line px-2 py-1">Hết vé</span>}
                 {isActive && zone.available > 0 && (
                   <span className="rounded-md bg-stage-line px-2 py-1">
-                    {zone.kind === 'standing' ? 'Chọn số vé ở bảng bên cạnh' : 'Chạm vào ghế để giữ'}
+                    {inspectOnly ? 'Chạm vào ghế để xem chi tiết' : zone.kind === 'standing' ? 'Chọn số vé ở bảng bên cạnh' : 'Chạm vào ghế để giữ'}
                   </span>
                 )}
               </p>

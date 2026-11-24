@@ -6,6 +6,8 @@ import { PageShell } from '../components/layout/PageShell';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useEvents } from '../context/EventContext';
 import { useAuth } from '../context/AuthContext';
+import { useRecordView } from '../hooks/useRecordView';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 import { useFeatures } from '../context/FeatureContext';
 import { useSeatInventory } from '../hooks/useSeatInventory';
 import { accentStyle, useEventAccent } from '../hooks/useEventAccent';
@@ -42,16 +44,6 @@ function readViewPreference(): '3d' | '2d' {
   }
 }
 
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
-  useEffect(() => {
-    const query = matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => setReduced(query.matches);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
-}
 
 export const TicketSelectionPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +56,7 @@ export const TicketSelectionPage: React.FC = () => {
   const reducedMotion = usePrefersReducedMotion();
 
   const event = id ? getEventById(id) : undefined;
+  useRecordView(event?.id);
   const needsDetail = !event || event.ticketTiers.length === 0;
   const [isFetchingDetail, setIsFetchingDetail] = useState(needsDetail);
 

@@ -8,6 +8,7 @@ import { Reveal } from '../components/ui/Reveal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Carousel } from '../components/ui/Carousel';
 import { EventFeatureCard, EventTile, EventTileSkeleton } from '../components/events/EventCard';
+import { RecommendedSection } from '../components/events/RecommendedSection';
 import { useEvents } from '../context/EventContext';
 import { useFeatures } from '../context/FeatureContext';
 import { EventItem } from '../types';
@@ -332,6 +333,8 @@ export const HomePage: React.FC = () => {
                   </div>
                 </section>
               )}
+
+              <RecommendedSection />
 
               <section aria-labelledby="explore-title" className="border-y border-kumo-hairline bg-kumo-elevated">
                 <div className="mx-auto max-w-page px-4 py-12 sm:px-6 lg:px-10">

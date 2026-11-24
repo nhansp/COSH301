@@ -11,6 +11,8 @@ import { LoginPage } from './pages/LoginPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { MyTicketsPage } from './pages/MyTicketsPage';
 import { OrganizerPage } from './pages/OrganizerPage';
+import { PricingPage } from './pages/PricingPage';
+import { OrganizerEventPage } from './pages/OrganizerEventPage';
 import { TicketSelectionPage } from './pages/TicketSelectionPage';
 
 export default function App() {
@@ -51,6 +53,23 @@ export default function App() {
                 element={
                   <ProtectedRoute roles={['ORGANIZER', 'ADMIN']}>
                     <OrganizerPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/organizer/events/:id"
+                element={
+                  <ProtectedRoute roles={['ORGANIZER', 'ADMIN']}>
+                    <OrganizerEventPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/organizer/events/:id/pricing"
+                element={
+                  <ProtectedRoute roles={['ORGANIZER', 'ADMIN']}>
+                    <PricingPage />
                   </ProtectedRoute>
                 }
               />

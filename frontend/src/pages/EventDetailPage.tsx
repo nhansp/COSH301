@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useRecordView } from '../hooks/useRecordView';
 import { ArrowLeft, Check, ExternalLink, Share2 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
@@ -33,6 +34,7 @@ export const EventDetailPage: React.FC = () => {
   const [isFetchingDetail, setIsFetchingDetail] = useState(false);
 
   const event = id ? getEventById(id) : undefined;
+  useRecordView(event?.id);
   // List entries carry no zones; load the detail once for prices and availability.
   const needsDetail = !event || event.ticketTiers.length === 0;
 

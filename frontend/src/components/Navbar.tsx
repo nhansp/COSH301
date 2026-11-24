@@ -16,6 +16,8 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
   const { isEnabled } = useFeatures();
   const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const showOrganizerLink = isOrganizer && isEnabled('organizer_console');
+  // Staff accounts manage events; the schedule and held seats belong to customers.
+  const isStaff = !!user && user.role !== 'CUSTOMER';
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -58,10 +60,11 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
   const goToLogin = () => navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
 
   const nav = [
-    { to: '/', label: 'Lịch diễn', show: true, count: 0 },
-    { to: '/my-tickets', label: 'Ghế đang giữ', show: isAuthenticated && isEnabled('seat_hold'), count: 0 },
+    { to: '/', label: 'Lịch diễn', show: !isStaff, count: 0 },
+    { to: '/my-tickets', label: 'Ghế đang giữ', show: !isStaff && isAuthenticated && isEnabled('seat_hold'), count: 0 },
     { to: '/organizer', label: 'Quản lý sự kiện', show: showOrganizerLink, count: 0 }
   ].filter(item => item.show);
+  const isActive = (to: string) => (to === '/' ? location.pathname === '/' : location.pathname.startsWith(to));
 
   return (
     <header
@@ -72,10 +75,10 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
     >
       <div className="mx-auto flex h-16 max-w-page items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
         <div className="flex min-w-0 items-center gap-10">
-          <Logo />
+          <Logo to={showOrganizerLink ? '/organizer' : '/'} />
           <nav aria-label="Điều hướng chính" className="hidden items-center gap-7 md:flex">
             {nav.map(item => {
-              const active = location.pathname === item.to;
+              const active = isActive(item.to);
               return (
                 <Link
                   key={item.to}
@@ -139,10 +142,12 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
                     </div>
                   </div>
                   <div className="border-t border-kumo-hairline pt-1.5">
-                    <Link role="menuitem" to="/my-tickets" className={menuItem}>
-                      <Ticket className="size-4 text-kumo-subtle" />
-                      <span className="flex-1">Ghế đang giữ</span>
-                    </Link>
+                    {!isStaff && (
+                      <Link role="menuitem" to="/my-tickets" className={menuItem}>
+                        <Ticket className="size-4 text-kumo-subtle" />
+                        <span className="flex-1">Ghế đang giữ</span>
+                      </Link>
+                    )}
                     {showOrganizerLink && (
                       <Link role="menuitem" to="/organizer" className={menuItem}>
                         <LayoutDashboard className="size-4 text-kumo-subtle" />
@@ -193,7 +198,7 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
         >
           <nav aria-label="Điều hướng" className="flex flex-col px-4 pt-6">
             {nav.map(item => {
-              const active = location.pathname === item.to;
+              const active = isActive(item.to);
               return (
                 <Link
                   key={item.to}

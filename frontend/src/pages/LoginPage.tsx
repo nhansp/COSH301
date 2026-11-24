@@ -12,7 +12,7 @@ export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
   const navigate = useNavigate();
-  const { isAuthenticated, requestOtp, verifyOtp, demoLogin } = useAuth();
+  const { isAuthenticated, user, requestOtp, verifyOtp, demoLogin } = useAuth();
   const { getEventById, events } = useEvents();
   const { isEnabled, demoLogin: demoLoginEnabled, isLoading: featuresLoading } = useFeatures();
 
@@ -48,9 +48,11 @@ export const LoginPage: React.FC = () => {
   // If already authenticated, redirect immediately
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(redirectUrl, { replace: true });
+      // Staff land on their dashboard unless the login was for a specific page.
+      const staff = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
+      navigate(staff && redirectUrl === '/' ? '/organizer' : redirectUrl, { replace: true });
     }
-  }, [isAuthenticated, navigate, redirectUrl]);
+  }, [isAuthenticated, user?.role, navigate, redirectUrl]);
 
   // Countdown timer for OTP resend
   useEffect(() => {

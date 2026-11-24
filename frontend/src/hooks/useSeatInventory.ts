@@ -102,6 +102,10 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
     sse.addEventListener('update', (e: MessageEvent) => {
       try {
         const { type, seatId, status } = JSON.parse(e.data);
+        if (type === 'zone_repriced') {
+          loadRef.current(true);
+          return;
+        }
         if (!seatId || !status) return;
         const next: SeatItem['status'] = status === 'AVAILABLE' ? 'available' : status === 'SOLD' ? 'sold' : 'held';
         const wasMine = mineRef.current.some(s => s.id === seatId);

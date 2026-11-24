@@ -135,6 +135,8 @@ export interface FloorPlan2DProps {
   onSeatClick: (seat: SeatItem) => void;
   /** Category hovered in the side panel, lit up here as well. */
   highlightZoneId: string | null;
+  /** Organizer view: seat clicks inspect instead of hold. */
+  inspectOnly?: boolean;
 }
 
 export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
@@ -145,7 +147,8 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
   reducedMotion,
   onZoneSelect,
   onSeatClick,
-  highlightZoneId
+  highlightZoneId,
+  inspectOnly = false
 }) => {
   const zoneById = useMemo(() => new Map(zones.map(z => [z.id, z])), [zones]);
   const seatsById = useMemo(() => new Map(seats.map(s => [s.id, s])), [seats]);
@@ -492,6 +495,7 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
         priceRange={infoZone ? stats.priceRange.get(infoZone.id) ?? null : null}
         canGoBack={!!activeZoneId}
         onBack={() => onZoneSelect(null)}
+        inspectOnly={inspectOnly}
       />
     </div>
   );
