@@ -1133,6 +1133,12 @@ components:
           format: date-time
         venueName:
           type: string
+        imageUrl:
+          type: string
+          description: Ảnh sự kiện, có thể vắng
+        imageCredit:
+          type: string
+          description: Ghi công tác giả ảnh, hiện cạnh ảnh
         seatLabel:
           type: string
         zoneName:

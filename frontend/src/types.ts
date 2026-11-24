@@ -74,6 +74,8 @@ export interface Ticket {
   eventName: string;
   startsAt: string;
   venueName: string;
+  imageUrl?: string;
+  imageCredit?: string;
   seatLabel: string;
   zoneName: string;
   price: number;
