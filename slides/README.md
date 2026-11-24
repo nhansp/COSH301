@@ -21,7 +21,7 @@ Phím: `→` `←` chuyển slide, `F` toàn màn hình, `S` hiện nhãn ngư�
 Mỗi phần là một file Markdown trong `content/`, thứ tự khai báo ở `content/index.json`. Một dòng `===` mở đầu một slide:
 
 ```
-=== id=hold layout=default tone=paper speaker=huy kicker="Dữ liệu" time=60
+=== id=hold layout=default speaker=huy kicker="Dữ liệu" time=60
 ## Tiêu đề
 - Một ý một dòng.
 NOTES:
@@ -29,10 +29,10 @@ Ghi chú cho người nói.
 ```
 
 - `layout`: `default`, `title`, `section`, `demo-steps`, `demo-all`.
-- `tone`: `paper`, `ink`, `stage`.
+- `tone`: `ink` (mặc định), `stage` (nền sân khấu của phần demo).
 - `speaker`: `thanh`, `phuc`, `ducanh`, `huy`, `dung`, `nhan` (tên và màu ở `content/index.json`).
 - `time`: số giây dự kiến, dùng cho đồng hồ trong `/presenter`.
-- `|||` chia cột. `@legend` và `@mirror` chèn chú giải ghế và khung điện thoại.
+- `|||` chia cột. `@legend` chèn chú giải ghế.
 - Cú pháp đầy đủ ở đầu `js/md.js` và `js/deck.js`.
 
 ## Video demo
@@ -48,15 +48,3 @@ Một video quay liền mạch và một file mốc thời gian, cả hai nằm 
 - Slide `layout=demo-all` phát toàn bộ video.
 - `manifest.json` hiện là bản tạm (`"placeholder": true`). Thay bằng bản thật, không cần sửa code.
 - File `*.mp4` bị `.gitignore`. Chép video vào `slides/media/demo/` bằng tay.
-
-## Điện thoại trực tiếp (tùy chọn)
-
-Slide có `@mirror` hiện màn hình điện thoại qua `/mirror.mjpg`. Thiếu tín hiệu thì khung chỉ hiện trạng thái chờ, các slide khác chạy bình thường.
-
-```bash
-sudo modprobe v4l2loopback video_nr=10 card_label=phone exclusive_caps=1
-MIRROR_ADB=10.0.0.18:38421 slides/mirror.sh      # scrcpy -> /dev/video10
-python3 slides/serve.py                          # ffmpeg đọc /dev/video10
-```
-
-Biến môi trường: `MIRROR_ADB`, `MIRROR_USB`, `MIRROR_DEV` (mặc định `/dev/video10`).

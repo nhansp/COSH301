@@ -1,36 +1,35 @@
-=== id=usecases layout=default speaker=ducanh time=40 kicker="Use case"
-## 13 use case, 5 tác nhân
+=== id=usecases layout=default speaker=ducanh time=40 kicker="Mô hình hóa"
+## Biểu đồ use case
 ::: grid g3
 ::: card tight
 ### Khán giả
-`UC-01` đăng nhập OTP (mọi tác nhân)
-`UC-02` xem danh mục sự kiện
-`UC-03` xếp hàng phòng chờ ảo
-`UC-04` chọn và giữ ghế 5 phút
-`UC-05` thanh toán, nhận vé
-`UC-06` xem vé, QR xoay vòng
+`UC-01` Đăng nhập bằng OTP (mọi tác nhân)
+`UC-02` Xem danh sách sự kiện
+`UC-03` Xếp hàng phòng chờ
+`UC-04` Chọn và giữ ghế 5 phút
+`UC-05` Thanh toán, nhận vé
+`UC-06` Xem vé, mã QR
 :::
 ::: card tight
-### Ban Tổ chức · CEO
-`UC-07` quản trị sự kiện, khu vực
-`UC-08` duyệt đề xuất giá động
-`UC-09` dashboard doanh thu
-`UC-10` xuất báo cáo bán vé
+### Ban Tổ chức và CEO
+`UC-07` Quản lý sự kiện và khu vực
+`UC-08` Duyệt giá đề xuất
+`UC-09` Xem bảng doanh thu
+`UC-10` Xuất báo cáo bán vé
 :::
 ::: card tight
-### Nhân viên cổng · Quản trị viên
-`UC-11` soát vé bằng QR
-`UC-12` đồng bộ soát vé ngoại tuyến
-`UC-13` giám sát, kiểm toán hệ thống
+### Nhân viên cổng và quản trị viên
+`UC-11` Soát vé bằng mã QR
+`UC-12` Đồng bộ soát vé ngoại tuyến
+`UC-13` Giám sát và kiểm toán
 :::
 :::
-Hệ thống ngoài: cổng thanh toán VNPay, SMTP, SMS Gateway, Cloudflare Turnstile.
+Hệ thống ngoài: cổng thanh toán VNPay, Cloudflare, dịch vụ gửi mã OTP.
 NOTES:
-Script slide 9. Danh sách theo Bảng 8 của báo cáo. Đã chạy: UC-01, 02, 04, một phần UC-05 (VNPay sandbox) và UC-07 (đặt giá khu). Còn lại ở mức thiết kế.
-Script slide 9. Mọi vai trò đăng nhập bằng OTP (UC-01). Tài khoản mới luôn là CUSTOMER. Danh sách UC-01 đến UC-13 lấy theo docs/use-cases.md, đối chiếu lại với báo cáo.
+Danh sách theo bảng 8 của báo cáo. Đã chạy: UC-01, UC-02, UC-04, UC-05 (môi trường thử), UC-07 và UC-08. Các use case còn lại đang ở mức thiết kế.
 
-=== id=dfd layout=default speaker=phuc time=25 kicker="Luồng dữ liệu"
-## DFD mức 0: chín tiến trình
+=== id=dfd layout=default speaker=phuc time=30 kicker="Mô hình hóa"
+## Biểu đồ luồng dữ liệu mức 0
 ::: grid g3
 ::: card tight lift
 <span class="no">1.0</span>
@@ -56,123 +55,92 @@ Script slide 9. Mọi vai trò đăng nhập bằng OTP (UC-01). Tài khoản m�
 <span class="no">6.0</span>
 ### Soát vé tại cổng
 :::
-::: card tight
+::: card tight lift
 <span class="no">7.0</span>
 ### Định giá động, khuyến mãi
 :::
 ::: card tight
 <span class="no">8.0</span>
-### Dashboard, báo cáo, nhật ký giá
+### Báo cáo và nhật ký giá
 :::
-::: card tight lift
+::: card tight
 <span class="no">9.0</span>
 ### Phân quyền
 :::
 :::
-Tô tím: đã có code. Có 17 kho dữ liệu, mỗi kho là một hoặc vài bảng PostgreSQL.
+Các tiến trình tô đậm đã có mã chạy.
 NOTES:
-Script slide 10. DFD có ba mức: ngữ cảnh, mức 0 (9 tiến trình, 17 kho) và mức 1 của tiến trình 1.0, 4.0, 5.0.
-Realtime dùng LISTEN/NOTIFY của PostgreSQL, không có kho riêng. Nguồn: docs/dfd.md.
+DFD gồm mức ngữ cảnh, mức 0 và mức 1 cho các tiến trình 1.0, 4.0 và 5.0. Lưu ý: hình 4 trong báo cáo vẽ 7 tiến trình, tài liệu docs/dfd.md có 9 tiến trình; Phúc thống nhất lại trước buổi báo cáo.
 
-=== id=erd layout=default speaker=huy time=30 kicker="Cơ sở dữ liệu"
-## 24 bảng, 6 nhóm
+=== id=erd layout=default speaker=huy time=30 kicker="Mô hình hóa"
+## Mô hình dữ liệu
 <div class="erd">
-<div class="grp"><h3>Định danh và bảo mật · 5</h3><code>users</code><code>sessions</code><code>otp_verifications</code><code>otp_app_deliveries</code><code>audit_logs</code></div>
-<div class="grp"><h3>Địa điểm và ghế · 6</h3><code>venues</code><code>venue_zones</code><code>seats</code><code>events</code><code>event_zones</code><code>event_seats</code></div>
-<div class="grp hot"><h3>Hàng chờ và giữ chỗ · 2</h3><code>queue_entries</code><code>seat_holds</code></div>
-<div class="grp"><h3>Đơn hàng và thanh toán · 3</h3><code>orders</code><code>order_items</code><code>payments</code></div>
-<div class="grp"><h3>Vé và soát vé · 3</h3><code>tickets</code><code>gate_devices</code><code>checkins</code></div>
-<div class="grp"><h3>Giá, khuyến mãi, thống kê · 5</h3><code>price_changes</code><code>price_suggestions</code><code>promotions</code><code>promotion_usages</code><code>sales_snapshots</code></div>
+<div class="grp"><h3>Định danh và bảo mật</h3><code>users</code><code>sessions</code><code>otp_verifications</code><code>otp_app_deliveries</code><code>audit_logs</code></div>
+<div class="grp"><h3>Địa điểm và ghế</h3><code>venues</code><code>venue_zones</code><code>seats</code><code>events</code><code>event_zones</code><code>event_seats</code></div>
+<div class="grp hot"><h3>Hàng chờ và giữ chỗ</h3><code>queue_entries</code><code>seat_holds</code></div>
+<div class="grp"><h3>Đơn hàng và thanh toán</h3><code>orders</code><code>order_items</code><code>payments</code></div>
+<div class="grp"><h3>Vé và soát vé</h3><code>tickets</code><code>gate_devices</code><code>checkins</code></div>
+<div class="grp"><h3>Giá và khuyến mãi</h3><code>price_changes</code><code>price_suggestions</code><code>promotions</code><code>promotion_usages</code><code>sales_snapshots</code></div>
 </div>
 
-Thanh toán sandbox ghi `orders`, `payments`, `tickets`. Soát vé đã có schema, chưa có code ghi.
+Thiết kế ở Sprint 1 có 26 bảng; sau khi chuẩn hóa, cơ sở dữ liệu đang chạy có 24 bảng.
 NOTES:
-Script slide 11. Thiết kế gồm 23 bảng; otp_app_deliveries (migration 00005) thêm cho ứng dụng OTP nên production có 24 bảng. Migration 00006 của VNPay chỉ thêm cột. ERD Sprint 1 trên MySQL có 26 bảng.
-Khóa chính là UUID, tiền là NUMERIC(14,0).
+Bảng otp_app_deliveries được thêm cho ứng dụng OTP. Khóa chính dùng UUID, số tiền lưu kiểu NUMERIC(14,0). Thực thể trong ERD tương ứng với các lớp Entity trong biểu đồ lớp.
 
-=== id=hold layout=default speaker=huy time=30 kicker="Giữ ghế 5 phút"
-## Giữ ghế, rồi mọi trình duyệt thấy ngay
+=== id=hold layout=default speaker=huy time=35 kicker="Nghiệp vụ cốt lõi"
+## Giữ ghế và cập nhật thời gian thực
 <div class="states">
-<div class="st av">AVAILABLE</div><div class="ar">bấm ghế</div>
-<div class="st he">HELD</div><div class="ar">thanh toán<br>VNPay sandbox</div>
-<div class="st so">SOLD</div>
+<div class="st av">Còn trống</div><div class="ar">khách chọn ghế</div>
+<div class="st he">Đang giữ</div><div class="ar">thanh toán</div>
+<div class="st so">Đã bán</div>
 </div>
 <div class="flow">
-<div class="node"><b>Khán giả A</b><code>POST /api/holds</code></div><div class="arrow">→</div>
-<div class="node"><b>Một giao dịch</b>giữ ghế, <code>pg_notify</code>, COMMIT</div><div class="arrow">→</div>
-<div class="node"><b>RealtimeHub</b>nhận NOTIFY sau COMMIT</div><div class="arrow">→</div>
-<div class="node hot"><b>Khán giả B</b>ghế đổi màu qua SSE</div>
+<div class="node"><b>Khách A</b>chọn ghế</div><div class="arrow">→</div>
+<div class="node"><b>Một giao dịch</b>giữ ghế, gửi thông báo</div><div class="arrow">→</div>
+<div class="node"><b>Bộ phát SSE</b>nhận thông báo sau khi giao dịch xong</div><div class="arrow">→</div>
+<div class="node hot"><b>Khách B</b>thấy ghế đổi màu</div>
 </div>
 
-- Lượt giữ có hạn 300 giây. `HoldReaper` quét 5 giây một lần và nhả ghế hết hạn.
-- Ghế quá hạn mà chưa được quét vẫn giữ được: lượt cũ bị hủy, lượt mới được cấp trong cùng giao dịch.
+- Mỗi lượt giữ có hạn 5 phút; hết hạn thì ghế tự trả lại.
+- Tiến trình nền kiểm tra 5 giây một lần và báo cho mọi trình duyệt đang mở.
 NOTES:
-Script slide 12. Ba loại thông báo SSE: seat_held, seat_released, seat_expired. SSE chỉ cần luồng một chiều từ server, nhẹ hơn WebSocket.
-Giao dịch bị hủy thì không có thông báo. Giá của ghế đang HELD giữ nguyên đến khi được trả.
+Thông báo chỉ được gửi sau khi giao dịch hoàn tất, nên trình duyệt không bao giờ thấy trạng thái chưa được ghi. Nhóm dùng SSE vì chỉ cần luồng một chiều từ máy chủ về trình duyệt, nhẹ hơn WebSocket.
 
-=== id=race layout=default speaker=huy time=30 kicker="Chống bán trùng"
-## Hai người cùng bấm một ghế
+=== id=race layout=default speaker=huy time=35 kicker="Nghiệp vụ cốt lõi"
+## Chống bán trùng ghế
 <div class="lanes two">
-<div class="h">Khán giả A</div><div class="h">Khán giả B</div>
-<div>UPDATE <code>WHERE status = 'AVAILABLE'</code> giành khóa hàng, ghi <code>seat_holds</code>, COMMIT</div><div>UPDATE cùng ghế, chờ khóa</div>
-<div class="win">201, ghế chuyển tím</div><div class="lose">Đọc lại: ghế đã <code>HELD</code>, 0 dòng, <code>409 seat_not_available</code></div>
+<div class="h">Khách A</div><div class="h">Khách B</div>
+<div>Cập nhật ghế với điều kiện còn trống, giành được khóa dòng</div><div>Cập nhật cùng ghế, phải chờ khóa</div>
+<div class="win">Giữ ghế thành công</div><div class="lose">Ghế đã bị giữ, nhận lỗi <code>409</code></div>
 </div>
-::: grid g3
+::: grid g2
 ::: card tight
 <span class="no">Lớp 1</span>
-### UPDATE có điều kiện
-Chỉ ghế `AVAILABLE` mới sang `HELD`.
+### Cập nhật có điều kiện
+Chỉ ghế đang trống mới chuyển sang trạng thái giữ.
 :::
 ::: card tight
 <span class="no">Lớp 2</span>
-### Unique index một phần
-`uq_seat_holds_active` trên `(event_id, seat_id)` khi `ACTIVE`.
-:::
-::: card tight
-<span class="no">Lớp 3 · cờ tắt</span>
-### Khóa cố vấn
-Theo `(user_id, event_id)`, cho giới hạn vé `ticket_limit`.
+### Chỉ mục duy nhất một phần
+Mỗi ghế của một sự kiện chỉ có một lượt giữ còn hiệu lực.
 :::
 :::
 NOTES:
-Script slide 13. Câu UPDATE giữ khóa mức hàng; giao dịch đến sau đọc lại hàng sau khi giao dịch trước commit. Lớp 3 phục vụ giới hạn vé mỗi người (FR-11), không phải chống bán trùng ghế, và đang tắt ở sprint2.
-Kết quả kiểm chứng (test 50 luồng, thử 100 tài khoản) nằm ở slide kiểm thử.
+Câu lệnh UPDATE khóa dòng; giao dịch đến sau đọc lại dòng sau khi giao dịch trước hoàn tất nên thấy ghế đã bị giữ. Chỉ mục tên là uq_seat_holds_active trên (event_id, seat_id).
+Giới hạn số vé mỗi người (FR-11) dùng thêm khóa cố vấn, hiện đang tắt bằng cờ ticket_limit.
 
-=== id=audit layout=default speaker=huy time=20 kicker="Nhật ký" title="Nhật ký giá bất biến"
-## Nhật ký giá không sửa, không xóa được
+=== id=audit layout=default speaker=huy time=25 kicker="Nghiệp vụ cốt lõi" title="Nhật ký thay đổi giá"
+## Nhật ký thay đổi giá
 |||
-- `price_changes` ghi mỗi lần Ban Tổ chức đổi giá cơ bản.
-- Trigger `BEFORE UPDATE OR DELETE` theo từng dòng chặn sửa và xóa.
-- Trigger `BEFORE TRUNCATE` chặn xóa cả bảng.
-- `audit_logs` được bảo vệ theo cách tương tự.
+- Mỗi lần đổi giá đều ghi vào bảng `price_changes`: ai đổi, lúc nào, giá cũ, giá mới.
+- Trigger trong PostgreSQL chặn mọi lệnh sửa và xóa trên bảng này.
+- Bảng `audit_logs` được bảo vệ theo cùng cách.
 |||
 ```
-SELECT old_price, new_price, reason
-FROM price_changes
-ORDER BY created_at DESC LIMIT 3;
-
 DELETE FROM price_changes;
 ERROR: Modification or deletion is
   strictly forbidden on audit log
   table price_changes
 ```
 NOTES:
-Demo chapter "Nhật ký giá bất biến": chạy SELECT rồi DELETE bị từ chối. NFR-12: mới xong phần giá, chưa ghi log giao dịch. Chưa có trang xem nhật ký giá (FR-20).
-
-=== id=pricing layout=default speaker=dung time=60 kicker="Giá theo khu và định giá động"
-## Giá do người quyết định, máy chỉ đề xuất
-|||
-### [[ok:Đã chạy]] Giá khu (FR-08)
-- Ban Tổ chức đặt giá sàn, giá cơ bản, giá trần.
-- Ràng buộc: `sàn ≤ cơ bản ≤ trần`.
-- Mỗi lần đổi ghi một dòng `price_changes`.
-- Ghế đang giữ giữ nguyên giá cũ.
-|||
-### [[road:Thiết kế]] Định giá động (FR-22)
-- Mỗi 5 phút tính áp lực từ tốc độ bán, hàng chờ, ghế đang giữ.
-- Tối đa 20% mỗi chu kỳ, chênh dưới 5% thì bỏ qua.
-- **Không bao giờ tự đổi giá (<span class="nb">W-01</span>).**
-- Ví dụ Fanzone: 1.200.000 đồng, áp lực 1,73, đề xuất **1.420.000 đồng**.
-NOTES:
-Script slide 14. Cờ dynamic_pricing đang tắt. Đã có bảng price_suggestions và giá sàn, giá trần theo khu; chưa có job tính và endpoint duyệt.
-Phản biện của nhóm: người mua không biết trước giá có thể tăng, có tiền lệ cuộc điều tra của CMA ở Anh về cách bán vé Oasis. Vì vậy thiết kế dùng người duyệt, biên độ và nhật ký giá. Nhóm chưa có thực nghiệm về hành vi người mua.
+Ngay cả quản trị viên cơ sở dữ liệu cũng không xóa được nhật ký giá. Phần demo có cảnh chạy lệnh DELETE và bị từ chối.
