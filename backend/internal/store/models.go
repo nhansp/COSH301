@@ -511,6 +511,7 @@ type Order struct {
 	CancelledAt    pgtype.Timestamptz `json:"cancelled_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	ServiceFee     pgtype.Numeric     `json:"service_fee"`
 }
 
 type OrderItem struct {
@@ -519,6 +520,7 @@ type OrderItem struct {
 	SeatID    pgtype.UUID        `json:"seat_id"`
 	Price     pgtype.Numeric     `json:"price"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	HoldID    pgtype.UUID        `json:"hold_id"`
 }
 
 type OtpAppDelivery struct {
@@ -541,16 +543,18 @@ type OtpVerification struct {
 }
 
 type Payment struct {
-	ID            pgtype.UUID        `json:"id"`
-	OrderID       pgtype.UUID        `json:"order_id"`
-	PaymentCode   string             `json:"payment_code"`
-	Provider      string             `json:"provider"`
-	ProviderTxnID pgtype.Text        `json:"provider_txn_id"`
-	Amount        pgtype.Numeric     `json:"amount"`
-	Status        PaymentStatus      `json:"status"`
-	RawResponse   []byte             `json:"raw_response"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	ID             pgtype.UUID        `json:"id"`
+	OrderID        pgtype.UUID        `json:"order_id"`
+	PaymentCode    string             `json:"payment_code"`
+	Provider       string             `json:"provider"`
+	ProviderTxnID  pgtype.Text        `json:"provider_txn_id"`
+	Amount         pgtype.Numeric     `json:"amount"`
+	Status         PaymentStatus      `json:"status"`
+	RawResponse    []byte             `json:"raw_response"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	RefundRequired bool               `json:"refund_required"`
+	RefundReason   pgtype.Text        `json:"refund_reason"`
 }
 
 type PriceChange struct {
