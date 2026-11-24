@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SeatItem } from '../types';
 import { apiFetchHolds, apiFetchSeats, apiHoldSeat, apiReleaseSeat, formatPrice } from '../services/eventService';
+import { loadOrganizerTestCart } from '../services/organizerTestCart';
 
 export type InventoryNotice = { id: number; text: string; tone: 'error' | 'info' | 'success' };
 
@@ -15,19 +16,22 @@ interface Options {
   /** Most seats the user may hold at once; `Infinity` while the server enforces no ticket limit. */
   maxSeats: number;
   holdEnabled: boolean;
+  /** Organizer preview mode: simulates seat selection locally with zero database writes. */
+  testMode?: boolean;
 }
 
 const HOLD_ERRORS: Record<string, (seat: SeatItem) => string> = {
   seat_not_available: seat => `Ghế ${seat.label} vừa có người giữ. Chọn ghế khác trong khu ${seat.zoneName}.`,
   ticket_limit_reached: () => 'Đã đạt giới hạn số vé cho sự kiện này.',
-  event_not_on_sale: () => 'Sự kiện hiện không mở bán.'
+  event_not_on_sale: () => 'Sự kiện hiện không mở bán.',
+  organizer_test_only: () => 'Tài khoản Ban Tổ Chức chỉ dùng chế độ kiểm thử cục bộ.'
 };
 
 /**
  * Seat state for one event: initial load, live SSE updates, holds and their
  * expiry. The 3D venue, the 2D grid and the side panels all read from here.
  */
-export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
+export function useSeatInventory({ eventId, maxSeats, holdEnabled, testMode = false }: Options) {
   const [seats, setSeats] = useState<SeatItem[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [liveState, setLiveState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -58,6 +62,23 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
         if (!silent) setLoadState('error');
         return;
       }
+      if (testMode) {
+        const saved = loadOrganizerTestCart(eventId);
+        const savedIds = new Set(saved?.seats.map(s => s.id) ?? []);
+        const savedExp = saved ? Date.parse(saved.expiresAt) : NaN;
+        const merged = result.map(s =>
+          savedIds.has(s.id) && s.status === 'available' ? { ...s, status: 'selected' as const } : s
+        );
+        setSeats(merged);
+        setLoadState('ready');
+        if (!Number.isNaN(savedExp) && merged.some(s => s.status === 'selected')) {
+          setExpiries(Object.fromEntries(merged.filter(s => s.status === 'selected').map(s => [s.id, savedExp])));
+        } else {
+          setExpiries({});
+        }
+        return;
+      }
+
       setSeats(result);
       setLoadState('ready');
       // Hold expiries come from the server, so the countdown also survives a reload or another tab.
@@ -70,7 +91,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
         setExpiries({});
       }
     },
-    [eventId]
+    [eventId, testMode]
   );
   const loadRef = useRef(load);
   loadRef.current = load;
@@ -105,11 +126,20 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
         if (!seatId || !status) return;
         const next: SeatItem['status'] = status === 'AVAILABLE' ? 'available' : status === 'SOLD' ? 'sold' : 'held';
         const wasMine = mineRef.current.some(s => s.id === seatId);
-        // The stream does not say who holds a seat, so our own holds stay "selected".
+        // The stream does not say who holds a seat, so our own holds stay "selected" (except in testMode,
+        // where local test selections always yield to real customer holds/sales).
         setSeats(prev =>
-          prev.map(s => (s.id !== seatId ? s : next === 'held' && s.status === 'selected' ? s : { ...s, status: next }))
+          prev.map(s =>
+            s.id !== seatId ? s : !testMode && next === 'held' && s.status === 'selected' ? s : { ...s, status: next }
+          )
         );
-        if (wasMine && (type === 'seat_released' || type === 'seat_expired')) {
+        if (testMode && wasMine && (next === 'held' || next === 'sold')) {
+          updateExpiries(prev => {
+            const { [seatId]: _dropped, ...rest } = prev;
+            return rest;
+          });
+        }
+        if (!testMode && wasMine && (type === 'seat_released' || type === 'seat_expired')) {
           updateExpiries(prev => {
             const { [seatId]: _dropped, ...rest } = prev;
             return rest;
@@ -124,7 +154,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
       }
     });
     return () => sse.close();
-  }, [eventId, notify, updateExpiries]);
+  }, [eventId, testMode, notify, updateExpiries]);
 
   // Countdown to the earliest expiry among the user's holds.
   const knownExpiries = mine.map(s => expiries[s.id]).filter((at): at is number => at !== undefined);
@@ -167,6 +197,14 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
         notify('Đã đạt giới hạn số vé cho sự kiện này.', 'error');
         return { ok: false, error: 'ticket_limit_reached' };
       }
+      if (testMode) {
+        const at = Date.now() + 5 * 60 * 1000;
+        updateExpiries(prev => ({ ...prev, [seat.id]: at }));
+        setStatus(seat.id, 'selected');
+        mineRef.current = [...mineRef.current, { ...seat, status: 'selected' }];
+        if (!quiet) notify(`Đã chọn thử ghế ${seat.label} · ${formatPrice(seat.price)} (Chế độ BTC — không khóa ghế thật)`, 'info');
+        return { ok: true };
+      }
       markPending(seat.id, true);
       const res = await apiHoldSeat(eventId, seat.id);
       markPending(seat.id, false);
@@ -186,13 +224,23 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
       if (!quiet) notify(`Đã giữ ghế ${seat.label} · ${formatPrice(seat.price)}`, 'success');
       return { ok: true };
     },
-    [eventId, holdEnabled, maxSeats, notify, updateExpiries]
+    [eventId, holdEnabled, maxSeats, testMode, notify, updateExpiries]
   );
 
   /** Frees a seat locally only once the server confirms it; resolves to whether it did. */
   const release = useCallback(
     async (seat: SeatItem, { quiet = false } = {}): Promise<boolean> => {
       if (!eventId) return false;
+      if (testMode) {
+        setStatus(seat.id, 'available');
+        mineRef.current = mineRef.current.filter(s => s.id !== seat.id);
+        updateExpiries(prev => {
+          const { [seat.id]: _dropped, ...rest } = prev;
+          return rest;
+        });
+        if (!quiet) notify(`Đã bỏ chọn thử ghế ${seat.label}.`, 'info');
+        return true;
+      }
       markPending(seat.id, true);
       const released = await apiReleaseSeat(eventId, seat.id);
       markPending(seat.id, false);
@@ -209,7 +257,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
       if (!quiet) notify(`Đã trả ghế ${seat.label}.`, 'info');
       return true;
     },
-    [eventId, notify, updateExpiries]
+    [eventId, testMode, notify, updateExpiries]
   );
 
   /**

@@ -9,6 +9,7 @@ import { Reveal } from '../components/ui/Reveal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { eventDate } from '../components/events/EventCard';
 import { useEvents } from '../context/EventContext';
+import { useAuth } from '../context/AuthContext';
 import { useFeatures } from '../context/FeatureContext';
 import { DEFAULT_BANNER_IMAGE, formatPrice, ticketLimitOf } from '../services/eventService';
 import { summarizeZones } from '../services/venue';
@@ -28,7 +29,9 @@ const DetailSkeleton: React.FC = () => (
 export const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { getEventById, loadEventDetail, isLoading } = useEvents();
+  const { user } = useAuth();
   const { isEnabled } = useFeatures();
+  const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const [copiedLink, setCopiedLink] = useState(false);
   const [isFetchingDetail, setIsFetchingDetail] = useState(false);
 
@@ -94,7 +97,7 @@ export const EventDetailPage: React.FC = () => {
       </span>
     ) : (
       <Link to={ticketsUrl} className={`btn btn-primary btn-lg ${full ? 'w-full' : ''}`}>
-        Chọn vé
+        {isOrganizer ? 'Thử mua vé (BTC)' : 'Chọn vé'}
       </Link>
     );
 

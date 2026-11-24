@@ -84,6 +84,10 @@ func (h *SeatHandler) HandleHolds(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
+	if sess.Role != store.UserRoleCUSTOMER {
+		writeError(w, http.StatusForbidden, "organizer_test_only")
+		return
+	}
 
 	switch r.Method {
 	case http.MethodPost:

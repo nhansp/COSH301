@@ -41,6 +41,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	paymentHandler := NewPaymentHandler(deps.Payments, deps.EventService)
 	assistantHandler := NewAssistantHandler(deps.Assistant, deps.AuthService)
 	anyRole := []store.UserRole{store.UserRoleCUSTOMER, store.UserRoleORGANIZER, store.UserRoleADMIN}
+	customerRoles := []store.UserRole{store.UserRoleCUSTOMER}
 	gateRoles := []store.UserRole{store.UserRoleGATESTAFF, store.UserRoleORGANIZER, store.UserRoleADMIN}
 
 	// 1. System Endpoints
@@ -64,11 +65,11 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	mux.HandleFunc("GET /api/events/{id}/seats", RequireFeature(fm, config.FlagSeatMapRealtime, seatHandler.HandleEventSeats))
 	mux.HandleFunc("GET /api/events/{id}/stream", RequireFeature(fm, config.FlagSeatMapRealtime, streamHandler.HandleEventStream))
 
-	// 5. Seat Hold Endpoints (gated by seat_hold)
+	// 5. Seat Hold Endpoints (gated by seat_hold, CUSTOMER accounts only)
 	mux.HandleFunc("POST /api/holds", RequireFeature(fm, config.FlagSeatHold, seatHandler.HandleHolds))
 	mux.HandleFunc("DELETE /api/holds/{seatId}", RequireFeature(fm, config.FlagSeatHold, seatHandler.HandleHolds))
 	mux.HandleFunc("GET /api/holds", RequireFeature(fm, config.FlagSeatHold,
-		RequireRole(authHandler, anyRole, seatHandler.HandleMyHolds)))
+		RequireRole(authHandler, customerRoles, seatHandler.HandleMyHolds)))
 
 	// 6. Organizer console (FR-08)
 	mux.HandleFunc("GET /api/organizer/events", RequireFeature(fm, config.FlagOrganizerConsole,
@@ -80,16 +81,16 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	mux.HandleFunc("PUT /api/organizer/events/{id}/zones/{zoneId}/pricing", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireFeature(fm, config.FlagZonePricing, RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateZonePricing))))
 
-	// 7. Orders, Payments (FR-13, FR-15, NFR-04) & Tickets / Rotating QR (FR-12, NFR-08)
+	// 7. Orders, Payments (FR-13, FR-15, NFR-04) & Fixed Ticket QR (CUSTOMER-only purchasing)
 	if deps.Payments != nil {
 		mux.HandleFunc("POST /api/orders", RequireFeature(fm, config.FlagPayments,
-			RequireRole(authHandler, anyRole, paymentHandler.HandleCreateOrder)))
+			RequireRole(authHandler, customerRoles, paymentHandler.HandleCreateOrder)))
 		mux.HandleFunc("GET /api/orders", RequireFeature(fm, config.FlagPayments,
-			RequireRole(authHandler, anyRole, paymentHandler.HandleListOrders)))
+			RequireRole(authHandler, customerRoles, paymentHandler.HandleListOrders)))
 		mux.HandleFunc("GET /api/orders/{id}", RequireFeature(fm, config.FlagPayments,
 			RequireRole(authHandler, anyRole, paymentHandler.HandleGetOrder)))
 		mux.HandleFunc("POST /api/orders/{id}/payments", RequireFeature(fm, config.FlagPayments,
-			RequireRole(authHandler, anyRole, paymentHandler.HandleInitiatePayment)))
+			RequireRole(authHandler, customerRoles, paymentHandler.HandleInitiatePayment)))
 		mux.HandleFunc("POST /api/payments/{provider}/ipn", RequireFeature(fm, config.FlagPayments,
 			paymentHandler.HandlePaymentIPN))
 		mux.HandleFunc("GET /api/payments/{provider}/return", RequireFeature(fm, config.FlagPayments,
@@ -97,16 +98,16 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	}
 
 	mux.HandleFunc("GET /api/me/tickets", RequireFeature(fm, config.FlagPayments,
-		RequireRole(authHandler, anyRole, ticketHandler.HandleListMyTickets)))
+		RequireRole(authHandler, customerRoles, ticketHandler.HandleListMyTickets)))
 	mux.HandleFunc("GET /api/tickets/{id}/qr", RequireFeature(fm, config.FlagPayments,
 		RequireRole(authHandler, anyRole, ticketHandler.HandleGetTicketQR)))
 	mux.HandleFunc("POST /api/tickets/verify-qr", RequireFeature(fm, config.FlagPayments,
 		RequireRole(authHandler, gateRoles, ticketHandler.HandleVerifyTicketQR)))
 
 	mux.HandleFunc("POST /api/tickets/cancel", RequireFeature(fm, config.FlagPayments,
-		RequireRole(authHandler, anyRole, ticketHandler.HandleCancelTicket)))
+		RequireRole(authHandler, customerRoles, ticketHandler.HandleCancelTicket)))
 	mux.HandleFunc("GET /api/tickets/cancelled", RequireFeature(fm, config.FlagPayments,
-		RequireRole(authHandler, anyRole, ticketHandler.HandleListUserCancelledTickets)))
+		RequireRole(authHandler, customerRoles, ticketHandler.HandleListUserCancelledTickets)))
 	mux.HandleFunc("GET /api/tickets/audit-logs", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireRole(authHandler, organizerRoles, ticketHandler.HandleListAuditLogs)))
 	if deps.Config.DemoMode {

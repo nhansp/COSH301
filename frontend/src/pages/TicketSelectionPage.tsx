@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Box, ChevronUp, Eye, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Box, ChevronUp, Eye, FlaskConical, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -10,6 +10,7 @@ import { useFeatures } from '../context/FeatureContext';
 import { useSeatInventory } from '../hooks/useSeatInventory';
 import { accentStyle, useEventAccent } from '../hooks/useEventAccent';
 import { ticketLimitOf } from '../services/eventService';
+import { saveOrganizerTestCart } from '../services/organizerTestCart';
 import { buildVenueLayout, povFor, summarizeZones } from '../services/venue';
 import { SeatItem } from '../types';
 import { NoticeToast } from '../components/tickets/NoticeToast';
@@ -59,8 +60,9 @@ export const TicketSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { getEventById, loadEventDetail, isLoading } = useEvents();
-  const { isAuthenticated, isLoading: authLoading, sessionExpired } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, sessionExpired } = useAuth();
   const { isEnabled } = useFeatures();
+  const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const reducedMotion = usePrefersReducedMotion();
 
   const event = id ? getEventById(id) : undefined;
@@ -80,9 +82,28 @@ export const TicketSelectionPage: React.FC = () => {
   // The cap is the server's rule; without the ticket_limit flag the client imposes none.
   const limitEnabled = isEnabled('ticket_limit');
   const maxSeats = limitEnabled ? limit : Infinity;
-  const inventory = useSeatInventory({ eventId: event?.id, maxSeats, holdEnabled: isEnabled('seat_hold') });
+  const inventory = useSeatInventory({
+    eventId: event?.id,
+    maxSeats,
+    holdEnabled: isEnabled('seat_hold'),
+    testMode: isOrganizer
+  });
   const { seats, mine, pending } = inventory;
   const remaining = Math.max(0, maxSeats - mine.length);
+
+  // Persist organizer preview selections in sessionStorage only (never touches database).
+  useEffect(() => {
+    if (!isOrganizer || !event || inventory.loadState !== 'ready') return;
+    saveOrganizerTestCart({
+      eventId: event.id,
+      eventSlug: event.slug ?? event.id,
+      eventName: event.title,
+      startsAt: event.rawDate,
+      venueName: event.venue,
+      seats: mine,
+      expiresAt: new Date(inventory.expiresAt ?? Date.now() + 5 * 60 * 1000).toISOString()
+    });
+  }, [isOrganizer, event, mine, inventory.loadState, inventory.expiresAt]);
 
   const zones = useMemo(() => summarizeZones(event?.ticketTiers ?? [], seats), [event?.ticketTiers, seats]);
   const zoneById = useMemo(() => new Map(zones.map(z => [z.id, z])), [zones]);
@@ -409,6 +430,23 @@ export const TicketSelectionPage: React.FC = () => {
           )}
         </header>
 
+        {isOrganizer && (
+          <div
+            role="status"
+            className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-kumo-warning-tint/85 px-4 py-3 text-sm text-kumo-warning ring ring-kumo-warning/30"
+          >
+            <div className="flex items-start gap-2.5">
+              <FlaskConical className="mt-0.5 size-4 shrink-0" />
+              <p>
+                <strong>Chế độ kiểm thử Ban Tổ Chức:</strong> Bạn có thể chọn ghế và thử quy trình thanh toán mô phỏng — hệ thống <strong>không khóa ghế thật</strong>, không tạo đơn hàng và không cộng vào doanh số.
+              </p>
+            </div>
+            <Link to="/organizer" className="btn btn-secondary btn-sm h-8 shrink-0 text-xs">
+              Về Bảng điều khiển BTC
+            </Link>
+          </div>
+        )}
+
         {seatMapOff ? (
           <div className="max-w-xl rounded-2xl bg-kumo-base p-6 ring ring-kumo-line">
             <p className="text-kumo-default">Sơ đồ chọn vé đang tạm đóng.</p>
@@ -513,7 +551,13 @@ export const TicketSelectionPage: React.FC = () => {
                   pending={pending}
                   onRelease={seat => inventory.release(seat)}
                   onCheckout={goToCheckout}
-                  checkoutLabel={isEnabled('payments') ? 'Thanh toán ngay' : 'Xem ghế đã giữ'}
+                  checkoutLabel={
+                    isOrganizer
+                      ? 'Thử thanh toán (Mô phỏng)'
+                      : isEnabled('payments')
+                        ? 'Thanh toán ngay'
+                        : 'Xem ghế đã giữ'
+                  }
                 />
               </div>
             </aside>
@@ -537,7 +581,13 @@ export const TicketSelectionPage: React.FC = () => {
                 pending={pending}
                 onRelease={seat => inventory.release(seat)}
                 onCheckout={goToCheckout}
-                checkoutLabel={isEnabled('payments') ? 'Thanh toán ngay' : 'Xem ghế đã giữ'}
+                checkoutLabel={
+                  isOrganizer
+                    ? 'Thử thanh toán (Mô phỏng)'
+                    : isEnabled('payments')
+                      ? 'Thanh toán ngay'
+                      : 'Xem ghế đã giữ'
+                }
               />
             </div>
           )}
@@ -565,7 +615,11 @@ export const TicketSelectionPage: React.FC = () => {
             </button>
             {!summaryOpen && (
               <button type="button" onClick={goToCheckout} className="btn btn-primary h-12 shrink-0 px-5">
-                {isEnabled('payments') ? 'Thanh toán ngay' : 'Xem ghế đã giữ'}
+                {isOrganizer
+                  ? 'Thử thanh toán'
+                  : isEnabled('payments')
+                    ? 'Thanh toán ngay'
+                    : 'Xem ghế đã giữ'}
               </button>
             )}
           </div>
