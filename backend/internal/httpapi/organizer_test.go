@@ -112,4 +112,16 @@ func TestValidateCreateOrganizerEvent(t *testing.T) {
 	if _, err := service.ValidateCreateOrganizerEvent(dupZones); !errors.Is(err, service.ErrInvalidZones) {
 		t.Fatalf("expected ErrInvalidZones for duplicate code, got %v", err)
 	}
+
+	dataImg := validReq
+	dataImg.ImageURL = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/"
+	if _, err := service.ValidateCreateOrganizerEvent(dataImg); err != nil {
+		t.Fatalf("expected attached raster data URL to be accepted, got %v", err)
+	}
+
+	svgImg := validReq
+	svgImg.ImageURL = "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
+	if _, err := service.ValidateCreateOrganizerEvent(svgImg); !errors.Is(err, service.ErrInvalidEventPayload) {
+		t.Fatalf("expected SVG data URL to be rejected with ErrInvalidEventPayload, got %v", err)
+	}
 }

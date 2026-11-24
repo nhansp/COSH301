@@ -449,6 +449,11 @@ func ValidateCreateOrganizerEvent(req CreateOrganizerEventRequest) (*validatedCr
 		genre = "Concert"
 	}
 
+	imageURL := strings.TrimSpace(req.ImageURL)
+	if !isValidEventImageURL(imageURL) {
+		return nil, ErrInvalidEventPayload
+	}
+
 	return &validatedCreateEvent{
 		Name:               name,
 		Description:        strings.TrimSpace(req.Description),
@@ -456,7 +461,7 @@ func ValidateCreateOrganizerEvent(req CreateOrganizerEventRequest) (*validatedCr
 		City:               city,
 		VenueName:          venueName,
 		VenueAddress:       strings.TrimSpace(req.VenueAddress),
-		ImageURL:           strings.TrimSpace(req.ImageURL),
+		ImageURL:           imageURL,
 		ImageCredit:        strings.TrimSpace(req.ImageCredit),
 		StartsAt:           startsAt,
 		EndsAt:             endsAt,
@@ -467,6 +472,33 @@ func ValidateCreateOrganizerEvent(req CreateOrganizerEventRequest) (*validatedCr
 		Zones:              zones,
 		TotalCapacity:      totalSeats,
 	}, nil
+}
+
+const maxEventImageDataBytes = 2 * 1024 * 1024 // 2 MB base64 cap for attached raster images
+
+func isValidEventImageURL(raw string) bool {
+	if raw == "" {
+		return true
+	}
+	if len(raw) > maxEventImageDataBytes {
+		return false
+	}
+	lower := strings.ToLower(raw)
+	if strings.HasPrefix(lower, "https://") || strings.HasPrefix(lower, "http://") || strings.HasPrefix(raw, "/") {
+		return true
+	}
+	for _, prefix := range []string{
+		"data:image/jpeg;base64,",
+		"data:image/jpg;base64,",
+		"data:image/png;base64,",
+		"data:image/webp;base64,",
+		"data:image/gif;base64,",
+	} {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // OrganizerService lets organizers manage their events, layouts, and zone prices (FR-08).

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowDown,
@@ -6,7 +6,9 @@ import {
   CalendarDays,
   CheckCircle2,
   Copy,
+  ImagePlus,
   Layers,
+  Paperclip,
   Plus,
   Sparkles,
   Trash2,
@@ -442,6 +444,62 @@ function toLocalISOOffset(datetimeLocal: string): string {
   return `${datetimeLocal}:00+07:00`;
 }
 
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+async function readAndOptimizeImage(file: File): Promise<{ dataUrl: string; sizeKb: number }> {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    throw new Error('Chỉ hỗ trợ ảnh định dạng JPG, PNG, WebP hoặc GIF.');
+  }
+  if (file.size > MAX_SOURCE_IMAGE_BYTES) {
+    throw new Error('Ảnh quá lớn (tối đa 10 MB). Vui lòng chọn tệp nhỏ hơn.');
+  }
+
+  const rawDataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => (typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Không thể đọc tệp ảnh.')));
+    reader.onerror = () => reject(new Error('Không thể đọc tệp ảnh.'));
+    reader.readAsDataURL(file);
+  });
+
+  // Preserve animated GIFs directly if already under 1.2 MB.
+  if (file.type === 'image/gif' && rawDataUrl.length < 1_500_000) {
+    return { dataUrl: rawDataUrl, sizeKb: Math.max(1, Math.round((rawDataUrl.length * 0.75) / 1024)) };
+  }
+
+  // Resize & compress onto an offscreen canvas so persisted banners stay crisp and fast to load.
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('Tệp ảnh không hợp lệ hoặc bị hỏng.'));
+    el.src = rawDataUrl;
+  });
+
+  const maxW = 1400;
+  const maxH = 900;
+  const scale = Math.min(1, maxW / Math.max(1, img.width), maxH / Math.max(1, img.height));
+  const width = Math.max(1, Math.round(img.width * scale));
+  const height = Math.max(1, Math.round(img.height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return { dataUrl: rawDataUrl, sizeKb: Math.max(1, Math.round((rawDataUrl.length * 0.75) / 1024)) };
+  }
+  ctx.drawImage(img, 0, 0, width, height);
+
+  let dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  if (dataUrl.length > 1_600_000) {
+    dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  }
+  if (dataUrl.length > 1_950_000) {
+    throw new Error('Ảnh sau nén vẫn vượt quá 1.5 MB. Hãy chọn ảnh có độ phân giải nhỏ hơn.');
+  }
+  return { dataUrl, sizeKb: Math.max(1, Math.round((dataUrl.length * 0.75) / 1024)) };
+}
+
 interface EventCreatorStudioProps {
   onClose?: () => void;
   onCreated: (created: CreatedOrganizerEvent) => void;
@@ -465,7 +523,34 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
   const [startsAt, setStartsAt] = useState(initialDates.startsAt);
   const [endsAt, setEndsAt] = useState(initialDates.endsAt);
   const [imageUrl, setImageUrl] = useState(BANNER_PRESETS[0].url);
+  const [attachedFile, setAttachedFile] = useState<{ name: string; sizeKb: number } | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState('');
+
+  const handleAttachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImageError(null);
+    setIsProcessingImage(true);
+    try {
+      const optimized = await readAndOptimizeImage(file);
+      setImageUrl(optimized.dataUrl);
+      setAttachedFile({ name: file.name, sizeKb: optimized.sizeKb });
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'Không thể xử lý tệp ảnh.');
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
+  const handleSelectPresetOrUrl = (url: string) => {
+    setImageUrl(url);
+    setAttachedFile(null);
+    setImageError(null);
+  };
   const [maxTicketsPerUser, setMaxTicketsPerUser] = useState(4);
   const [status, setStatus] = useState<'ON_SALE' | 'DRAFT'>('ON_SALE');
 
@@ -906,25 +991,88 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
                   />
                 </label>
 
-                <div className="sm:col-span-2 space-y-2">
-                  <label className="block">
-                    <span className="text-xs font-semibold text-kumo-default">Ảnh bìa sự kiện (URL)</span>
+                <div className="sm:col-span-2 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-kumo-default">Ảnh bìa sự kiện</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleAttachFile}
+                        className="sr-only"
+                      />
+                      <button
+                        type="button"
+                        disabled={isProcessingImage}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="btn btn-secondary btn-sm h-8 text-xs"
+                      >
+                        <Paperclip className="size-3.5 text-violet-ink" />
+                        <span>{isProcessingImage ? 'Đang xử lý ảnh...' : 'Đính kèm ảnh'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {attachedFile ? (
+                    <div className="flex flex-wrap items-center gap-3 rounded-xl bg-kumo-recessed/70 p-2.5 ring ring-violet-ink/60">
+                      <img
+                        src={imageUrl}
+                        alt={attachedFile.name}
+                        className="h-16 w-28 shrink-0 rounded-lg object-cover ring ring-kumo-line"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-kumo-strong">{attachedFile.name}</p>
+                        <p className="mt-0.5 text-[11px] text-kumo-subtle tabular-nums">
+                          Ảnh đã đính kèm · ~{attachedFile.sizeKb} KB (tự động tối ưu HD)
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="btn btn-secondary btn-sm h-8 text-xs"
+                        >
+                          <ImagePlus className="size-3.5" />
+                          <span>Đổi ảnh</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPresetOrUrl(BANNER_PRESETS[0].url)}
+                          aria-label="Xóa ảnh đính kèm"
+                          className="rounded-lg p-1.5 text-kumo-subtle transition-colors hover:bg-kumo-danger-tint hover:text-kumo-danger"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                     <input
                       type="url"
                       value={imageUrl}
-                      onChange={e => setImageUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="field mt-1"
+                      onChange={e => handleSelectPresetOrUrl(e.target.value)}
+                      placeholder="Hoặc dán URL ảnh https://..."
+                      className="field"
                     />
-                  </label>
+                  )}
+
+                  {imageError && (
+                    <p role="alert" className="flex items-center gap-1.5 rounded-lg bg-kumo-danger-tint px-3 py-1.5 text-xs text-kumo-danger">
+                      <AlertCircle className="size-3.5 shrink-0" />
+                      <span>{imageError}</span>
+                    </p>
+                  )}
+
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {BANNER_PRESETS.map(p => (
                       <button
                         key={p.url}
                         type="button"
-                        onClick={() => setImageUrl(p.url)}
+                        onClick={() => handleSelectPresetOrUrl(p.url)}
                         className={`group overflow-hidden rounded-lg text-left transition-all ${
-                          imageUrl === p.url ? 'ring-2 ring-violet-ink' : 'ring ring-kumo-line hover:ring-kumo-interact'
+                          !attachedFile && imageUrl === p.url
+                            ? 'ring-2 ring-violet-ink'
+                            : 'ring ring-kumo-line hover:ring-kumo-interact'
                         }`}
                       >
                         <img src={p.url} alt={p.label} className="h-12 w-full object-cover" />
