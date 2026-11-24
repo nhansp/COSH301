@@ -1,57 +1,72 @@
 # Sơ đồ thực thể liên kết (ERD) — Cơ sở dữ liệu PostgreSQL
 
-Tài liệu này đặc tả cấu trúc cơ sở dữ liệu PostgreSQL của hệ thống EventTicketing, phục vụ toàn bộ các yêu cầu từ Sprint 2 đến Sprint 5.
+Tài liệu này đặc tả cấu trúc cơ sở dữ liệu PostgreSQL của hệ thống EventTicketing V2, phục vụ toàn bộ các yêu cầu từ Sprint 2 đến Sprint 5.
+
+Schema V2 có **24 bảng**, lấy từ `backend/internal/store/migrations/`:
+- `00001_initial_schema.sql`: 23 bảng;
+- `00005_otp_app_deliveries.sql`: bảng `otp_app_deliveries`;
+- `00006_payments.sql`: chỉ thêm cột và chỉ mục cho `orders`, `order_items`, `payments`.
+
+Thiết kế Sprint 1 trên MySQL có 26 bảng. Mục 2 liệt kê bảng nào bị bỏ, bảng nào thêm.
+Mỗi bảng ứng với một Entity trong [`class-diagram.md`](class-diagram.md), và mỗi kho dữ liệu của [`dfd.md`](dfd.md) gồm một hoặc vài bảng.
+
+Các bảng thêm sau này nằm ngoài 24 bảng trên:
+- `feedback_responses` (migration `00009`) lưu phản hồi của người dùng thử. Bảng không có khóa ngoại, xem mục 4.
+- Migration `00007` (định giá động) và `00008` (trợ lý AI) có tài liệu riêng: [`dynamic-pricing.md`](dynamic-pricing.md) và [`assistant.md`](assistant.md).
 
 ## 1. Sơ đồ ERD tổng thể
 
 ```mermaid
 erDiagram
-    users ||--o{ sessions : "duy tri"
-    users ||--o{ events : "to chuc"
-    users ||--o{ seat_holds : "giu"
-    users ||--o{ orders : "dat"
-    users ||--o{ tickets : "so huu"
-    users ||--o{ queue_entries : "xep hang"
-    users ||--o{ price_changes : "thuc hien"
-    users ||--o{ price_suggestions : "duyet"
-    users ||--o{ promotions : "phe duyet"
-    users ||--o{ promotion_usages : "su dung"
-    users ||--o{ audit_logs : "tac dong"
+    users ||--o{ sessions : "duy trì"
+    users ||--o{ events : "tổ chức"
+    users ||--o{ seat_holds : "giữ"
+    users ||--o{ orders : "đặt"
+    users ||--o{ tickets : "sở hữu"
+    users ||--o{ queue_entries : "xếp hàng"
+    users ||--o{ price_changes : "thực hiện"
+    users ||--o{ price_suggestions : "duyệt"
+    users ||--o{ promotions : "phê duyệt"
+    users ||--o{ promotion_usages : "sử dụng"
+    users ||--o{ audit_logs : "tác động"
 
     venues ||--o{ venue_zones : "chia khu"
-    venues ||--o{ events : "dia diem to chuc"
-    venues ||--o{ gate_devices : "lap dat"
+    venues ||--o{ events : "địa điểm tổ chức"
+    venues ||--o{ gate_devices : "lắp đặt"
 
-    venue_zones ||--o{ seats : "chua"
-    venue_zones ||--o{ event_zones : "ap gia"
-    venue_zones ||--o{ price_changes : "ghi nhan gia"
-    venue_zones ||--o{ price_suggestions : "de xuat gia"
+    venue_zones ||--o{ seats : "chứa"
+    venue_zones ||--o{ event_zones : "áp giá"
+    venue_zones ||--o{ price_changes : "ghi nhận giá"
+    venue_zones ||--o{ price_suggestions : "đề xuất giá"
 
-    events ||--o{ event_seats : "phat hanh ghe"
-    events ||--o{ event_zones : "cau hinh vung"
-    events ||--o{ queue_entries : "hang cho"
-    events ||--o{ seat_holds : "khoa ghe"
-    events ||--o{ orders : "tao don"
-    events ||--o{ tickets : "ve ban"
-    events ||--o{ checkins : "soat ve"
-    events ||--o{ price_changes : "doi gia"
-    events ||--o{ price_suggestions : "de xuat"
-    events ||--o{ promotions : "khuyen mai"
-    events ||--o{ sales_snapshots : "thong ke"
-    events ||--o{ audit_logs : "nhat ky"
+    events ||--o{ event_seats : "phát hành ghế"
+    events ||--o{ event_zones : "cấu hình vùng"
+    events ||--o{ queue_entries : "hàng chờ"
+    events ||--o{ seat_holds : "khóa ghế"
+    events ||--o{ orders : "tạo đơn"
+    events ||--o{ tickets : "vé bán"
+    events ||--o{ checkins : "soát vé"
+    events ||--o{ price_changes : "đổi giá"
+    events ||--o{ price_suggestions : "đề xuất"
+    events ||--o{ promotions : "khuyến mãi"
+    events ||--o{ sales_snapshots : "thống kê"
+    events ||--o{ audit_logs : "nhật ký"
 
-    seats ||--o{ event_seats : "tham gia su kien"
-    seats ||--o{ seat_holds : "khoa tam"
-    seats ||--o{ order_items : "dong don hang"
+    seats ||--o{ event_seats : "tham gia sự kiện"
+    seats ||--o{ seat_holds : "khóa tạm"
+    seats ||--o{ order_items : "dòng đơn hàng"
     seats ||--o{ tickets : "phat hanh"
 
-    orders ||--o{ order_items : "gom co"
-    orders ||--o{ payments : "thanh toan"
+    orders ||--o{ order_items : "gồm có"
+    orders ||--o{ payments : "thanh toán"
     orders ||--o{ tickets : "sinh ra"
-    orders ||--o{ promotion_usages : "ap dung ma"
+    orders ||--o{ promotion_usages : "áp dụng mã"
 
-    tickets ||--o{ checkins : "kiem tra"
-    gate_devices ||--o{ checkins : "thuc hien quet"
+    seat_holds ||--o{ order_items : "giữ chỗ cho"
+    otp_verifications ||--o| otp_app_deliveries : "giao mã cho app"
+
+    tickets ||--o{ checkins : "kiểm tra"
+    gate_devices ||--o{ checkins : "thực hiện quét"
 
     users {
         uuid id PK
@@ -77,6 +92,13 @@ erDiagram
         timestamptz verified_at
         int attempt_count
         timestamptz created_at
+    }
+
+    otp_app_deliveries {
+        uuid otp_id PK
+        varchar destination
+        char code
+        timestamptz expires_at
     }
 
     sessions {
@@ -128,6 +150,7 @@ erDiagram
         text description
         varchar genre
         text image_url
+        text image_credit
         varchar city
         timestamptz starts_at
         timestamptz ends_at
@@ -193,6 +216,7 @@ erDiagram
         enum status
         numeric total_amount
         numeric discount_amount
+        numeric service_fee
         numeric final_amount
         varchar currency
         varchar payment_method
@@ -207,6 +231,7 @@ erDiagram
         uuid id PK
         uuid order_id FK
         uuid seat_id FK
+        uuid hold_id FK
         numeric price
         timestamptz created_at
     }
@@ -220,6 +245,8 @@ erDiagram
         numeric amount
         enum status
         jsonb raw_response
+        boolean refund_required
+        text refund_reason
         timestamptz created_at
         timestamptz updated_at
     }
@@ -341,6 +368,30 @@ erDiagram
 
 ## 2. Điểm khác biệt so với ERD Sprint 1
 
+Sprint 1 thiết kế 26 bảng. Bản V2 có 24 bảng, trong đó 19 bảng giữ nguyên tên.
+
+Bảng của Sprint 1 không còn trong V2:
+
+| Bảng Sprint 1 | Lý do |
+|---|---|
+| `payment_transactions` | Gộp vào `payments`, mỗi lần thanh toán là một dòng |
+| `payment_reconciliations` | Đối soát dùng `payments.status` và `payments.refund_required` |
+| `refunds` | Chưa có API hoàn tiền. Đơn cần hoàn được đánh dấu `refund_required` trong `payments` |
+| `ticket_qr_tokens` | Dùng cột `tickets.qr_secret`, QR sinh từ khóa này |
+| `ticket_deliveries` | Chưa gửi vé qua email (cờ `ticket_email`) |
+| `bot_challenges` | Chưa kiểm tra Turnstile (cờ `bot_check`) |
+| `zone_price_rules` | Giá khu vực nằm trong `event_zones` |
+
+Bảng mới trong V2 so với Sprint 1:
+
+| Bảng | Vai trò |
+|---|---|
+| `sessions` | Phiên đăng nhập trên máy chủ |
+| `event_zones` | Giá cơ bản, giá sàn, giá trần của từng khu vực trong một sự kiện |
+| `payments` | Mỗi lần thanh toán qua VNPay |
+| `price_suggestions` | Đề xuất giá động chờ Ban Tổ chức duyệt |
+| `otp_app_deliveries` | Giữ mã OTP đến khi app Android lấy (migration `00005`) |
+
 Hệ thống chuyển từ thiết kế MySQL ban đầu sang PostgreSQL 18 nhằm tận dụng cơ chế khóa mức dòng, giao dịch ACID và phát thông báo thời gian thực.
 
 | Bảng | Thay đổi so với Sprint 1 | Lý do nghiệp vụ & kỹ thuật |
@@ -365,7 +416,12 @@ Hệ thống chuyển từ thiết kế MySQL ban đầu sang PostgreSQL 18 nh�
 | `price_suggestions` | Bổ sung cột `updated_at`, ràng buộc `status` thuộc `PENDING`, `APPROVED`, `REJECTED`, `EXPIRED` và chỉ mục duy nhất từng phần `WHERE status = 'PENDING'` | Mỗi khu vực có tối đa một đề xuất mở, được làm mới tại chỗ ở mỗi lần phân tích (FR-22, migration `00007`) |
 | `event_zones` | Cột `is_dynamic_pricing_enabled` mặc định `TRUE` | Định giá động là mặc định, BTC tắt riêng từng khu vực khi cần (migration `00007`) |
 | `seat_holds`, `tickets` | Bổ sung chỉ mục `(event_id, created_at)` và `(event_id, issued_at)` | Đếm nhanh số ghế bị giữ hoặc bán trong cửa sổ 15 phút của định giá động |
-| `price_changes`, `audit_logs` | Bổ sung trigger chặn `UPDATE` và `DELETE` | Đảm bảo tính bất biến tuyệt đối của nhật ký thay đổi giá và nhật ký kiểm toán hệ thống (NFR-12) |
+| `price_changes`, `audit_logs` | Bổ sung trigger chặn `UPDATE` và `DELETE`, và trigger chặn `TRUNCATE` (migration `00003`) | Đảm bảo tính bất biến tuyệt đối của nhật ký thay đổi giá và nhật ký kiểm toán hệ thống (NFR-12) |
+| `events` | Bổ sung cột `image_credit` (migration `00002`) | Ghi tên tác giả ảnh theo giấy phép Creative Commons |
+| `orders` | Bổ sung cột `service_fee` và ràng buộc `chk_orders_final_amount` (migration `00006`) | `final_amount = total_amount - discount_amount + service_fee`, phí dịch vụ 3% |
+| `order_items` | Bổ sung cột `hold_id` (migration `00006`) | Khi IPN thành công, chỉ chuyển đúng các lượt giữ đã đặt cho đơn sang `CONVERTED` |
+| `payments` | Bổ sung cột `refund_required`, `refund_reason` (migration `00006`) | Đánh dấu giao dịch đã thu tiền nhưng không phát hành được vé, cần hoàn tiền thủ công |
+| `otp_app_deliveries` | Bảng mới (migration `00005`) | Giao mã OTP của số điện thoại cho app Android; dòng bị xóa khi app lấy mã hoặc hết hạn |
 
 ---
 
@@ -397,3 +453,37 @@ Hệ thống chuyển từ thiết kế MySQL ban đầu sang PostgreSQL 18 nh�
    CREATE INDEX idx_tickets_user_event 
    ON tickets (user_id, event_id, status);
    ```
+5. **Tìm đơn chờ thanh toán đã quá hạn (migration `00006`):**
+   ```sql
+   CREATE INDEX idx_orders_pending_expiry
+   ON orders (expires_at)
+   WHERE status = 'PENDING';
+   ```
+6. **Liệt kê giao dịch cần hoàn tiền (migration `00006`):**
+   ```sql
+   CREATE INDEX idx_payments_refund_required
+   ON payments (created_at)
+   WHERE refund_required;
+   ```
+7. **Tra mã OTP chờ app lấy và dọn mã hết hạn (migration `00005`):**
+   ```sql
+   CREATE INDEX idx_otp_app_deliveries_destination ON otp_app_deliveries (destination);
+   CREATE INDEX idx_otp_app_deliveries_expires_at ON otp_app_deliveries (expires_at);
+   ```
+
+---
+
+## 4. Bảng khảo sát người dùng thử (migration `00009`)
+
+Bảng `feedback_responses` lưu mỗi lượt gửi của trang `/khao-sat`, phục vụ báo cáo kiểm thử ở [`testing.md`](testing.md).
+Bảng đứng riêng, không có khóa ngoại và không lưu IP, nên người thử gửi ẩn danh được.
+
+| Cột | Ý nghĩa |
+|---|---|
+| `tester_role` | `AUDIENCE` hoặc `ORGANIZER` |
+| `tester_name`, `device` | Tên và thiết bị, có thể để trống |
+| `sus_q1` … `sus_q10` | Mười câu SUS, mỗi câu từ 1 đến 5 |
+| `task_login`, `task_hold`, `task_pay`, `task_ticket` | Bước đã hoàn thành |
+| `time_login`, `time_hold`, `time_pay`, `time_ticket` | Số giây, từ 0 đến 3600, có thể để trống |
+| `comment` | Góp ý, tối đa 2000 ký tự |
+| `created_at` | Thời điểm gửi |

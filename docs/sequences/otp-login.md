@@ -90,14 +90,18 @@ sequenceDiagram
     S->>Q: GetUserByEmail / GetUserByPhone(dest)
     Q-->>S: User hoặc không có
 
-    alt OTP_DEMO=true và không phải tài khoản nhân sự
+    alt OTP_APP_DELIVERY=true và kênh là SMS
+        S->>Q: DeleteOTPAppDeliveries(dest), CreateOTPAppDelivery(otp, dest, code)
+        S->>S: Báo cho app đang nghe số này (xem sequences/otp-app.md)
+        S-->>H: OTPIssue{dest, delivery: "app"}
+    else OTP_DEMO=true và không phải tài khoản nhân sự
         S-->>H: OTPIssue{dest, demoCode}
     else Còn lại
         S->>S: Ghi mã vào log của api
         S-->>H: OTPIssue{dest}
     end
     deactivate S
-    H-->>KG: 200 {status: "sent", destination, demoCode?}
+    H-->>KG: 200 {status: "sent", destination, demoCode?, delivery?}
     deactivate H
     Note over KG: Chuyển sang ô nhập 6 số
 ```
@@ -212,7 +216,7 @@ sequenceDiagram
 | `otp/request`, `otp/verify` | Body không phải JSON hoặc thiếu trường | 400 | `invalid_payload` |
 | `otp/request` | `destination` sai định dạng | 400 | `invalid_destination` |
 | `otp/request` | Xin lại trước 60 giây, hoặc quá 5 mã/giờ | 429 | `otp_rate_limited` |
-| `otp/request` | Thành công | 200 | — |
+| `otp/request` | Thành công. Phản hồi có `demoCode` hoặc `delivery: "app"` tùy cách giao mã | 200 | — |
 | `otp/verify` | Mã sai, hết hạn, đã dùng, hoặc đã nhập sai 5 lần | 401 | `otp_invalid` |
 | `otp/verify` | Tài khoản bị khóa hoặc vô hiệu | 403 | `account_inactive` |
 | `otp/verify` | Thành công, đặt cookie phiên | 200 | — |
@@ -226,6 +230,9 @@ Mục 4.1 của thiết kế có hai bước mà code hiện tại chưa có:
 - Kiểm tra Turnstile trước khi gửi mã.
   Bước này thuộc cờ `bot_check` (FR-10, Sprint 3).
 - Gửi mã qua máy chủ SMTP hoặc app SMS Gateway.
-  Hiện mã chỉ hiện trên màn hình (chế độ `OTP_DEMO`) hoặc ghi vào log của api.
+  Hiện có ba cách giao mã:
+  - mã của số điện thoại giao cho app Android `COSH301 OTP` khi bật `OTP_APP_DELIVERY` ([`otp-app.md`](../otp-app.md), [`otp-app.md` (sơ đồ tuần tự)](otp-app.md));
+  - mã của email hiện trên màn hình ở chế độ `OTP_DEMO`, chỉ với tài khoản khách hàng;
+  - còn lại, mã ghi vào log của api, người vận hành chuyển cho người dùng. Tài khoản nhân sự (`ORGANIZER`, `CEO`, `GATE_STAFF`, `ADMIN`) luôn đi theo cách này khi gửi qua email.
 
-Khi hai bước này được làm, sơ đồ ở mục 3 cần thêm đối tượng `Cloudflare Turnstile` và bộ gửi thông báo.
+Khi có SMTP và Turnstile, sơ đồ ở mục 3 cần thêm đối tượng `Cloudflare Turnstile` và bộ gửi thư.

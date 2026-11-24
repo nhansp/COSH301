@@ -4,6 +4,7 @@ import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2, RefreshCw } from
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
+import { FeedbackResults } from '../components/FeedbackResults';
 import { useFeatures } from '../context/FeatureContext';
 import { formatPrice } from '../services/eventService';
 import {
@@ -404,6 +405,8 @@ export const OrganizerPage: React.FC = () => {
             )}
           </section>
         </div>
+
+        {isEnabled('user_testing') && <FeedbackResults />}
       </main>
       <Footer />
     </PageShell>

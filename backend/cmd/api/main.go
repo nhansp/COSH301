@@ -100,6 +100,7 @@ func main() {
 		Payments:     paymentService,
 		Assistant: service.NewAssistantService(queries, cfg.Features,
 			service.NewLLMClient(cfg.LLM.BaseURL, cfg.LLM.Model, cfg.LLM.APIKey)),
+		Feedback: service.NewFeedbackService(queries),
 	})
 
 	server := &http.Server{

@@ -28,6 +28,9 @@ const (
 	FlagDynamicPricing   = "dynamic_pricing"
 	FlagPromoSuggestions = "promo_suggestions"
 	FlagChatbot          = "chatbot"
+	// FlagUserTesting turns on the /khao-sat usability survey. It supports the
+	// user-testing report and is not one of the product features in the design.
+	FlagUserTesting = "user_testing"
 )
 
 var allFlags = []string{
@@ -51,9 +54,11 @@ var allFlags = []string{
 	FlagDynamicPricing,
 	FlagPromoSuggestions,
 	FlagChatbot,
+	FlagUserTesting,
 }
 
 var sprint2Flags = map[string]bool{
+	FlagUserTesting:      true,
 	FlagOtpLogin:         true,
 	FlagSeatMapRealtime:  true,
 	FlagSeatHold:         true,
@@ -64,6 +69,7 @@ var sprint2Flags = map[string]bool{
 }
 
 var sprint3Flags = map[string]bool{
+	FlagUserTesting:      true,
 	FlagOtpLogin:         true,
 	FlagSeatMapRealtime:  true,
 	FlagSeatHold:         true,
@@ -78,6 +84,7 @@ var sprint3Flags = map[string]bool{
 }
 
 var sprint4Flags = map[string]bool{
+	FlagUserTesting:      true,
 	FlagOtpLogin:         true,
 	FlagSeatMapRealtime:  true,
 	FlagSeatHold:         true,

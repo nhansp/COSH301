@@ -9,13 +9,15 @@ Trạng thái:
 - **Chưa làm**: chưa có code.
 
 Cờ của từng profile lấy từ `backend/internal/config/features.go`.
-Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`, `dynamic_pricing`, `chatbot`.
+Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`, `dynamic_pricing`, `chatbot`, và cờ hỗ trợ `user_testing`.
+Bản chạy trực tuyến bật thêm `payments` bằng `FEATURE_PAYMENTS=on`, và dùng `OTP_APP_DELIVERY=true` để giao mã OTP cho app Android.
+Cột "Sprint" là Sprint dự kiến theo thiết kế. Cột "Trạng thái" là hiện trạng của code V2.
 
 ## 1. Yêu cầu chức năng
 
 | Mã | Yêu cầu | Cờ | Sprint | Trạng thái | Ghi chú |
 |---|---|---|:---:|:---:|---|
-| FR-01 | Đăng nhập bằng OTP qua SMS hoặc email | `otp_login` | 2 | Đang làm | Tạo, kiểm tra mã và tạo tài khoản đã xong. Chưa gửi mã qua SMTP hoặc SMS Gateway: mã hiện trên màn hình (`OTP_DEMO`) hoặc ghi vào log |
+| FR-01 | Đăng nhập bằng OTP qua SMS hoặc email | `otp_login` | 2 | Đang làm | Tạo, kiểm tra mã và tạo tài khoản đã xong. Mã của số điện thoại giao cho app Android `COSH301 OTP` (`OTP_APP_DELIVERY`). Mã của email hiện trên màn hình (`OTP_DEMO`) hoặc ghi vào log. Chưa có SMTP và SMS Gateway |
 | FR-02 | Danh sách sự kiện, lọc theo thể loại, thành phố, ngày | Luôn bật | 2 | Xong | `GET /api/events`, trang chủ |
 | FR-03 | Sơ đồ ghế 4 màu | `seat_map_realtime` | 2 | Xong | Xanh: trống. Xám: đã bán. Vàng: người khác giữ. Tím: mình giữ |
 | FR-04 | Phiên đăng nhập trên server, đăng xuất | `otp_login` | 2 | Xong | Bảng `sessions`, cookie `session_token`, `GET /api/auth/me` |
@@ -26,10 +28,10 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-09 | Phòng chờ ảo | `waiting_room` | 3 | Chưa làm | Đã có bảng `queue_entries` |
 | FR-10 | Chặn bot bằng Cloudflare Turnstile | `bot_check` | 3 | Chưa làm | |
 | FR-11 | Giới hạn vé mỗi tài khoản | `ticket_limit` | 3 | Đang làm | api đã khóa theo (người dùng, sự kiện) và đếm ghế giữ cộng vé đã mua. Chưa kiểm thử tải theo mục 8 của thiết kế |
-| FR-12 | QR đổi mỗi 30 giây | `rotating_qr` | 3 | Chưa làm | Đã có cột `tickets.qr_secret` |
-| FR-13 | Thanh toán MoMo, VNPAY | `payments` | 4 | Chưa làm | |
+| FR-12 | QR đổi mỗi 30 giây | `rotating_qr` | 3 | Chưa làm | Đã có cột `tickets.qr_secret`. Đã phát vé và hiện danh sách vé (`GET /api/tickets`), chưa sinh QR |
+| FR-13 | Thanh toán MoMo, VNPAY | `payments` | 4 | Đang làm | VNPay sandbox đã chạy: tạo thanh toán, IPN, trang return, phát vé ([`payments.md`](payments.md)). Chưa có MoMo. Cờ tắt ở `sprint2`, bật bằng `FEATURE_PAYMENTS=on` |
 | FR-14 | Gửi vé qua email | `ticket_email` | 4 | Chưa làm | |
-| FR-15 | Đối soát, hoàn tiền | `reconciliation` | 4 | Chưa làm | |
+| FR-15 | Đối soát, hoàn tiền | `reconciliation` | 4 | Đang làm | Đã đánh dấu giao dịch cần hoàn (`payments.refund_required`, `refund_reason`) khi tiền về mà không phát được vé. Chưa có API hoàn tiền và truy vấn giao dịch. Hoàn tiền làm thủ công |
 | FR-16 | Quét vé tại cổng | `gate_checkin` | 5 | Chưa làm | |
 | FR-17 | Chống dùng vé hai lần | `gate_checkin` | 5 | Chưa làm | |
 | FR-18 | Quét vé khi mất mạng | `offline_checkin` | 5 | Chưa làm | |
@@ -47,7 +49,7 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | NFR-01 | Hiệu năng | ≥ 50.000 người dùng đồng thời lúc mở bán, p95 trang chờ và chọn ghế ≤ 2 giây | — | Chưa làm | Chưa chạy k6 |
 | NFR-02 | Sẵn sàng | Uptime ≥ 99,9% trong giờ mở bán, RTO ≤ 5 phút | — | Đang làm | Có healthcheck và tự khởi động lại container. Chưa đo |
 | NFR-03 | Toàn vẹn dữ liệu | 0 trường hợp bán trùng, giao dịch ghế đạt ACID | `seat_hold` | Xong | Test `TestHoldSeat_ConcurrentHoldersGetOneSeat` |
-| NFR-04 | Nhất quán thanh toán | 100% giao dịch lỗi được xử lý trong ≤ 15 phút | `reconciliation` | Chưa làm | |
+| NFR-04 | Nhất quán thanh toán | 100% giao dịch lỗi được xử lý trong ≤ 15 phút | `reconciliation` | Đang làm | IPN xử lý một lần cho mỗi giao dịch (`uq_payment_provider_txn`, khóa dòng). Giao dịch lỗi được đánh dấu `refund_required`. Chưa có tác vụ đối soát chủ động nên chưa đo được 15 phút |
 | NFR-05 | Tốc độ soát vé | Xác thực 1 vé ≤ 1 giây, cả online và offline | `gate_checkin` | Chưa làm | |
 | NFR-06 | Soát vé khi mất mạng | Chạy offline ≥ 4 giờ, đồng bộ ≤ 2 phút khi có mạng | `offline_checkin` | Chưa làm | |
 | NFR-07 | Chống bot | Bot lọt qua < 1% | `bot_check` | Đang làm | Đã giới hạn OTP theo IP và theo SĐT/email. Chưa có Turnstile |
@@ -56,7 +58,7 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | NFR-10 | Sơ đồ ghế trực quan | Trạng thái ghế tới trình duyệt ≤ 3 giây, màu thống nhất | `seat_map_realtime` | Xong | Đẩy qua SSE ngay sau `COMMIT`. Ghế hết hạn trễ tối đa 5 giây do `HoldReaper` |
 | NFR-11 | Dashboard | Số liệu lên dashboard của CEO ≤ 60 giây | `ceo_dashboard` | Chưa làm | |
 | NFR-12 | Kiểm toán | 100% thay đổi giá và giao dịch ghi log không sửa được | `price_log` | Đang làm | Trigger chặn sửa và xóa trên `price_changes`, `audit_logs`. Chưa ghi log giao dịch |
-| NFR-13 | Tuân thủ | PCI-DSS cho thanh toán, Nghị định 13/2023/NĐ-CP | — | Đang làm | OTP và token phiên chỉ lưu SHA-256. Chưa có thanh toán |
+| NFR-13 | Tuân thủ | PCI-DSS cho thanh toán, Nghị định 13/2023/NĐ-CP | — | Đang làm | OTP và token phiên chỉ lưu SHA-256. Hệ thống không nhận và không lưu số thẻ, khách nhập thẻ trên trang VNPay. Khóa VNPay chỉ nằm trong `.env`, không ghi log. `raw_response` không giữ chữ ký. Mã OTP chờ app lấy lưu dạng rõ trong `otp_app_deliveries` đến khi app lấy hoặc hết hạn |
 
 ## 3. Không làm
 
@@ -72,10 +74,11 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 
 | Yêu cầu | Code | Tài liệu |
 |---|---|---|
-| FR-01, FR-04 | `service/auth_service.go`, `httpapi/auth.go` | [`sequences/otp-login.md`](sequences/otp-login.md) |
+| FR-01, FR-04 | `service/auth_service.go`, `service/otp_app.go`, `httpapi/auth.go`, `httpapi/otp_app.go` | [`sequences/otp-login.md`](sequences/otp-login.md), [`sequences/otp-app.md`](sequences/otp-app.md), [`otp-app.md`](otp-app.md) |
 | FR-03, FR-05, NFR-10 | `service/realtime_hub.go`, `httpapi/stream.go`, `frontend/src/components/SeatMap.tsx` | [`architecture.md`](architecture.md) |
 | FR-06 | `service/seat_service.go`, `service/hold_reaper.go` | [`sequences/hold.md`](sequences/hold.md), [`checks/fr-06.md`](checks/fr-06.md) |
 | FR-07, NFR-03 | `service/seat_service.go`, `store/queries/seats.sql` | [`sequences/double-booking.md`](sequences/double-booking.md) |
+| FR-13, FR-15 | `service/payment_service.go`, `httpapi/payments.go`, `vnpay/vnpay.go` | [`payments.md`](payments.md), [`sequences/payment.md`](sequences/payment.md) |
 | FR-08 | `service/organizer_service.go`, `httpapi/organizer.go` | [`api/openapi.yaml`](api/openapi.yaml) |
 | FR-22 | — | [`dynamic-pricing.md`](dynamic-pricing.md) |
 
@@ -83,5 +86,16 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 
 Endpoint hỗ trợ, không gắn với một FR riêng:
 - `POST /api/auth/demo-login` và `POST /api/tickets/reset-demo` chỉ có khi `APP_ENV` khác `production`. Demo-login tạo một tài khoản `CUSTOMER` mới mỗi lần gọi.
-- `POST /api/tickets/cancel` và `GET /api/tickets/cancelled` nằm sau cờ `payments`, nên đang tắt ở `sprint2`.
+- `POST /api/tickets/cancel`, `GET /api/tickets/cancelled` và `GET /api/tickets` nằm sau cờ `payments`, nên chỉ chạy khi bật `FEATURE_PAYMENTS=on`.
 - `GET /api/tickets/audit-logs` nằm sau cờ `organizer_console`.
+
+## 5. Cờ hỗ trợ ngoài thiết kế
+
+| Cờ | Sprint | Nội dung | Tài liệu |
+|---|:---:|---|---|
+| `user_testing` | 2 | Trang khảo sát `/khao-sat`, `POST /api/feedback`, kết quả cho Ban Tổ chức | [`testing.md`](testing.md) |
+
+Cờ này không có trong bảng cờ ở mục 1 của [`design/README.md`](design/README.md) và không gắn với FR hay NFR nào.
+Nhóm cần quyết định có thêm cờ vào thiết kế hay không.
+
+Định giá động (migration `00007`) và trợ lý AI (migration `00008`) có cờ và tài liệu riêng: [`dynamic-pricing.md`](dynamic-pricing.md), [`assistant.md`](assistant.md).

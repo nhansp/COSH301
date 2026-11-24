@@ -23,6 +23,7 @@ type RouterDependencies struct {
 	Tickets      *service.TicketService
 	Payments     *service.PaymentService
 	Assistant    *service.AssistantService
+	Feedback     *service.FeedbackService
 }
 
 func NewRouter(deps RouterDependencies) http.Handler {
@@ -40,6 +41,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	streamHandler := NewStreamHandler(deps.RealtimeHub, deps.EventService)
 	ticketHandler := NewTicketHandler(deps.Tickets, deps.EventService)
 	paymentHandler := NewPaymentHandler(deps.Payments, deps.EventService)
+	feedbackHandler := NewFeedbackHandler(deps.Feedback)
+	feedbackLimiter := NewRateLimiter(20, time.Hour)
 	anyRole := []store.UserRole{store.UserRoleCUSTOMER, store.UserRoleORGANIZER, store.UserRoleADMIN}
 
 	// 1. System Endpoints
@@ -122,6 +125,12 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	assistantIPLimiter := NewRateLimiter(60, time.Minute)
 	mux.HandleFunc("POST /api/assistant/chat", RequireFeature(fm, config.FlagChatbot,
 		assistantIPLimiter.Wrap(assistantHandler.HandleChat)))
+	// 10. Usability testing (user_testing): anyone submits the survey, organizers read the results.
+	mux.HandleFunc("POST /api/feedback", RequireFeature(fm, config.FlagUserTesting, feedbackLimiter.Wrap(feedbackHandler.HandleSubmit)))
+	mux.HandleFunc("GET /api/feedback/summary", RequireFeature(fm, config.FlagUserTesting,
+		RequireRole(authHandler, organizerRoles, feedbackHandler.HandleSummary)))
+	mux.HandleFunc("GET /api/feedback/export.csv", RequireFeature(fm, config.FlagUserTesting,
+		RequireRole(authHandler, organizerRoles, feedbackHandler.HandleExport)))
 
 	// Wrap with middlewares
 	handler := LoggingMiddleware(mux)

@@ -20,6 +20,9 @@ func TestFeatureManager_Profiles(t *testing.T) {
 	if !fm.IsEnabled(FlagDynamicPricing) {
 		t.Errorf("expected %s to be enabled in sprint2", FlagDynamicPricing)
 	}
+	if !fm.IsEnabled(FlagUserTesting) {
+		t.Errorf("expected %s to be enabled in sprint2", FlagUserTesting)
+	}
 	if fm.IsEnabled(FlagWaitingRoom) {
 		t.Errorf("expected %s to be disabled in sprint2", FlagWaitingRoom)
 	}

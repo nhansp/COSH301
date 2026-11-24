@@ -5,10 +5,11 @@ Tài liệu này đặc tả luồng tương tác giữa các thành phần Boun
 ## 1. Quy tắc nghiệp vụ
 
 - Mọi thao tác giữ ghế được thực hiện trong một giao dịch cơ sở dữ liệu ACID duy nhất.
-- Sử dụng `pg_advisory_xact_lock` theo cặp `(user_id, event_id)` để ngăn chặn tình trạng một tài khoản gửi đồng thời nhiều request nhằm vượt quá số lượng vé cho phép (FR-11).
+- Khi cờ `ticket_limit` bật, `HoldSeat` dùng `pg_advisory_xact_lock` theo cặp `(user_id, event_id)` để một tài khoản gửi đồng thời nhiều request cũng không vượt số vé cho phép (FR-11). Profile `sprint2` tắt cờ này.
+- Trước đó `HoldSeat` kiểm tra sự kiện đang `ON_SALE` và trong thời gian mở bán.
 - Ghế chỉ chuyển sang `HELD` khi trạng thái hiện tại là `AVAILABLE` hoặc là ghế đang `HELD` nhưng lượt giữ cũ đã hết hạn (`expires_at <= now()`).
 - Sau khi giữ ghế thành công, hệ thống phát thông báo qua kênh `LISTEN/NOTIFY` của PostgreSQL để cập nhật sơ đồ ghế của tất cả khán giả đang mở trang sự kiện qua SSE (NFR-10).
-- Bộ hẹn giờ chạy nền `HoldReaper` quét định kỳ và nhả ghế về trạng thái `AVAILABLE` nếu quá 5 phút mà khán giả chưa hoàn tất thanh toán.
+- Bộ hẹn giờ chạy nền `HoldReaper` quét 5 giây một lần và nhả ghế về trạng thái `AVAILABLE` nếu quá 5 phút mà khán giả chưa hoàn tất thanh toán. Mỗi lần quét, `HoldReaper` cũng chuyển các đơn `PENDING` quá hạn sang `EXPIRED`.
 
 ---
 
@@ -34,27 +35,34 @@ sequenceDiagram
     Control->>DB: BEGIN Transaction
     activate DB
 
-    Control->>DB: SELECT pg_advisory_xact_lock(hashtext(userID || eventID))
-    DB-->>Control: Khóa thành công scope (user, event)
-
-    Control->>DB: CountUserHeldAndBoughtTickets(eventID, userID)
-    DB-->>Control: total_count
-
-    alt total_count >= 4 (Vượt trần số vé quy định)
+    Control->>DB: GetEventSaleState(eventID)
+    alt Sự kiện không ON_SALE hoặc ngoài thời gian mở bán
         Control->>DB: ROLLBACK Transaction
-        Control-->>Boundary: ErrTicketLimitReached
-        Boundary-->>Khán giả: 400 Bad Request {"error": "ticket_limit_reached"}
-    else total_count < 4
-        Control->>DB: TryLockSeat(eventID, seatID) [UPDATE WHERE status = 'AVAILABLE']
-        
-        alt Ghế không khả dụng (Đã bán hoặc đang có người giữ)
-            Control->>DB: TryStealExpiredSeatHold(eventID, seatID)
-            alt Vẫn không chiếm được ghế
-                Control->>DB: ROLLBACK Transaction
-                Control-->>Boundary: ErrSeatNotAvailable
-                Boundary-->>Khán giả: 409 Conflict {"error": "seat_not_available"}
-            end
+        Control-->>Boundary: ErrEventNotOnSale
+        Boundary-->>Khán giả: 409 Conflict {"error": "event_not_on_sale"}
+    end
+
+    opt Cờ ticket_limit bật
+        Control->>DB: LockUserEventAdvisory(userID, eventID)
+        Control->>DB: CountUserHeldAndBoughtTickets(eventID, userID)
+        DB-->>Control: total_count
+        alt total_count >= events.max_tickets_per_user (mặc định 4)
+            Control->>DB: ROLLBACK Transaction
+            Control-->>Boundary: ErrTicketLimitReached
+            Boundary-->>Khán giả: 400 Bad Request {"error": "ticket_limit_reached"}
         end
+    end
+
+    Control->>DB: TryLockSeat(eventID, seatID) [UPDATE WHERE status = 'AVAILABLE']
+
+    alt Ghế không khả dụng (đã bán hoặc đang có người giữ)
+        Control->>DB: TryStealExpiredSeatHold(eventID, seatID)
+        alt Vẫn không chiếm được ghế
+            Control->>DB: ROLLBACK Transaction
+            Control-->>Boundary: ErrSeatNotAvailable
+            Boundary-->>Khán giả: 409 Conflict {"error": "seat_not_available"}
+        end
+    end
 
         Control->>DB: CreateSeatHold(eventID, seatID, userID, expires_at = now() + 5m)
         DB-->>Control: seat_holds record (holdToken, expiresAt)
@@ -73,11 +81,10 @@ sequenceDiagram
 
         DB--)Hub: NOTIFY event_seats_channel {type: "seat_held", seatId, status: "HELD"}
         activate Hub
-        Hub--)Khán giả khác: SSE event: update {seatId, status: "held"}
+        Hub--)Khán giả khác: SSE event: update {type: "seat_held", seatId, status: "HELD"}
         deactivate Hub
 
         Note over Khán giả khác: Trình duyệt khác tự đổi màu ghế sang Vàng (Held) trong <= 3 giây
-    end
 ```
 
 ---

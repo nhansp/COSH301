@@ -14,6 +14,7 @@ import { MyTicketsPage } from './pages/MyTicketsPage';
 import { OrganizerPage } from './pages/OrganizerPage';
 import { PaymentReturnPage } from './pages/PaymentReturnPage';
 import { TicketSelectionPage } from './pages/TicketSelectionPage';
+import { SurveyPage } from './pages/SurveyPage';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="/events/:id" element={<EventDetailPage />} />
               <Route path="/events/:id/tickets" element={<TicketSelectionPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/khao-sat" element={<SurveyPage />} />
               {/* VNPay sends the browser here; the page only shows what the server recorded. */}
               <Route path="/payment/vnpay/return" element={<PaymentReturnPage />} />
   
