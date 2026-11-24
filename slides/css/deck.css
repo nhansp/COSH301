@@ -57,10 +57,11 @@ body { font-family: var(--f-body); -webkit-font-smoothing: antialiased; }
     position: absolute; inset: 0; padding: 92px 112px 96px;
     background: var(--bg); color: var(--fg);
     font-size: 42px; line-height: 1.42;
-    opacity: 0; visibility: hidden; transition: opacity 260ms var(--ease);
+    opacity: 0; visibility: hidden; transform: translateY(18px);
+    transition: opacity 240ms var(--ease), transform 360ms var(--ease), visibility 0s linear 240ms;
     overflow: hidden;
 }
-.slide.is-active { opacity: 1; visibility: visible; z-index: 2; }
+.slide.is-active { opacity: 1; visibility: visible; transform: none; z-index: 2; transition: opacity 240ms var(--ease) 60ms, transform 360ms var(--ease) 60ms, visibility 0s; }
 .slide > * { position: relative; }
 
 /* chrome */
@@ -71,7 +72,6 @@ body { font-family: var(--f-body); -webkit-font-smoothing: antialiased; }
 .slide h3 { font-size: 44px; letter-spacing: -0.02em; margin-bottom: 14px; line-height: 1.1; }
 .foot { position: absolute !important; left: 112px; right: 112px; bottom: 34px; display: flex; justify-content: space-between; font: 500 20px/1 var(--f-body); color: var(--soft); letter-spacing: 0.04em; }
 .foot b { font-family: var(--f-display); font-weight: 600; color: var(--fg); }
-#progress { position: absolute; left: 0; bottom: 0; height: 6px; z-index: 5; background: linear-gradient(90deg, var(--violet), var(--coral)); transition: width 300ms var(--ease); }
 
 /* speaker chip: presenter and remote views only (press S to rehearse with it) */
 .chip { position: absolute !important; right: 112px; top: 78px; display: none; align-items: center; gap: 12px; padding: 10px 22px 10px 14px; border-radius: 999px; font: 600 24px/1 var(--f-body); background: var(--raised); color: var(--fg); box-shadow: 0 0 0 1px var(--line); z-index: 4; }
@@ -187,10 +187,13 @@ body.chips .chip, html.preview.chips .chip { display: inline-flex; }
 .layout-title .meta { display: flex; gap: 72px; font-size: 31px; color: var(--soft); line-height: 1.4; }
 .layout-title .meta b { display: block; font: 600 24px/1 var(--f-body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
 /* the title backdrop is a seat grid with the four seat states lit */
-.seatgrid { position: absolute !important; inset: 0 0 auto 0; height: 520px; opacity: 0.9; background:
-    radial-gradient(circle at 50% 50%, rgb(231 233 245 / 0.16) 0 7px, transparent 8px) 0 0 / 56px 56px;
+.seatgrid { position: absolute !important; inset: 0 0 auto 0; height: 520px; opacity: 0.9;
     -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 100%); mask-image: linear-gradient(180deg, #000 0%, transparent 100%); }
-.seatgrid i { position: absolute; width: 22px; height: 22px; border-radius: 6px; transform: translate(-50%, -50%); }
+.seatgrid i { position: absolute; width: 22px; height: 22px; border-radius: 6px; transform: translate(-50%, -50%); transition: background-color 380ms var(--ease), box-shadow 380ms var(--ease), transform 380ms var(--ease); }
+.seatgrid .s-free { background: rgb(231 233 245 / 0.16); }
+.seatgrid .s-pick { background: var(--violet); box-shadow: 0 0 0 6px rgb(255 226 168 / 0.55); transform: translate(-50%, -50%) scale(1.25); }
+.seatgrid .s-held { background: var(--seat-held); }
+.seatgrid .s-sold { background: var(--seat-sold); opacity: 0.55; }
 
 .layout-section { padding: 0 112px; display: flex; flex-direction: column; justify-content: center; }
 .layout-section > .no { font: 700 360px/0.8 var(--f-display); letter-spacing: -0.06em; color: transparent; -webkit-text-stroke: 3px var(--accent); position: absolute; right: 96px; top: 150px; }
@@ -226,22 +229,11 @@ body.chips .badge, html.chips .badge { right: 380px; }
 .demo-side .step { font: 700 150px/0.85 var(--f-display); letter-spacing: -0.05em; color: var(--spot); }
 .demo-side .step small { font: 600 34px var(--f-display); color: var(--soft); letter-spacing: 0; }
 .demo-side .cap { font-size: 32px; line-height: 1.38; }
-.demo-side .keys { margin-top: auto; font-size: 22px; line-height: 1.9; color: var(--soft); }
 .demo-side kbd, .kbd { font: 600 0.85em var(--f-code); padding: 2px 10px; border-radius: 8px; background: var(--stage-raised); box-shadow: 0 0 0 1px var(--stage-line); color: var(--fg); }
 .rail { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .rail i { width: 28px; height: 10px; border-radius: 5px; background: var(--stage-line); }
 .rail i.done { background: var(--violet); }
 .rail i.cur { background: var(--spot); width: 54px; }
-/* phone mirror */
-.mirror { position: relative; width: 100%; height: 700px; }
-.mirror .phone { position: absolute; left: 50%; top: calc(50% - 26px); width: 560px; transform: translate(-50%, -50%) scale(0.5); transition: transform 500ms var(--ease); }
-.mirror .bezel { position: relative; padding: 16px; border-radius: 64px; background: #05060c; box-shadow: 0 0 0 3px #3a3d52, 0 40px 90px -30px rgb(0 0 0 / 0.85); }
-.mirror .screen { display: block; width: 100%; aspect-ratio: 1344 / 2992; border-radius: 48px; background: #000; object-fit: fill; }
-.mirror .wait { position: absolute; inset: 16px; border-radius: 48px; display: grid; place-items: center; text-align: center; padding: 40px; font-size: 44px; line-height: 1.3; color: var(--soft); background: radial-gradient(120% 80% at 50% 0%, #1d2246, #05060c); }
-.mirror.live .wait { display: none; }
-.mirror .tag { position: absolute; left: 0; right: 0; bottom: -4px; text-align: center; font: 600 22px/1 var(--f-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
-.mirror .live-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--danger); margin-right: 12px; opacity: 0.4; }
-.mirror.live .live-dot { opacity: 1; }
 
 /* slide numbering "step" diagram helpers */
 .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
@@ -282,5 +274,5 @@ body.chips .badge, html.chips .badge { right: 380px; }
 .layout-quote blockquote { font: 600 72px/1.12 var(--f-display); letter-spacing: -0.03em; border: 0; padding: 0; max-width: 1500px; }
 
 @media (prefers-reduced-motion: reduce) {
-    .slide, #progress, .mirror .phone { transition: none; }
+    .slide { transition: none; transform: none; }
 }

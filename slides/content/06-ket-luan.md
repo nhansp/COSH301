@@ -1,45 +1,57 @@
-=== id=k6 layout=default speaker=dung time=60 kicker="Kiểm thử"
-## k6 trên bản trực tuyến
-| Kịch bản 3 phút 30 giây | Kết quả |
+=== id=k6 layout=default speaker=dung time=55 kicker="Kiểm thử"
+## Kiểm thử tải trên bản chạy thật
+| Kịch bản (3 phút 30 giây) | Kết quả |
 |---|---|
-| 200 người duyệt, 100 người giữ và trả ghế cùng lúc | 28.576 request, khoảng 132 request mỗi giây |
-| Duyệt trang, p95 | 342 ms, 0% lỗi, 15.490 check đều đạt |
-| Giữ ghế, p95 | 296 ms, 6.294 lượt giữ, 389 lượt `409` đúng kỳ vọng |
-| CPU đỉnh của container | api khoảng 13%, db khoảng 10% |
+| 200 người xem và 100 người giữ, trả ghế cùng lúc | 28.576 yêu cầu, khoảng 132 yêu cầu mỗi giây |
+| Thời gian phản hồi khi xem, p95 | 342 ms, không có lỗi |
+| Thời gian giữ ghế, p95 | 296 ms, 6.294 lượt giữ thành công |
+| Mức dùng CPU cao nhất | api khoảng 13%, cơ sở dữ liệu khoảng 10% |
 
 ::: callout
-**Tranh ghế:** 100 tài khoản cùng giữ một ghế, đúng 1 thắng, 99 bị từ chối (`409`).
-Test tầng service: 50 goroutine, một ghế.
+**Tranh một ghế:** 100 tài khoản cùng giữ một ghế, đúng 1 tài khoản thành công, 99 bị từ chối.
 :::
-Đo qua Cloudflare, máy ảo 2 vCPU và 4 GB. Mới 300 người dùng đồng thời, chưa tới 50.000 của NFR-01.
 NOTES:
-Script slide 17. Số đo lấy từ bản trực tuyến, lấy mẫu CPU mỗi 4 giây. Lần thử đầu của tranh ghế ra 3 người thắng tuần tự vì mỗi người thắng trả ghế sau 3 giây trong khi các request đến muộn qua Cloudflare, không chồng lấn; chạy lại với thời gian giữ 15 giây cho kết quả 1 thắng, 99 thua. Chỉ nêu khi được hỏi. Test tầng service: 50 goroutine cùng giữ một ghế, đúng 1 lượt thành công.
-Chưa kiểm thử với người dùng thật, không có điểm SUS. Kế hoạch ở docs/testing.md.
+Đo bằng k6 qua Cloudflare, máy ảo 2 vCPU, 4 GB. Ngoài ra có kiểm thử tự động: 50 luồng cùng giữ một ghế ở tầng nghiệp vụ, đúng 1 luồng thành công.
+Nếu được hỏi về lần đo đầu ra 3 người thắng: ba người đó thắng nối tiếp nhau, mỗi người trả ghế sau 3 giây, không trùng thời điểm; chạy lại với thời gian giữ 15 giây cho kết quả 1 thắng.
 
-=== id=limits layout=default speaker=phuc time=45 kicker="Hạn chế và bài học"
-## Còn thiếu gì
+=== id=usertest layout=default speaker=thanh time=40 kicker="Kiểm thử"
+## Kiểm thử người dùng
+|||
+### Quy trình
+- Người tham gia: 5 – 8 bạn trong lớp, vai trò khán giả và Ban Tổ chức.
+- Nhiệm vụ: đăng nhập OTP, giữ ghế, thanh toán thử, xem vé.
+- Ghi nhận: hoàn thành hay không, thời gian, lỗi gặp phải.
+|||
+### Đo lường
+- Phiếu SUS 10 câu ngay trong ứng dụng, tại trang `/khao-sat`.
+- Ban Tổ chức xem kết quả tổng hợp: điểm SUS, tỉ lệ hoàn thành, góp ý.
+- Kết quả được cập nhật vào báo cáo sau buổi kiểm thử.
+NOTES:
+Nhóm không đưa số liệu khi chưa có người dùng thật tham gia. Kế hoạch chi tiết ở docs/testing.md.
+
+=== id=limits layout=default speaker=phuc time=45 kicker="Kết luận"
+## Hạn chế và bài học
 |||
 ### Hạn chế
-- OTP qua ứng dụng ở mức demo: chưa chứng minh sở hữu số điện thoại.
-- Chưa có SMS thật và Turnstile. Đã giới hạn OTP theo IP và theo số.
-- Thanh toán ở sandbox: chưa tự hoàn tiền, chưa có vé email và QR.
-- Chưa có soát vé và dashboard.
-- Một máy ảo, chưa kiểm thử với người dùng.
+- Chưa có SMS thật; ứng dụng OTP chưa xác minh chủ số điện thoại.
+- Thanh toán ở môi trường thử, chưa hoàn tiền tự động.
+- Chưa có soát vé và bảng doanh thu.
+- Hệ thống chạy trên một máy ảo, chưa có dự phòng.
 |||
 ### Bài học
-- **Đơn giản có chủ đích:** khóa nguyên tử và `LISTEN/NOTIFY` của PostgreSQL đủ cho giữ ghế.
-- **BCE:** ba lớp tách rõ, kiểm thử riêng được.
-- **Cờ tính năng:** nghiệm thu từng sprint, không giấu code dở.
+- Tận dụng PostgreSQL (khóa dòng, LISTEN/NOTIFY) giúp hệ thống đơn giản mà vẫn an toàn.
+- Phân lớp BCE giúp tách nghiệp vụ và kiểm thử dễ hơn.
+- Cờ tính năng giúp nghiệm thu từng sprint trên cùng một bản mã.
 NOTES:
-Script slide 18 và 19. Hướng phát triển: hoàn thành Sprint 3 đến 5 theo bảng cờ.
+Hướng phát triển: hoàn thành Sprint 3 đến Sprint 5 theo bảng cờ tính năng.
 
-=== id=thanks layout=title speaker=huy time=5 title="Cảm ơn và demo"
-<div class="eyebrow">Demo trực tiếp</div>
-# Cảm ơn cô và các bạn
-Bản chạy thật: **cosh301.nhansp.id.vn**
+=== id=thanks layout=title speaker=huy time=10 title="Cảm ơn"
+<div class="eyebrow">Nhóm 1</div>
+# Cảm ơn cô và các bạn đã lắng nghe
+Mời cô và các bạn xem phần demo.
 <div class="meta">
-<div><b>Mã nguồn</b>nhánh <code>rewrite</code></div>
-<div><b>Tài liệu</b>thư mục <code>docs/</code></div>
+<div><b>Bản chạy thật</b>cosh301.nhansp.id.vn</div>
+<div><b>Mã nguồn và tài liệu</b>github.com/nhansp/COSH301</div>
 </div>
 NOTES:
-Script slide 20. Mời cô xem demo trực tiếp ngay sau đây.
+Chuyển sang phần demo.

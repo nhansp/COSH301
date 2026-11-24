@@ -72,7 +72,7 @@
   function build(def, n, total) {
     const a = def.attrs;
     const layout = a.layout || "default";
-    const tone = a.tone || (layout === "title" || layout === "section" ? "ink" : layout.startsWith("demo") ? "stage" : "paper");
+    const tone = a.tone || (layout === "title" || layout === "section" ? "ink" : layout.startsWith("demo") ? "stage" : "ink");
     const el = document.createElement("section");
     el.className = "slide layout-" + (layout.startsWith("demo") ? "demo" : layout) + (layout === "demo-all" ? " all" : "");
     el.dataset.tone = tone;
@@ -107,17 +107,27 @@
   }
 
   function seatgrid(el) {
-    // a few cells of the backdrop light up in the four seat states
-    const picks = [[3, 1, "available"], [5, 2, "mine"], [6, 2, "held"], [9, 1, "available"], [12, 3, "sold"], [14, 0, "available"], [16, 2, "held"], [18, 1, "available"],
-      [20, 3, "mine"], [24, 2, "available"], [27, 1, "sold"], [30, 3, "available"], [2, 4, "held"], [8, 5, "available"], [22, 5, "sold"], [32, 0, "mine"]];
-    const col = { available: "var(--seat-available)", sold: "var(--seat-sold)", held: "var(--seat-held)", mine: "var(--violet)" };
-    picks.forEach(([x, y, s]) => {
+    // The title backdrop plays the seat map: a cursor picks a free seat, holds it, and some holds end up sold.
+    const COLS = 34, ROWS = 8, GAP = 56;
+    const seats = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const i = document.createElement("i");
-      i.style.left = 28 + 56 * x + "px"; i.style.top = 28 + 56 * y + "px";
-      i.style.background = col[s];
-      if (s === "mine") i.style.boxShadow = "0 0 0 5px rgb(255 226 168 / 0.5)";
-      el.appendChild(i);
-    });
+      i.className = Math.random() < 0.18 ? "s-sold" : "s-free";
+      i.style.left = 28 + GAP * x + "px"; i.style.top = 28 + GAP * y + "px";
+      el.appendChild(i); seats.push(i);
+    }
+    const free = () => seats.filter(s => s.className === "s-free");
+    const step = () => {
+      if (document.hidden || !el.closest(".slide").classList.contains("is-active")) return;
+      const pool = free();
+      if (pool.length < seats.length * 0.25) seats.forEach(s => { s.className = Math.random() < 0.18 ? "s-sold" : "s-free"; });
+      const seat = pool[Math.floor(Math.random() * pool.length)];
+      if (!seat) return;
+      seat.className = "s-pick";
+      setTimeout(() => { seat.className = "s-held"; }, 700);
+      setTimeout(() => { seat.className = Math.random() < 0.6 ? "s-sold" : "s-free"; }, 2600 + Math.random() * 1800);
+    };
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(step, 420);
   }
 
   // ---- components inside slides ---------------------------------------------------------------------------
@@ -128,11 +138,6 @@
       if (name === "legend") {
         c.className = "legend";
         c.innerHTML = '<span><i class="seat"></i>Còn trống</span><span><i class="seat mine"></i>Bạn đang giữ</span><span><i class="seat held"></i>Người khác giữ</span><span><i class="seat sold"></i>Đã bán</span>';
-      } else if (name === "mirror") {
-        const args = JSON.parse(c.dataset.args || "{}");
-        c.className = "mirror";
-        c.innerHTML = '<div class="phone"><div class="bezel"><img class="screen" alt="Màn hình điện thoại, trực tiếp" hidden><div class="wait"><div><span class="live-dot"></span>Đang chờ tín hiệu từ điện thoại<br><small class="soft">mirror.sh + scrcpy, xem slides/README.md</small></div></div></div></div>' +
-          '<div class="tag"><span class="live-dot"></span>' + esc(args.label || "Điện thoại trực tiếp") + "</div>";
       }
     });
   }
@@ -235,8 +240,7 @@
         "<h2>" + esc(c.title) + "</h2>" +
         '<div class="demo-grid"><div>' + vslot(c.start, c.end) + segBar(c.start, c.end, false) + "</div>" +
         '<div class="demo-side"><div class="rail">' + rail + '</div><div class="step">' + (i + 1) + "<small> / " + n + "</small></div>" +
-        '<div class="cap">' + esc(c.caption || "") + "</div>" +
-        '<div class="keys"><kbd>R</kbd> phát lại · <kbd>P</kbd> tạm dừng · <kbd>→</kbd> bước tiếp</div></div></div>';
+        '<div class="cap">' + esc(c.caption || "") + "</div>" + "</div></div>";
       return { attrs: { id: "demo-" + c.id, layout: "demo-step", tone: "stage", speaker: c.speaker || "nhan", time: String(Math.round(dur) + 2), title: "Demo " + (i + 1) + ": " + c.title },
         html, notes: c.notes || c.caption || "", section: "Demo trực tiếp" };
     });
@@ -266,50 +270,9 @@
   function demoAll(def) {
         def.html = '<div class="kicker"><span class="no">Demo</span>Trực tiếp · toàn bộ</div><h2>' + esc(def.attrs.title || "Toàn bộ demo") + "</h2>" +
       '<div class="demo-grid"><div>' + vslot(0, null) + (manifest && manifest.chapters ? segBar(0, null, true) : "") + "</div>" +
-      '<div class="demo-side"><div class="cap">' + esc(def.attrs.caption || "Chạy liền một mạch, từ trang chủ đến giá mới.") + "</div>" +
-      '<div class="keys"><kbd>R</kbd> phát lại · <kbd>P</kbd> tạm dừng<br><kbd>M</kbd> bật tiếng</div></div></div>';
+      '<div class="demo-side"><div class="cap">' + esc(def.attrs.caption || "Chạy liền một mạch, từ trang chủ đến giá mới.") + "</div>" + "</div></div>";
     def.attrs.time = def.attrs.time || "20";   // the video plays alongside the step slides, so it adds little talking time
     return def;
-  }
-
-  // ---- phone mirror ---------------------------------------------------------------------------------------
-
-  const mirrors = new WeakMap();
-  function enterMirror(slide) {
-    $$(".mirror", slide.el).forEach(m => {
-      if (PREVIEW || !LIVE) return;
-      const img = $(".screen", m), phone = $(".phone", m);
-      const st = { timer: 0 };
-      mirrors.set(m, st);
-      img.onload = () => {
-        img.hidden = false;
-        m.classList.add("live");
-        const ratio = img.naturalHeight / img.naturalWidth;   // capture stays portrait
-        phone.style.setProperty("--ratio", ratio);
-        place(+st.rot || 0);
-      };
-      const place = r => {
-        st.rot = r;
-        const W = m.clientWidth, H = m.clientHeight - 60, side = r % 2 === 1;
-        const pw = 560, ph = 560 * (img.naturalHeight / img.naturalWidth || 2.2) + 32;
-        const k = side ? Math.min(W / ph, H / pw) : Math.min(W / pw, H / ph);
-        phone.style.transform = "translate(-50%, -50%) rotate(" + (-90 * r) + "deg) scale(" + k.toFixed(4) + ")";
-      };
-      img.src = "/mirror.mjpg?t=" + Date.now();
-      place(0);
-      const poll = () => fetch("/api/rot").then(r => r.json()).then(d => place(d.rot)).catch(() => {});
-      poll(); st.timer = setInterval(poll, 800);
-    });
-  }
-  function leaveMirror(slide) {
-    $$(".mirror", slide.el).forEach(m => {
-      const st = mirrors.get(m);
-      if (!st) return;
-      clearInterval(st.timer);
-      const img = $(".screen", m);
-      img.removeAttribute("src"); img.hidden = true; m.classList.remove("live");
-      mirrors.delete(m);
-    });
   }
 
   // ---- navigation -----------------------------------------------------------------------------------------
@@ -317,10 +280,9 @@
   function show(n) {
     n = Math.max(0, Math.min(slides.length - 1, n));
     const was = slides[cur];
-    if (ready && was && n !== cur) { leaveDemo(); leaveMirror(was); }
+    if (ready && was && n !== cur) leaveDemo();
     cur = n;
     slides.forEach((s, i) => s.el.classList.toggle("is-active", i === cur));
-    $("#progress").style.width = ((cur + 1) / slides.length * 100) + "%";
     if (!PREVIEW) {
       const h = "#" + (cur + 1);
       if (location.hash !== h) history.replaceState(null, "", h);
@@ -328,7 +290,6 @@
     const s = slides[cur];
     if (!PREVIEW) {
       if (s.attrs.layout && s.attrs.layout.startsWith("demo")) enterDemo(s);
-      enterMirror(s);
     }
     report();
   }
