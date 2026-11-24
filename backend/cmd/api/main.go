@@ -67,6 +67,7 @@ func main() {
 		RealtimeHub:  realtimeHub,
 		Organizer:    organizerService,
 		Tickets:      service.NewTicketService(dbPool, queries),
+		Assistant:    service.NewAssistantService(cfg, eventService, organizerService),
 	})
 
 	server := &http.Server{

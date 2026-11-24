@@ -20,7 +20,14 @@ type Config struct {
 	// DemoMode exposes one-click demo login and demo data reset.
 	// It is off when APP_ENV=production.
 	DemoMode bool
-	Features *FeatureManager
+	// Optional server-side LLM settings for POST /api/assistant/chat.
+	// Empty or "none" keeps the endpoint in deterministic-only mode.
+	AssistantLLMProvider string
+	OllamaURL            string
+	OllamaModel          string
+	GeminiAPIKey         string
+	GeminiModel          string
+	Features             *FeatureManager
 }
 
 func Load() *Config {
@@ -46,14 +53,32 @@ func Load() *Config {
 		}
 	}
 
+	ollamaURL := strings.TrimSpace(os.Getenv("OLLAMA_URL"))
+	if ollamaURL == "" {
+		ollamaURL = "http://ollama:11434"
+	}
+	ollamaModel := strings.TrimSpace(os.Getenv("OLLAMA_MODEL"))
+	if ollamaModel == "" {
+		ollamaModel = "qwen2.5:3b"
+	}
+	geminiModel := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
+	if geminiModel == "" {
+		geminiModel = "gemini-2.5-flash"
+	}
+
 	return &Config{
-		Port:               port,
-		DatabaseURL:        dbURL,
-		AppEnv:             appEnv,
-		CORSAllowedOrigins: origins,
-		OTPDemo:            os.Getenv("OTP_DEMO") == "true",
-		CookieSecure:       os.Getenv("COOKIE_SECURE") == "true",
-		DemoMode:           appEnv != "production",
-		Features:           NewFeatureManagerFromEnv(),
+		Port:                 port,
+		DatabaseURL:          dbURL,
+		AppEnv:               appEnv,
+		CORSAllowedOrigins:   origins,
+		OTPDemo:              os.Getenv("OTP_DEMO") == "true",
+		CookieSecure:         os.Getenv("COOKIE_SECURE") == "true",
+		DemoMode:             appEnv != "production",
+		AssistantLLMProvider: strings.ToLower(strings.TrimSpace(os.Getenv("ASSISTANT_LLM_PROVIDER"))),
+		OllamaURL:            ollamaURL,
+		OllamaModel:          ollamaModel,
+		GeminiAPIKey:         strings.TrimSpace(os.Getenv("GEMINI_API_KEY")),
+		GeminiModel:          geminiModel,
+		Features:             NewFeatureManagerFromEnv(),
 	}
 }

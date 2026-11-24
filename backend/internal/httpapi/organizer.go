@@ -30,6 +30,26 @@ func (h *OrganizerHandler) HandleListEvents(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, events)
 }
 
+// HandleEventSalesSummary handles GET /api/organizer/events/{id}/sales-summary.
+func (h *OrganizerHandler) HandleEventSalesSummary(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	eventID, err := h.events.ResolveEventID(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, service.ErrEventNotFound.Error())
+		return
+	}
+	isAdmin := sess.Role == store.UserRoleADMIN
+	if err := h.organizer.AuthorizeEvent(r.Context(), eventID, sess.UserID, isAdmin); err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	summary, err := h.organizer.GetEventSalesSummary(r.Context(), eventID)
+	if err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
+}
+
 // HandleUpdateZonePricing handles PUT /api/organizer/events/{id}/zones/{zoneId}/pricing.
 func (h *OrganizerHandler) HandleUpdateZonePricing(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
 	eventID, err := h.events.ResolveEventID(r.Context(), r.PathValue("id"))

@@ -17,6 +17,32 @@ services:
       timeout: 5s
       retries: 10
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cosh301-ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: cosh301-ollama-pull
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c", "ollama show \"$$OLLAMA_MODEL\" >/dev/null 2>&1 || ollama pull \"$$OLLAMA_MODEL\""]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+    depends_on:
+      ollama:
+        condition: service_healthy
+
   api:
     build: ./backend
     container_name: cosh301-api
@@ -28,9 +54,18 @@ services:
       APP_ENV: ${APP_ENV:-development}
       OTP_DEMO: ${OTP_DEMO:-false}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      ASSISTANT_LLM_PROVIDER: ${ASSISTANT_LLM_PROVIDER:-ollama}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
+      ollama:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
       interval: 10s
@@ -60,3 +95,4 @@ services:
 
 volumes:
   pgdata:
+  ollama_data:

@@ -20,6 +20,7 @@ type RouterDependencies struct {
 	RealtimeHub  *service.RealtimeHub
 	Organizer    *service.OrganizerService
 	Tickets      *service.TicketService
+	Assistant    *service.AssistantService
 }
 
 func NewRouter(deps RouterDependencies) http.Handler {
@@ -30,10 +31,12 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	authHandler := NewAuthHandler(deps.AuthService, deps.Config.CookieSecure)
 	organizerHandler := NewOrganizerHandler(deps.Organizer, deps.EventService)
 	otpLimiter := NewRateLimiter(30, time.Minute)
+	assistantLimiter := NewRateLimiter(30, time.Minute)
 	eventHandler := NewEventHandler(deps.EventService)
 	seatHandler := NewSeatHandler(deps.SeatService, deps.AuthService, deps.EventService)
 	streamHandler := NewStreamHandler(deps.RealtimeHub, deps.EventService)
 	ticketHandler := NewTicketHandler(deps.Tickets, deps.EventService)
+	assistantHandler := NewAssistantHandler(deps.Assistant, deps.AuthService)
 	anyRole := []store.UserRole{store.UserRoleCUSTOMER, store.UserRoleORGANIZER, store.UserRoleADMIN}
 
 	// 1. System Endpoints
@@ -64,8 +67,15 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	// 6. Organizer console (FR-08)
 	mux.HandleFunc("GET /api/organizer/events", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireRole(authHandler, organizerRoles, organizerHandler.HandleListEvents)))
+	mux.HandleFunc("GET /api/organizer/events/{id}/sales-summary", RequireFeature(fm, config.FlagOrganizerConsole,
+		RequireRole(authHandler, organizerRoles, organizerHandler.HandleEventSalesSummary)))
 	mux.HandleFunc("PUT /api/organizer/events/{id}/zones/{zoneId}/pricing", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireFeature(fm, config.FlagZonePricing, RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateZonePricing))))
+
+	// 8. Role-aware Assistant endpoint (optional grounded LLM prose)
+	if deps.Assistant != nil {
+		mux.HandleFunc("POST /api/assistant/chat", assistantLimiter.Wrap(assistantHandler.HandleChat))
+	}
 
 	// 7. Ticket cancellation acts on seat holds; audit logs belong to the organizer console.
 	mux.HandleFunc("POST /api/tickets/cancel", RequireFeature(fm, config.FlagSeatHold,
