@@ -1,18 +1,17 @@
-=== id=k6 layout=default speaker=dung time=55 kicker="Kiểm thử"
+=== id=k6 layout=default cols="1.1fr 0.9fr" speaker=dung time=60 kicker="Kiểm thử" figh=680
 ## Kiểm thử tải trên bản chạy thật
-| Kịch bản (3 phút 30 giây) | Kết quả |
-|---|---|
-| 200 người xem và 100 người giữ, trả ghế cùng lúc | 28.576 yêu cầu, khoảng 132 yêu cầu mỗi giây |
-| Thời gian phản hồi khi xem, p95 | 342 ms, không có lỗi |
-| Thời gian giữ ghế, p95 | 296 ms, 6.294 lượt giữ thành công |
-| Mức dùng CPU cao nhất | api khoảng 13%, cơ sở dữ liệu khoảng 10% |
-
-::: callout
-**Tranh một ghế:** 100 tài khoản cùng giữ một ghế, đúng 1 tài khoản thành công, 99 bị từ chối.
-:::
+|||
+- **3 phút 30 giây**, 200 người xem và 100 người giữ, trả ghế: 28.576 yêu cầu, khoảng 132 yêu cầu mỗi giây, không lỗi. Thời gian phản hồi p95: xem 342 ms, giữ ghế 296 ms.
+- **45 giây**, 260 người dùng ảo dồn vào một khu: 12.084 yêu cầu, khoảng 249 yêu cầu mỗi giây, p95 183 ms, 100% kiểm tra đạt.
+- **CPU cao nhất:** api khoảng 25%, cơ sở dữ liệu khoảng 20%.
+- **Tranh một ghế:** 100 tài khoản cùng giữ một ghế, đúng 1 thành công.
+|||
+![k6 và CPU từng container trên máy chủ thật](img/pov/k6.jpg)
+<p class="figcap">Kết quả k6 và CPU từng container, theo thời gian thực</p>
 NOTES:
-Đo bằng k6 qua Cloudflare, máy ảo 2 vCPU, 4 GB. Ngoài ra có kiểm thử tự động: 50 luồng cùng giữ một ghế ở tầng nghiệp vụ, đúng 1 luồng thành công.
-Nếu được hỏi về lần đo đầu ra 3 người thắng: ba người đó thắng nối tiếp nhau, mỗi người trả ghế sau 3 giây, không trùng thời điểm; chạy lại với thời gian giữ 15 giây cho kết quả 1 thắng.
+Đo bằng k6 qua Cloudflare, máy ảo 2 vCPU, 4 GB. Biểu đồ dưới ảnh lấy từ docker stats trên máy ảo, cập nhật mỗi giây; phần cao là lúc chạy tải, phần thấp là sau khi tải dừng.
+Kịch bản dồn vào một khu cố ý tạo tranh chấp: 60 người cùng giữ ghế trong 24 ghế, nên phần lớn lượt giữ bị từ chối đúng quy tắc (ghế đã có người giữ): 336 lượt thành công, 4.499 lượt bị từ chối. Ảnh chụp từ video demo.
+Ngoài ra có kiểm thử tự động: 50 luồng cùng giữ một ghế ở tầng nghiệp vụ, đúng 1 luồng thành công.
 
 === id=usertest layout=default speaker=thanh time=40 kicker="Kiểm thử"
 ## Kiểm thử người dùng
@@ -57,15 +56,4 @@ Bảng phân rã công việc Sprint 2 (T01 đến T14) và phân bổ giờ cô
 - Phân lớp BCE giúp tách nghiệp vụ và kiểm thử dễ hơn.
 - Cờ tính năng giúp nghiệm thu từng sprint trên cùng một bản mã.
 NOTES:
-Hướng phát triển: hoàn thành Sprint 3 đến Sprint 5 theo bảng cờ tính năng.
-
-=== id=thanks layout=title speaker=huy time=10 title="Cảm ơn"
-<div class="eyebrow"><span class="mark"></span>Nhóm 1 · COSH301 Concerts</div>
-# Cảm ơn cô và các bạn đã lắng nghe
-Mời cô và các bạn xem phần demo.
-<div class="meta">
-<div><b>Bản chạy thật</b>cosh301.nhansp.id.vn</div>
-<div><b>Mã nguồn và tài liệu</b>github.com/nhansp/COSH301</div>
-</div>
-NOTES:
-Chuyển sang phần demo.
+Hướng phát triển: hoàn thành Sprint 3 đến Sprint 5 theo bảng cờ tính năng. Sau slide này chuyển sang phần demo.

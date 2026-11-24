@@ -2,9 +2,9 @@
 
 **Đề tài:** Thiết kế hệ thống đặt vé trực tuyến cho sự kiện (EventTicketing)
 **Học phần:** Phân tích và thiết kế hệ thống · Giảng viên hướng dẫn: TS. Phạm Thị Kim Dung
-**Thời lượng:** khoảng 17 phút trình bày và 5 phút demo, sau đó là phần hỏi đáp.
+**Thời lượng:** khoảng 19 phút trình bày và 4 phút demo, sau đó là phần hỏi đáp.
 
-Kịch bản đi theo đúng thứ tự 27 slide trong thư mục `slides/`.
+Kịch bản đi theo đúng thứ tự slide trong thư mục `slides/`: 30 slide nội dung, phần demo, rồi slide cảm ơn ở cuối.
 Mỗi slide ghi người trình bày, thời lượng và lời nói gợi ý.
 Không cần đọc thuộc lòng, chỉ cần nói đủ ý.
 
@@ -14,12 +14,12 @@ Không cần đọc thuộc lòng, chỉ cần nói đủ ý.
 
 | Người trình bày | Slide | Demo | Câu hỏi phụ trách |
 |---|---|---|---|
-| Vũ Đức Huy | 1, 13 – 16, 20, 27 | Trợ lý ảo, nhật ký giá | Câu 1, 2, 7 |
-| Lê Đức Anh | 2, 3, 11, 21 | — | — |
-| Đinh Tiến Thành | 4, 5, 6, 24 | Khảo sát người dùng | — |
-| Trần Trung Nhân | 7 – 10 | Khách hàng, ứng dụng OTP, thanh toán | Câu 4, 5, 6, 8 |
-| Nguyễn Đức Phúc | 12, 19, 22, 25, 26 | — | — |
-| Nguyễn Anh Dũng | 17, 18, 23 | Ban Tổ chức, kiểm thử tải, định giá động | Câu 3 |
+| Vũ Đức Huy | 1, 14 – 17, 21, cảm ơn | Trợ lý ảo, nhật ký giá | Câu 1, 2, 7 |
+| Lê Đức Anh | 2, 3, 11, 22, 25 | — | — |
+| Đinh Tiến Thành | 4, 5, 6, 24, 28 | Khảo sát người dùng | — |
+| Trần Trung Nhân | 7 – 10, 26 | Khách hàng, ứng dụng OTP, thanh toán | Câu 4, 5, 6, 8 |
+| Nguyễn Đức Phúc | 12, 13, 20, 23, 29, 30 | — | — |
+| Nguyễn Anh Dũng | 18, 19, 27 | Ban Tổ chức, kiểm thử tải, định giá động | Câu 3 |
 
 ## Điều khiển slide
 
@@ -57,73 +57,84 @@ Không cần đọc thuộc lòng, chỉ cần nói đủ ý.
 ### Phần 3. Kiến trúc
 
 **Slide 7 – Kiến trúc triển khai** · Trần Trung Nhân · 40 giây
-> Người dùng truy cập qua trình duyệt hoặc ứng dụng OTP trên điện thoại. Mọi yêu cầu đi qua Cloudflare, đến nginx phục vụ giao diện React, rồi tới máy chủ API viết bằng Go và cơ sở dữ liệu PostgreSQL 18. Toàn bộ chạy bằng Docker Compose trên một máy ảo, máy ảo không mở cổng web ra ngoài. Hệ thống dùng hai dịch vụ ngoài: cổng VNPay ở môi trường thử và máy chủ mô hình ngôn ngữ cho trợ lý ảo.
+> Đây là hình 1 trong báo cáo. Người dùng truy cập qua trình duyệt hoặc ứng dụng OTP trên điện thoại. Mọi yêu cầu đi qua Cloudflare, đến nginx phục vụ giao diện React, rồi tới máy chủ API viết bằng Go và cơ sở dữ liệu PostgreSQL 18. Toàn bộ chạy bằng Docker Compose trên một máy ảo, máy ảo không mở cổng web ra ngoài. Hình vẽ từ Sprint 1 còn ghi MoMo và cổng SMS; bản chạy hiện tại dùng VNPay và ứng dụng OTP.
 
 **Slide 8 – Kiến trúc phân lớp BCE** · Trần Trung Nhân · 35 giây
-> Mã nguồn backend chia đúng ba lớp BCE. Boundary nhận yêu cầu, kiểm tra đăng nhập, vai trò và cờ tính năng. Control chứa nghiệp vụ. Entity là lớp truy cập dữ liệu, sinh tự động từ câu lệnh SQL. Boundary không gọi thẳng cơ sở dữ liệu. Biểu đồ lớp trong báo cáo dựng theo đúng ba lớp này.
+> Hình 5 là biểu đồ lớp theo ba lớp BCE, và mã nguồn backend chia đúng ba lớp này. Boundary nhận yêu cầu, kiểm tra đăng nhập, vai trò và cờ tính năng. Control chứa nghiệp vụ. Entity là lớp truy cập dữ liệu, sinh tự động từ câu lệnh SQL. Boundary không gọi thẳng cơ sở dữ liệu.
 
 **Slide 9 – Hệ thống cờ tính năng** · Trần Trung Nhân · 40 giây
 > Mỗi chức năng lớn gắn với một cờ. Biến FEATURE_PROFILE chọn bộ cờ theo sprint, và có thể bật, tắt riêng từng cờ mà không sửa mã. Cờ đang tắt thì API trả lỗi 404 và giao diện ẩn chức năng đó. Nhờ vậy nhóm nghiệm thu từng sprint trên cùng một bản mã; phần chưa xong chỉ cần tắt cờ.
 
 **Slide 10 – Ứng dụng nhận mã OTP** · Trần Trung Nhân · 40 giây
-> Nhóm chưa có nhà cung cấp SMS, nên viết một ứng dụng Android nhỏ để nhận mã đăng nhập. Khi khách nhập số điện thoại trên web, máy chủ tạo mã và chỉ báo cho ứng dụng là có mã mới; ứng dụng tự lấy mã một lần và hiện thông báo. Đăng nhập bằng email thì mã hiện trên màn hình ở chế độ demo. Hạn chế là số điện thoại do ứng dụng gửi lên chưa chứng minh được người dùng là chủ số.
+> Nhóm chưa có nhà cung cấp SMS, nên viết một ứng dụng Android nhỏ để nhận mã đăng nhập. Khi khách nhập số điện thoại trên web, máy chủ tạo mã và chỉ báo cho ứng dụng là có mã mới; ứng dụng tự lấy mã một lần và hiện thông báo trên điện thoại. Hạn chế là số điện thoại do ứng dụng gửi lên chưa chứng minh được người dùng là chủ số.
 
 ### Phần 4. Mô hình hóa và nghiệp vụ
 
 **Slide 11 – Biểu đồ use case** · Lê Đức Anh · 40 giây
-> Hệ thống có 13 use case cho năm tác nhân: khán giả, Ban Tổ chức, CEO, nhân viên cổng và quản trị viên. Đã chạy được đăng nhập, xem sự kiện, giữ ghế, thanh toán thử, quản lý giá khu và duyệt giá đề xuất. Các use case còn lại đang ở mức thiết kế.
+> Hình 2 là biểu đồ use case: 13 use case cho năm tác nhân, gồm khán giả, Ban Tổ chức, CEO, nhân viên cổng và quản trị viên. Đã chạy được đăng nhập, xem sự kiện, giữ ghế, thanh toán thử, quản lý giá khu và duyệt giá đề xuất. Các use case còn lại đang ở mức thiết kế.
 
-**Slide 12 – Biểu đồ luồng dữ liệu mức 0** · Nguyễn Đức Phúc · 30 giây
-> Biểu đồ luồng dữ liệu có ba mức. Ở mức 0 có các tiến trình từ xác thực, quản lý sự kiện, giữ chỗ, thanh toán đến định giá động. Các ô tô đậm là phần đã có mã chạy.
+**Slide 12 – Biểu đồ luồng dữ liệu mức ngữ cảnh** · Nguyễn Đức Phúc · 30 giây
+> Ở mức ngữ cảnh, cả hệ thống là một tiến trình. Năm tác nhân ngoài trao đổi dữ liệu với hệ thống: khán giả, Ban Tổ chức, nhân viên cổng, cổng thanh toán và dịch vụ gửi mã.
 
-**Slide 13 – Mô hình dữ liệu** · Vũ Đức Huy · 30 giây
-> Cơ sở dữ liệu có 24 bảng, chia sáu nhóm. Thiết kế ở Sprint 1 có 26 bảng; sau khi chuẩn hóa còn 23 bảng lõi, cộng thêm một bảng cho ứng dụng OTP. Mỗi thực thể trong ERD tương ứng với một lớp Entity trong biểu đồ lớp.
+**Slide 13 – Biểu đồ luồng dữ liệu mức 0** · Nguyễn Đức Phúc · 30 giây
+> Mức 0 tách hệ thống thành các tiến trình chính và bốn kho dữ liệu. Đã có mã chạy: xác thực OTP, sự kiện và giá khu, giữ chỗ, đơn hàng và thanh toán, định giá động. Phòng chờ ảo, soát vé và báo cáo doanh thu đang ở mức thiết kế. Mức 1 được vẽ cho ba tiến trình chính.
 
-**Slide 14 – Giữ ghế và cập nhật thời gian thực** · Vũ Đức Huy · 35 giây
-> Ghế có ba trạng thái: còn trống, đang giữ và đã bán. Khi khách chọn ghế, máy chủ giữ ghế và gửi thông báo trong cùng một giao dịch. Thông báo chỉ đi ra sau khi giao dịch hoàn tất, nên mọi trình duyệt đang mở thấy ghế đổi màu ngay. Lượt giữ có hạn 5 phút, hết hạn thì ghế tự trả lại.
+**Slide 14 – Mô hình dữ liệu** · Vũ Đức Huy · 30 giây
+> Hình 6 là sơ đồ thực thể liên kết. Thiết kế ở Sprint 1 có 26 bảng; sau khi chuẩn hóa, cơ sở dữ liệu đang chạy có 24 bảng, trong đó có một bảng thêm cho ứng dụng OTP. Mỗi thực thể trong ERD tương ứng với một lớp Entity trong biểu đồ lớp.
 
-**Slide 15 – Chống bán trùng ghế** · Vũ Đức Huy · 35 giây
-> Khi hai người cùng bấm một ghế, câu lệnh cập nhật chỉ thành công nếu ghế còn trống. Khóa dòng khiến người đến sau phải chờ, rồi nhận lỗi ghế đã bị giữ. Lớp bảo vệ thứ hai là chỉ mục duy nhất: mỗi ghế của một sự kiện chỉ có một lượt giữ còn hiệu lực.
+**Slide 15 – Giữ ghế và cập nhật thời gian thực** · Vũ Đức Huy · 35 giây
+> Hình 7 là sơ đồ tuần tự giữ ghế. Ghế có ba trạng thái: còn trống, đang giữ và đã bán. Khi khách chọn ghế, máy chủ giữ ghế và gửi thông báo trong cùng một giao dịch. Thông báo chỉ đi ra sau khi giao dịch hoàn tất, nên mọi trình duyệt đang mở thấy ghế đổi màu ngay. Lượt giữ có hạn 5 phút, hết hạn thì ghế tự trả lại.
 
-**Slide 16 – Nhật ký thay đổi giá** · Vũ Đức Huy · 25 giây
+**Slide 16 – Chống bán trùng ghế** · Vũ Đức Huy · 35 giây
+> Hình 8 cho thấy hai người cùng bấm một ghế. Câu lệnh cập nhật chỉ thành công nếu ghế còn trống; khóa dòng khiến người đến sau phải chờ, rồi nhận lỗi ghế đã bị giữ. Lớp bảo vệ thứ hai là chỉ mục duy nhất: mỗi ghế của một sự kiện chỉ có một lượt giữ còn hiệu lực.
+
+**Slide 17 – Nhật ký thay đổi giá** · Vũ Đức Huy · 25 giây
 > Mọi lần đổi giá đều được ghi lại: ai đổi, lúc nào, từ giá nào sang giá nào. Trigger trong PostgreSQL chặn mọi lệnh sửa và xóa trên bảng này, kể cả với quản trị viên. Phần demo sẽ cho thấy lệnh xóa bị từ chối.
 
 ### Phần 5. Định giá, thanh toán, trợ lý ảo
 
-**Slide 17 – Định giá động: dữ liệu đầu vào và công thức** · Nguyễn Anh Dũng · 55 giây
+**Slide 18 – Định giá động: dữ liệu đầu vào và công thức** · Nguyễn Anh Dũng · 55 giây
 > Định giá động dựa trên ba dữ liệu của từng khu: tốc độ bán trong 15 phút gần nhất so với tốc độ mục tiêu, số người trong phòng chờ, và tỉ lệ ghế đang được giữ. Từ đó tính chỉ số áp lực cầu α. Nếu α lớn hơn 1, tức là bán nhanh hơn kế hoạch, giá đề xuất tăng; nhỏ hơn 1 thì giảm. Mỗi lần điều chỉnh tối đa 20%, làm tròn đến 10.000 đồng và luôn nằm trong khoảng sàn – trần; lệch dưới 5% thì bỏ qua. Đây chỉ là đề xuất, Ban Tổ chức duyệt thì giá mới áp dụng.
 
-**Slide 18 – Định giá động trên giao diện** · Nguyễn Anh Dũng · 45 giây
-> Ban Tổ chức thấy dữ liệu đầu vào của từng khu, giá hiện tại so với giá đề xuất và lịch sử giá, rồi bấm duyệt hoặc từ chối. Sau khi duyệt, giá trên sơ đồ ghế của khán giả đổi ngay và khu đó có nhãn báo tăng hoặc giảm. Phần demo sẽ cho thấy toàn bộ chuỗi này với dữ liệu thật.
+**Slide 19 – Định giá động trên giao diện** · Nguyễn Anh Dũng · 45 giây
+> Bên trái là màn hình của Ban Tổ chức: dữ liệu đầu vào của khu, giá đề xuất và mức tăng, nút duyệt hoặc từ chối. Bên phải là sơ đồ ghế của khán giả ngay sau khi Ban Tổ chức duyệt: giá mới và nhãn "Giá vừa tăng" hiện ngay. Hai ảnh này chụp trong lúc quay demo trên bản chạy thật.
 
-**Slide 19 – Thanh toán qua VNPay** · Nguyễn Đức Phúc · 40 giây
+**Slide 20 – Thanh toán qua VNPay** · Nguyễn Đức Phúc · 40 giây
 > Sau khi giữ ghế, khách tạo đơn; giá được tính lại ở máy chủ, cộng phí dịch vụ 3%. Khách được chuyển sang trang VNPay. Chỉ khi VNPay báo kết quả về máy chủ và chữ ký hợp lệ thì ghế mới chuyển sang đã bán và vé được phát. Nhóm đang dùng môi trường thử của VNPay, không có tiền thật.
 
-**Slide 20 – Trợ lý ảo hỗ trợ đặt vé** · Vũ Đức Huy · 40 giây
+**Slide 21 – Trợ lý ảo hỗ trợ đặt vé** · Vũ Đức Huy · 40 giây
 > Trợ lý ảo trả lời khán giả về lịch diễn, giá, khu còn chỗ và cách đặt vé. Ban Tổ chức có thể hỏi nhanh doanh số các sự kiện của mình. Mô hình ngôn ngữ chạy trên máy của nhóm. Vì mô hình nhỏ dễ trả lời sai, nhóm chỉ để mô hình xác định loại câu hỏi; mọi con số đều lấy từ cơ sở dữ liệu.
 
-**Slide 21 – Vé QR xoay vòng và soát vé ngoại tuyến** · Lê Đức Anh · 40 giây
+**Slide 22 – Vé QR xoay vòng và soát vé ngoại tuyến** · Lê Đức Anh · 40 giây
 > Đây là hướng phát triển ở Sprint 5. Mã QR trên vé đổi sau mỗi 30 giây, nên ảnh chụp màn hình cũ không dùng được. Nhân viên quét vé bằng camera điện thoại; khi mất mạng, máy quét vẫn tự kiểm tra và đồng bộ lại khi có mạng.
 
-**Slide 22 – Bảng doanh thu cho Ban lãnh đạo** · Nguyễn Đức Phúc · 25 giây
+**Slide 23 – Bảng doanh thu cho Ban lãnh đạo** · Nguyễn Đức Phúc · 25 giây
 > Cũng ở Sprint 5, Ban lãnh đạo sẽ theo dõi doanh thu và tỉ lệ lấp đầy trên điện thoại. Số liệu cập nhật chậm nhất 60 giây và xuất được báo cáo ra Excel.
 
-### Phần 6. Kiểm thử và kết luận
+### Phần 6. Các góc nhìn
 
-**Slide 23 – Kiểm thử tải trên bản chạy thật** · Nguyễn Anh Dũng · 55 giây
-> Nhóm dùng k6 chạy trên bản thật trong ba phút rưỡi: 200 người xem và 100 người giữ, trả ghế cùng lúc. Hệ thống xử lý hơn 28 nghìn yêu cầu; thời gian phản hồi p95 là 342 mili giây khi xem và 296 mili giây khi giữ ghế, không có lỗi. Khi cho 100 tài khoản cùng giữ một ghế, đúng một tài khoản thành công.
+**Slide 24 – Mỗi người dùng thấy gì** · Đinh Tiến Thành · 40 giây
+> Hệ thống có nhiều góc nhìn. Khán giả thấy sơ đồ ghế cập nhật tức thì, giữ ghế, thanh toán và xem vé. Điện thoại của khán giả nhận mã đăng nhập qua ứng dụng. Cổng thanh toán VNPay xử lý giao dịch và báo kết quả về máy chủ. Ban Tổ chức đặt giá và duyệt giá đề xuất. Trợ lý ảo trả lời bằng số liệu thật. Máy chủ chịu tải và giữ nhật ký giá. CEO và nhân viên cổng thuộc Sprint 5. Mỗi bước demo đều ghi rõ đang xem từ góc nhìn nào.
 
-**Slide 24 – Kiểm thử người dùng** · Đinh Tiến Thành · 40 giây
+**Slide 25 – Hai khán giả cùng chọn một ghế** · Lê Đức Anh · 35 giây
+> Đây là hai trình duyệt của hai khách khác nhau, cùng mở khu SVIP. Khách A bấm ghế A1 và được giữ ghế trong 5 phút. Cùng lúc đó, màn hình của khách B đổi màu ghế A1 sang "đang có người giữ" mà không cần tải lại trang.
+
+**Slide 26 – Điện thoại và cổng thanh toán** · Trần Trung Nhân · 35 giây
+> Bên trái là màn hình điện thoại khi có mã đăng nhập: mã đến ứng dụng COSH301 OTP thành một thông báo. Bên phải là trang thanh toán của VNPay ở môi trường thử. Kết quả thanh toán do VNPay gọi về máy chủ, không dựa vào trang trả về trên trình duyệt.
+
+### Phần 7. Kiểm thử và kết luận
+
+**Slide 27 – Kiểm thử tải trên bản chạy thật** · Nguyễn Anh Dũng · 55 giây
+> Nhóm dùng k6 chạy trên bản thật. Lần thứ nhất kéo dài ba phút rưỡi: 200 người xem và 100 người giữ, trả ghế cùng lúc; hệ thống xử lý hơn 28 nghìn yêu cầu, p95 là 342 mili giây khi xem và 296 mili giây khi giữ ghế, không có lỗi. Lần thứ hai dồn 260 người dùng ảo vào một khu trong 45 giây: hơn 12 nghìn yêu cầu, p95 là 183 mili giây; biểu đồ bên phải theo dõi CPU từng container trên máy chủ, api chỉ lên khoảng 25%. Khi cho 100 tài khoản cùng giữ một ghế, đúng một tài khoản thành công.
+
+**Slide 28 – Kiểm thử người dùng** · Đinh Tiến Thành · 40 giây
 > Với kiểm thử người dùng, nhóm mời 5 đến 8 bạn trong lớp làm bốn nhiệm vụ: đăng nhập, giữ ghế, thanh toán thử và xem vé. Sau đó các bạn điền phiếu SUS ngay trong ứng dụng; Ban Tổ chức xem được điểm SUS, tỉ lệ hoàn thành và góp ý. Kết quả sẽ được cập nhật vào báo cáo sau buổi kiểm thử.
 
-**Slide 25 – Kế hoạch và tiến độ theo sprint** · Nguyễn Đức Phúc · 40 giây
+**Slide 29 – Kế hoạch và tiến độ theo sprint** · Nguyễn Đức Phúc · 40 giây
 > Dự án chia năm sprint trong 12 tuần, ước lượng 472 giờ công. Sprint 1 và Sprint 2 đã xong. Nhóm làm sớm một số phần của các sprint sau: trợ lý ảo của Sprint 3 và thanh toán VNPay ở môi trường thử của Sprint 4. Sprint 5 gồm soát vé, bảng doanh thu và báo cáo, hiện chưa làm. Bảng phân rã công việc và giờ công từng người có trong bảng 14 và bảng 15 của báo cáo.
 
-**Slide 26 – Hạn chế và bài học** · Nguyễn Đức Phúc · 45 giây
-> Hệ thống còn một số hạn chế: chưa có SMS thật, thanh toán ở môi trường thử và chưa hoàn tiền tự động, chưa có soát vé và bảng doanh thu, và chỉ chạy trên một máy ảo. Bài học lớn nhất của nhóm là tận dụng tốt PostgreSQL giúp hệ thống vừa đơn giản vừa an toàn, phân lớp BCE giúp dễ kiểm thử, và cờ tính năng giúp nghiệm thu từng sprint.
-
-**Slide 27 – Cảm ơn** · Vũ Đức Huy · 10 giây
-> Phần trình bày của nhóm đến đây là hết. Em cảm ơn cô và các bạn đã lắng nghe, mời cô xem phần demo.
+**Slide 30 – Hạn chế và bài học** · Nguyễn Đức Phúc · 45 giây
+> Hệ thống còn một số hạn chế: chưa có SMS thật, thanh toán ở môi trường thử và chưa hoàn tiền tự động, chưa có soát vé và bảng doanh thu, và chỉ chạy trên một máy ảo. Bài học lớn nhất của nhóm là tận dụng tốt PostgreSQL giúp hệ thống vừa đơn giản vừa an toàn, phân lớp BCE giúp dễ kiểm thử, và cờ tính năng giúp nghiệm thu từng sprint. Sau đây nhóm xin trình bày phần demo.
 
 ---
 
@@ -133,18 +144,22 @@ Video demo quay trên bản chạy thật, chia thành từng bước.
 Mỗi slide demo phát đúng đoạn của bước đó.
 Nếu mạng ổn định, có thể demo trực tiếp thay cho video.
 
-| Bước | Nội dung | Người thuyết minh |
-|---|---|---|
-| Khách hàng | Hai khách đăng nhập và cùng mở khu SVIP. Khách A giữ ghế, màn hình khách B đổi màu ngay. B bấm cùng ghế thì bị từ chối. A trả ghế, B thấy ghế trống lại. | Trần Trung Nhân |
-| Trợ lý ảo | Khách B hỏi khu nào của concert Mỹ Tâm còn vé và cách đặt vé. Số liệu lấy từ cơ sở dữ liệu. | Vũ Đức Huy |
-| Ứng dụng OTP | Mở ứng dụng COSH301 OTP từ màn hình chính, đăng nhập web bằng số điện thoại, mã hiện trong thông báo. | Trần Trung Nhân |
-| Thanh toán | Khách C xem vé đã mua qua VNPay. Khách B giữ ghế và chuyển sang trang VNPay (môi trường thử). | Trần Trung Nhân |
-| Ban Tổ chức | Đặt giá sai bị chặn, đặt giá đúng thì lưu; khách B thấy giá mới ngay. | Nguyễn Anh Dũng |
-| Kiểm thử tải | k6 tạo tải thật lên khu VieVIP trong 45 giây; dữ liệu đầu vào của khu thay đổi theo. | Nguyễn Anh Dũng |
-| Định giá động | Ban Tổ chức chạy lại phân tích, giá đề xuất tăng 20%, duyệt; khách B nhận thông báo và nhãn "Giá vừa tăng". | Nguyễn Anh Dũng |
-| Tranh một ghế | 100 tài khoản cùng giữ một ghế, đúng 1 tài khoản thành công. | Nguyễn Anh Dũng |
-| Nhật ký giá | Xem nhật ký giá, lệnh xóa bị từ chối. | Vũ Đức Huy |
-| Khảo sát | Phiếu khảo sát SUS ngay trong ứng dụng. | Đinh Tiến Thành |
+| Bước | Góc nhìn | Nội dung | Người thuyết minh |
+|---|---|---|---|
+| 1. Trang chủ | Khách A, khách B | Các sự kiện sắp diễn ra; khách B đã đăng nhập từ trước. | Trần Trung Nhân |
+| 2. Đăng nhập bằng ứng dụng OTP | Khách A, điện thoại | Mở ứng dụng COSH301 OTP từ màn hình chính, quay về màn hình chính. Khách A nhập số điện thoại trên web, mã đến điện thoại thành thông báo, khách nhập mã và đăng nhập. | Trần Trung Nhân |
+| 3 – 6. Giữ ghế | Khách A, khách B | Cùng mở khu SVIP. A giữ ghế A1, màn hình B đổi màu ngay. B bấm A1 thì bị từ chối. A trả ghế, B thấy ghế trống lại. | Trần Trung Nhân |
+| 7. Trợ lý ảo | Khách B | Hỏi khu nào của concert Mỹ Tâm còn vé và cách đặt vé. Số liệu lấy từ cơ sở dữ liệu. | Vũ Đức Huy |
+| 8. Thanh toán VNPay | Khách A, khách B, cổng thanh toán | A xem vé đã mua qua VNPay. B giữ ghế và chuyển sang trang VNPay (môi trường thử). | Trần Trung Nhân |
+| 9. Ban Tổ chức đặt giá | Ban Tổ chức, khách B | Đặt giá sai bị chặn, đặt giá đúng thì lưu; khách B thấy giá mới ngay. | Nguyễn Anh Dũng |
+| 10. Kiểm thử tải | Máy chủ, Ban Tổ chức | k6 tạo tải thật lên khu VieVIP trong 45 giây; biểu đồ CPU từng container trên máy chủ tăng theo tải; dữ liệu đầu vào của khu thay đổi. | Nguyễn Anh Dũng |
+| 11. Định giá động | Ban Tổ chức, khách B | Chạy lại phân tích, giá đề xuất tăng 20%, duyệt; khách B nhận thông báo và nhãn "Giá vừa tăng". | Nguyễn Anh Dũng |
+| 12. Tranh một ghế | Máy chủ | 100 tài khoản cùng giữ một ghế, đúng 1 tài khoản thành công. | Nguyễn Anh Dũng |
+| 13. Nhật ký giá | Máy chủ | Xem nhật ký giá, lệnh xóa bị từ chối. | Vũ Đức Huy |
+| 14. Khảo sát | Người tham gia kiểm thử | Phiếu khảo sát SUS ngay trong ứng dụng. | Đinh Tiến Thành |
+
+**Slide cuối – Cảm ơn** · Vũ Đức Huy · 10 giây
+> Phần trình bày của nhóm đến đây là hết. Em cảm ơn cô và các bạn đã lắng nghe. Mời cô và các bạn đặt câu hỏi.
 
 ---
 

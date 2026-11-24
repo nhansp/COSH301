@@ -58,14 +58,24 @@
       "section": "Định giá, thanh toán, trợ lý ảo"
     },
     {
-      "file": "06-ket-luan.md",
+      "file": "06-goc-nhin.md",
       "no": 6,
+      "section": "Các góc nhìn"
+    },
+    {
+      "file": "07-ket-luan.md",
+      "no": 7,
       "section": "Kiểm thử và kết luận"
     },
     {
-      "file": "07-demo.md",
-      "no": 7,
+      "file": "08-demo.md",
+      "no": 8,
       "section": "Demo"
+    },
+    {
+      "file": "09-ket-thuc.md",
+      "no": 9,
+      "section": "Kết thúc"
     }
   ]
 }

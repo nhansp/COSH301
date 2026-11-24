@@ -280,3 +280,11 @@ body.chips .badge, html.chips .badge { right: 380px; }
 /* the COSH301 mark: a stage disc with the coral followspot, as on the website */
 .mark { position: relative; display: inline-block; width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--paper); vertical-align: -0.5em; margin-right: 0.6em; }
 .mark::after { content: ""; position: absolute; top: 20%; right: 18%; width: 36%; height: 36%; border-radius: 50%; background: var(--coral); }
+
+/* figures: report diagrams sit on white paper, screenshots fill their frame */
+.slide figure { margin: 0; }
+.slide figure img { display: block; max-width: 100%; max-height: var(--fig-h, 690px); margin: 0 auto; border-radius: 18px; box-shadow: 0 0 0 1px var(--line); }
+.slide figure img[src*="img/report/"] { background: #fff; padding: 14px; }
+.slide .figcap { font-size: 26px; color: var(--soft); margin-top: 14px; text-align: center; }
+.slide.tall-fig { --fig-h: 760px; }
+.demo-side .pov { display: inline-block; font: 600 24px/1 var(--f-body); letter-spacing: 0.06em; color: var(--midnight, #11121a); background: var(--accent); border-radius: 999px; padding: 10px 18px; margin: 6px 0 18px; }
