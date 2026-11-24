@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
   MapPin,
@@ -11,13 +11,13 @@ import {
   SlidersHorizontal,
   Plus,
   Wand2,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
 import { EventSalesDashboard, PortfolioSalesBanner } from '../components/organizer/OrganizerSalesDashboard';
-import { EventCreatorStudio } from '../components/organizer/EventCreatorStudio';
 import { StageLayoutEditorPanel } from '../components/organizer/StageLayoutEditorPanel';
 import { useFeatures } from '../context/FeatureContext';
 import { useEvents } from '../context/EventContext';
@@ -179,20 +179,31 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted,
 };
 
 export const OrganizerPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
   const { refreshEvents } = useEvents();
+  const incomingCreated = (location.state as { createdEvent?: CreatedOrganizerEvent } | null)?.createdEvent ?? null;
+  const initialCreatedIdRef = useRef<string | null>(incomingCreated?.id ?? null);
+
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [overview, setOverview] = useState<OrganizerSalesOverview | null>(null);
   const [selected, setSelected] = useState<OrganizerEvent | null>(null);
   const [zones, setZones] = useState<OrganizerZone[]>([]);
   const [eventSeats, setEventSeats] = useState<SeatItem[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'layout' | 'pricing'>('dashboard');
-  const [isCreating, setIsCreating] = useState(false);
-  const [createdBanner, setCreatedBanner] = useState<CreatedOrganizerEvent | null>(null);
+  const [createdBanner, setCreatedBanner] = useState<CreatedOrganizerEvent | null>(incomingCreated);
   const [focusedZoneId, setFocusedZoneId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Clear router navigation state once captured so page reloads do not replay the banner.
+  useEffect(() => {
+    if (incomingCreated) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [incomingCreated, location.pathname, navigate]);
 
   const consoleEnabled = isEnabled('organizer_console');
 
@@ -234,7 +245,10 @@ export const OrganizerPage: React.FC = () => {
         if (!active) return;
         setEvents(list);
         if (list.length > 0) {
-          handleSelect(list[0]);
+          const targetId = initialCreatedIdRef.current;
+          const initial = (targetId ? list.find(e => e.id === targetId) : undefined) ?? list[0];
+          initialCreatedIdRef.current = null;
+          handleSelect(initial);
         }
       })
       .catch(() => {
@@ -296,17 +310,6 @@ export const OrganizerPage: React.FC = () => {
     loadOverview();
   };
 
-  const handleEventCreated = async (created: CreatedOrganizerEvent) => {
-    setIsCreating(false);
-    setCreatedBanner(created);
-    invalidateAssistantCache();
-    const [list] = await Promise.all([apiFetchOrganizerEvents(), loadOverview(), refreshEvents()]);
-    setEvents(list);
-    const match = list.find(e => e.id === created.id) ?? created;
-    await handleSelect(match);
-    setActiveTab('dashboard');
-  };
-
   const selectedSummary: EventSalesSummary | undefined = selected
     ? overview?.events.find(e => e.eventId === selected.id)
     : undefined;
@@ -332,17 +335,10 @@ export const OrganizerPage: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsCreating(prev => !prev);
-                setCreatedBanner(null);
-              }}
-              className="btn btn-ink btn-sm h-10"
-            >
+            <Link to="/organizer/events/new" className="btn btn-ink btn-sm h-10">
               <Plus className="size-4" />
-              <span>{isCreating ? 'Ẩn trình tạo sự kiện' : 'Tạo sự kiện mới'}</span>
-            </button>
+              <span>Tạo sự kiện mới</span>
+            </Link>
             <button
               type="button"
               onClick={handleRefresh}
@@ -367,21 +363,24 @@ export const OrganizerPage: React.FC = () => {
                 {createdBanner.totalCapacity.toLocaleString('vi-VN')} chỗ) với thiết kế sân khấu trực tiếp!
               </span>
             </div>
-            <Link
-              to={`/events/${createdBanner.slug}/tickets`}
-              className="btn btn-secondary btn-sm h-9 text-xs text-kumo-strong"
-            >
-              <span>Xem sơ đồ 2D / 3D</span>
-              <ExternalLink className="size-3.5" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/events/${createdBanner.slug}/tickets`}
+                className="btn btn-secondary btn-sm h-9 text-xs text-kumo-strong"
+              >
+                <span>Xem sơ đồ 2D / 3D</span>
+                <ExternalLink className="size-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setCreatedBanner(null)}
+                aria-label="Ẩn thông báo"
+                className="rounded-lg p-1.5 text-kumo-success/80 transition-colors hover:bg-kumo-success/10 hover:text-kumo-success"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
           </div>
-        )}
-
-        {isCreating && (
-          <EventCreatorStudio
-            onClose={() => setIsCreating(false)}
-            onCreated={handleEventCreated}
-          />
         )}
 
         {overview && (

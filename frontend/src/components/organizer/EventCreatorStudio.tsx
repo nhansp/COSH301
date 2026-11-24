@@ -443,11 +443,16 @@ function toLocalISOOffset(datetimeLocal: string): string {
 }
 
 interface EventCreatorStudioProps {
-  onClose: () => void;
+  onClose?: () => void;
   onCreated: (created: CreatedOrganizerEvent) => void;
+  standalone?: boolean;
 }
 
-export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({ onClose, onCreated }) => {
+export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
+  onClose,
+  onCreated,
+  standalone = false
+}) => {
   const initialTemplate = VENUE_TEMPLATES[0];
   const initialDates = useMemo(defaultDateRange, []);
 
@@ -683,37 +688,45 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({ onClose,
 
   return (
     <section
-      aria-labelledby="create-event-studio-title"
-      className="mb-8 overflow-hidden rounded-2xl bg-kumo-base ring-2 ring-violet-ink/60 shadow-xl"
+      aria-labelledby={standalone ? undefined : 'create-event-studio-title'}
+      className={
+        standalone
+          ? 'overflow-hidden rounded-2xl bg-kumo-base ring ring-kumo-line'
+          : 'mb-8 overflow-hidden rounded-2xl bg-kumo-base ring-2 ring-violet-ink/60 shadow-xl'
+      }
     >
-      {/* Studio Top Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-kumo-hairline bg-kumo-recessed/65 px-5 py-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-xl bg-violet/20 text-violet-ink">
-              <Wand2 className="size-4" />
-            </span>
-            <div>
-              <h2 id="create-event-studio-title" className="text-base font-semibold text-kumo-strong">
-                Tạo sự kiện mới &amp; Thiết kế sân khấu
-              </h2>
-              <p className="text-xs text-kumo-subtle">
-                Cấu hình thông tin đêm diễn, hình dáng sân khấu, bố cục khán đài và tự động sinh sơ đồ ghế 2D/3D.
-              </p>
+      {/* Studio Top Bar (omitted when hosted on its own dedicated page) */}
+      {!standalone && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-kumo-hairline bg-kumo-recessed/65 px-5 py-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-xl bg-violet/20 text-violet-ink">
+                <Wand2 className="size-4" />
+              </span>
+              <div>
+                <h2 id="create-event-studio-title" className="text-base font-semibold text-kumo-strong">
+                  Tạo sự kiện mới &amp; Thiết kế sân khấu
+                </h2>
+                <p className="text-xs text-kumo-subtle">
+                  Cấu hình thông tin đêm diễn, hình dáng sân khấu, bố cục khán đài và tự động sinh sơ đồ ghế 2D/3D.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Đóng trình tạo sự kiện"
-          className="btn btn-quiet btn-sm h-9"
-        >
-          <X className="size-4" />
-          <span>Đóng</span>
-        </button>
-      </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Đóng trình tạo sự kiện"
+              className="btn btn-quiet btn-sm h-9"
+            >
+              <X className="size-4" />
+              <span>Đóng</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Quick Starter Templates Strip */}
       <div className="border-b border-kumo-hairline bg-kumo-base px-5 py-3">
