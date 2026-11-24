@@ -145,15 +145,8 @@ func (s *OrganizerService) UpdateZonePricing(ctx context.Context, eventID, zoneI
 		}
 	}
 
-	// Held seats keep their price for the holder but must stay within the new bounds.
-	if _, err := qtx.ClampZoneSeatPrices(ctx, store.ClampZoneSeatPricesParams{
-		EventID:      eventID,
-		ZoneID:       zoneID,
-		FloorPrice:   numeric(p.FloorPrice),
-		CeilingPrice: numeric(p.CeilingPrice),
-	}); err != nil {
-		return nil, fmt.Errorf("clamp seat prices: %w", err)
-	}
+	// Held seats keep the price their holder saw; they take the new base price
+	// when they return to sale.
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit pricing: %w", err)

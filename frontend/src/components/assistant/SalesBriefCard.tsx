@@ -213,7 +213,7 @@ export const SalesBriefCard: React.FC<SalesBriefCardProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="type-figure shrink-0 text-kumo-strong">{formatPrice(z.basePrice, '₫')}</span>
+                  <span className="type-figure shrink-0 text-kumo-strong">{formatPrice(z.basePrice)}</span>
                 </div>
 
                 <div className="mt-1.5 flex items-center gap-2">

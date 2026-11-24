@@ -23,7 +23,7 @@ api là một file chạy Go duy nhất, chia lớp theo BCE (bài B05):
 | Lớp | Gói | Việc |
 |---|---|---|
 | Boundary | `internal/httpapi` | Định tuyến, đọc JSON, tra phiên, kiểm tra cờ và vai trò, trả mã HTTP |
-| Control | `internal/service` | Nghiệp vụ: OTP, giữ ghế, giá khu vực, realtime, nhả ghế hết hạn |
+| Control | `internal/service` | Nghiệp vụ: OTP, giữ ghế, giá khu vực, hủy vé và nhật ký, realtime, nhả ghế hết hạn |
 | Entity | `internal/store` | Model và truy vấn sinh bằng `sqlc` từ `queries/*.sql`, chạy trên `pgx/v5` |
 
 ## 2. Triển khai
@@ -33,7 +33,7 @@ flowchart LR
     B["Trình duyệt"]
     CF["Cloudflare"]
 
-    subgraph Compose["Docker Compose"]
+    subgraph Compose["Máy ảo GCP: Docker Compose"]
         T["tunnel<br/>cloudflared<br/>(profile tunnel)"]
         F["frontend<br/>nginx<br/>SPA + proxy /api"]
         A["api<br/>Go, cổng 8080"]
@@ -50,7 +50,7 @@ flowchart LR
 
 | Dịch vụ | Image | Cổng | Ghi chú |
 |---|---|---|---|
-| `db` | `postgres:18.6-alpine3.24` | 5432, chỉ trong mạng Compose | Healthcheck `pg_isready` |
+| `db` | `postgres:18.6-alpine3.24` | `127.0.0.1:5432` trên máy chủ | Healthcheck `pg_isready` |
 | `api` | Build từ `backend/Dockerfile`: `golang:1.26.10-alpine3.24`, chạy trên `alpine:3.24.3` | 8080, chỉ trong mạng Compose | Chạy bằng user không phải root. Healthcheck `GET /api/health` |
 | `frontend` | Build từ `frontend/Dockerfile`: `oven/bun:1.4.4-alpine`, chạy trên `nginx:1.31.8-alpine3.24` | `127.0.0.1:${FRONTEND_PORT:-3001}` → 80 | Cổng duy nhất mở ra máy chủ |
 | `tunnel` | `cloudflare/cloudflared:2026.10.7` | Không mở cổng | Chỉ chạy khi bật profile `tunnel` và có `TUNNEL_TOKEN` |
@@ -63,16 +63,17 @@ nginx của `frontend`:
 - đặt `X-Real-IP` để api biết IP thật của khách;
 - tắt `proxy_buffering` và để `proxy_read_timeout 24h` cho luồng SSE.
 
-### Bản chạy trên `vdhwy-legion`
+### Bản chạy trực tuyến
 
-Máy `vdhwy-legion` khởi động từ ramdisk, không có ổ cứng, nên không dùng Docker:
-- `/opt/cosh301/api`: binary Go, chạy bằng systemd `cosh301-api` với user `cosh301`, cổng 18080, chỉ nhận kết nối từ localhost;
-- `/opt/cosh301/dist`: bản build của `frontend/`, nginx của máy (`127.0.0.1:80`) trả SPA và chuyển `/api/` sang cổng 18080;
-- PostgreSQL 18 cài trên máy, cổng 5432 chỉ mở cho localhost;
-- `cosh301-tunnel`: cloudflared với `--protocol http2`, vì mạng FTU bóp UDP.
+Hệ thống chạy trên một máy ảo GCP (Compute Engine) bằng Docker Compose, gồm bốn dịch vụ `db`, `api`, `frontend` và `tunnel`.
+Địa chỉ công khai: `https://cosh301.nhansp.id.vn`, qua Cloudflare Tunnel.
 
-Mọi thứ nằm trong RAM: khởi động lại máy là mất dữ liệu, cấu hình mạng và bản đã triển khai.
-Cập nhật frontend: build `frontend/` trên nhánh `staging`, thay `dist/` và giữ bản cũ ở `dist.bak-<thời-gian>`.
+- `tunnel` (cloudflared) tự kết nối ra Cloudflare và chuyển HTTP vào `frontend`.
+  Máy ảo không mở cổng web ra Internet.
+- `.env` trên máy ảo đặt `COMPOSE_PROFILES=tunnel`, `TUNNEL_TOKEN`, `FEATURE_PROFILE=sprint2`, `APP_ENV=production` và `COOKIE_SECURE=true`.
+- `APP_ENV=production` tắt `POST /api/auth/demo-login` và `POST /api/tickets/reset-demo`.
+- Dữ liệu PostgreSQL nằm trong volume `pgdata` trên đĩa của máy ảo.
+- Cập nhật bằng cách lấy mã mới từ nhánh `rewrite` rồi chạy lại `docker compose up -d --build`.
 
 ## 3. Bên trong api
 
@@ -86,6 +87,7 @@ flowchart TB
         SeatH["SeatHandler"]
         StrH["StreamHandler"]
         OrgH["OrganizerHandler"]
+        TktH["TicketHandler"]
     end
 
     subgraph Control["Control: internal/service"]
@@ -93,6 +95,7 @@ flowchart TB
         EvS["EventService"]
         SeatS["SeatService"]
         OrgS["OrganizerService"]
+        TktS["TicketService"]
         Hub["RealtimeHub"]
         Reaper["HoldReaper<br/>(5 giây một lần)"]
     end
@@ -103,15 +106,16 @@ flowchart TB
 
     PG[("PostgreSQL")]
 
-    MW --> SysH & AuthH & EvH & SeatH & StrH & OrgH
+    MW --> SysH & AuthH & EvH & SeatH & StrH & OrgH & TktH
     AuthH --> AuthS
     EvH --> EvS
     SeatH --> SeatS & AuthS & EvS
     StrH --> Hub & EvS
     OrgH --> OrgS & EvS
+    TktH --> TktS & EvS
     Reaper --> SeatS
 
-    AuthS & EvS & SeatS & OrgS --> Q
+    AuthS & EvS & SeatS & OrgS & TktS --> Q
     Q --> PG
     PG -. "NOTIFY event_seats_channel" .-> Hub
 ```
@@ -188,12 +192,16 @@ Cờ tắt thì:
 |---|---|
 | `GET /api/health`, `GET /api/features` | — |
 | `POST /api/auth/otp/request`, `POST /api/auth/otp/verify` | `otp_login` |
+| `POST /api/auth/demo-login` | Chỉ khi `APP_ENV` khác `production` |
 | `GET /api/auth/me`, `POST /api/auth/logout` | — |
 | `GET /api/events`, `GET /api/events/{slug}` | — (FR-02 luôn bật) |
 | `GET /api/events/{id}/seats`, `GET /api/events/{id}/stream` | `seat_map_realtime` |
-| `POST /api/holds`, `DELETE /api/holds/{seatId}` | `seat_hold` |
+| `GET /api/holds`, `POST /api/holds`, `DELETE /api/holds/{seatId}` | `seat_hold` |
 | `GET /api/organizer/events` | `organizer_console` |
 | `PUT /api/organizer/events/{id}/zones/{zoneId}/pricing` | `organizer_console`, `zone_pricing` |
+| `GET /api/tickets/audit-logs` | `organizer_console` |
+| `POST /api/tickets/cancel`, `GET /api/tickets/cancelled` | `payments` |
+| `POST /api/tickets/reset-demo` | `seat_hold`, chỉ khi `APP_ENV` khác `production` |
 
 Chưa làm, theo mục 7 của thiết kế:
 

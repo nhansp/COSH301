@@ -12,7 +12,7 @@ import (
 
 func TestSystemHandler_HandleHealth(t *testing.T) {
 	fm := config.NewFeatureManagerFromEnv()
-	handler := NewSystemHandler(fm)
+	handler := NewSystemHandler(fm, false)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	rec := httptest.NewRecorder()
@@ -38,7 +38,7 @@ func TestSystemHandler_HandleFeatures(t *testing.T) {
 	defer os.Unsetenv("FEATURE_PROFILE")
 
 	fm := config.NewFeatureManagerFromEnv()
-	handler := NewSystemHandler(fm)
+	handler := NewSystemHandler(fm, false)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/features", nil)
 	rec := httptest.NewRecorder()

@@ -98,7 +98,11 @@ WITH expired AS (
     RETURNING event_id AS exp_event_id, seat_id AS exp_seat_id
 )
 UPDATE event_seats
-SET status = 'AVAILABLE', version = version + 1, updated_at = now()
+SET status = 'AVAILABLE', current_price = (
+        SELECT ez.base_price FROM event_zones ez JOIN seats z ON z.zone_id = ez.zone_id
+        WHERE ez.event_id = event_seats.event_id AND z.id = event_seats.seat_id
+    ),
+    version = event_seats.version + 1, updated_at = now()
 FROM expired
 WHERE event_seats.event_id = expired.exp_event_id 
   AND event_seats.seat_id = expired.exp_seat_id 
@@ -281,6 +285,63 @@ func (q *Queries) ListActiveHoldsForUser(ctx context.Context, arg ListActiveHold
 	return items, nil
 }
 
+const listMyActiveHolds = `-- name: ListMyActiveHolds :many
+SELECT sh.event_id, e.slug AS event_slug, e.name AS event_name, e.starts_at, v.name AS venue_name,
+       sh.seat_id, s.seat_label, vz.name AS zone_name, es.current_price, sh.expires_at
+FROM seat_holds sh
+JOIN events e ON e.id = sh.event_id
+JOIN venues v ON v.id = e.venue_id
+JOIN seats s ON s.id = sh.seat_id
+JOIN venue_zones vz ON vz.id = s.zone_id
+JOIN event_seats es ON es.event_id = sh.event_id AND es.seat_id = sh.seat_id
+WHERE sh.user_id = $1 AND sh.status = 'ACTIVE' AND sh.expires_at > now()
+ORDER BY e.starts_at, sh.expires_at, s.seat_label
+`
+
+type ListMyActiveHoldsRow struct {
+	EventID      pgtype.UUID        `json:"event_id"`
+	EventSlug    string             `json:"event_slug"`
+	EventName    string             `json:"event_name"`
+	StartsAt     pgtype.Timestamptz `json:"starts_at"`
+	VenueName    string             `json:"venue_name"`
+	SeatID       pgtype.UUID        `json:"seat_id"`
+	SeatLabel    string             `json:"seat_label"`
+	ZoneName     string             `json:"zone_name"`
+	CurrentPrice pgtype.Numeric     `json:"current_price"`
+	ExpiresAt    pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) ListMyActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ListMyActiveHoldsRow, error) {
+	rows, err := q.db.Query(ctx, listMyActiveHolds, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyActiveHoldsRow
+	for rows.Next() {
+		var i ListMyActiveHoldsRow
+		if err := rows.Scan(
+			&i.EventID,
+			&i.EventSlug,
+			&i.EventName,
+			&i.StartsAt,
+			&i.VenueName,
+			&i.SeatID,
+			&i.SeatLabel,
+			&i.ZoneName,
+			&i.CurrentPrice,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockUserEventAdvisory = `-- name: LockUserEventAdvisory :exec
 SELECT pg_advisory_xact_lock(hashtext($1::text || ':' || $2::text))
 `
@@ -340,8 +401,12 @@ func (q *Queries) ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams
 
 const resetSeatToAvailable = `-- name: ResetSeatToAvailable :exec
 UPDATE event_seats
-SET status = 'AVAILABLE', version = version + 1, updated_at = now()
-WHERE event_id = $1 AND seat_id = $2 AND status = 'HELD'
+SET status = 'AVAILABLE', current_price = (
+        SELECT ez.base_price FROM event_zones ez JOIN seats z ON z.zone_id = ez.zone_id
+        WHERE ez.event_id = event_seats.event_id AND z.id = event_seats.seat_id
+    ),
+    version = version + 1, updated_at = now()
+WHERE event_seats.event_id = $1 AND event_seats.seat_id = $2 AND event_seats.status = 'HELD'
 `
 
 type ResetSeatToAvailableParams struct {
@@ -349,6 +414,7 @@ type ResetSeatToAvailableParams struct {
 	SeatID  pgtype.UUID `json:"seat_id"`
 }
 
+// A seat that returns to sale takes the zone's current base price.
 func (q *Queries) ResetSeatToAvailable(ctx context.Context, arg ResetSeatToAvailableParams) error {
 	_, err := q.db.Exec(ctx, resetSeatToAvailable, arg.EventID, arg.SeatID)
 	return err
@@ -389,7 +455,11 @@ WITH expired_hold AS (
     RETURNING id
 )
 UPDATE event_seats
-SET status = 'HELD', version = event_seats.version + 1, updated_at = now()
+SET status = 'HELD', current_price = (
+        SELECT ez.base_price FROM event_zones ez JOIN seats z ON z.zone_id = ez.zone_id
+        WHERE ez.event_id = event_seats.event_id AND z.id = event_seats.seat_id
+    ),
+    version = event_seats.version + 1, updated_at = now()
 WHERE event_seats.event_id = $1 AND event_seats.seat_id = $2 AND event_seats.status = 'HELD' AND EXISTS (SELECT 1 FROM expired_hold)
 RETURNING id, event_id, seat_id, status, current_price, version, updated_at
 `

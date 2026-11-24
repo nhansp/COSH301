@@ -110,12 +110,12 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
               />
             ) : (
               <div className="mt-1.5 rounded-lg bg-kumo-recessed px-3 py-2 text-base font-semibold text-kumo-strong tabular-nums">
-                {formatPrice(zone[key], '₫')}
+                {formatPrice(zone[key])}
               </div>
             )}
             {editable && /^\d+$/.test(draft[key].trim()) && (
               <span className="mt-1 block text-xs font-normal text-kumo-subtle tabular-nums">
-                {formatPrice(Number(draft[key]), '₫')}
+                {formatPrice(Number(draft[key]))}
               </span>
             )}
           </label>

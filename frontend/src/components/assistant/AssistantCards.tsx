@@ -154,7 +154,7 @@ export const TrendingListCard: React.FC<{ events: EnrichedEvent[] }> = ({ events
               </div>
               <p className="mt-0.5 text-[11px] text-kumo-subtle">
                 {item.event.genre} · {item.event.city} · {item.zones.length} khu · từ{' '}
-                <span className="type-figure text-kumo-default">{formatPrice(item.minPrice, '₫')}</span>
+                <span className="type-figure text-kumo-default">{formatPrice(item.minPrice)}</span>
               </p>
 
               {/* Live Demand Progress Bar */}
@@ -200,7 +200,7 @@ export const RecommendationListCard: React.FC<{ items: RecommendedEvent[] }> = (
             </p>
             <div className="mt-1.5 flex items-center justify-between">
               <span className="type-figure text-xs text-kumo-strong">
-                từ {formatPrice(enriched.minPrice, '₫')}
+                từ {formatPrice(enriched.minPrice)}
               </span>
               <Link
                 to={`/events/${enriched.event.id}/tickets`}

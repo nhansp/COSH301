@@ -410,7 +410,7 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
                     </span>
                   </div>
                   <span className="type-figure text-sm text-violet-ink">
-                    {formatPrice(inspectedZone.basePrice, '₫')}
+                    {formatPrice(inspectedZone.basePrice)}
                   </span>
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
@@ -476,7 +476,7 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
                         }}
                       />
                       <div
-                        title={`Giá cơ bản: ${formatPrice(z.basePrice, '₫')}`}
+                        title={`Giá cơ bản: ${formatPrice(z.basePrice)}`}
                         className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-kumo-base bg-violet-ink shadow-sm"
                         style={{ left: `${basePct}%` }}
                       />

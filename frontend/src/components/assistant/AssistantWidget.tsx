@@ -74,7 +74,7 @@ function buildWelcomeMessage(isOrganizer: boolean, currentEventTitle?: string): 
     id: 'welcome-user',
     sender: 'assistant',
     text:
-      'Chào bạn! Mình là **Trợ lý Sự kiện SortMyScene**. Bạn muốn xem **tóm tắt sự kiện**, **concert đang hot**, hay nhận **gợi ý theo gu nhạc & ngân sách** của bạn?',
+      'Chào bạn! Mình là **Trợ lý Sự kiện COSH301**. Bạn muốn xem **tóm tắt sự kiện**, **concert đang hot**, hay nhận **gợi ý theo gu nhạc & ngân sách** của bạn?',
     suggestions: baseSuggestions,
     timestamp: Date.now()
   };
@@ -250,7 +250,7 @@ export const AssistantWidget: React.FC = () => {
       {isOpen ? (
         <section
           role="dialog"
-          aria-label={isOrganizer ? 'Trợ lý Sân khấu Ban Tổ Chức' : 'Trợ lý Sự kiện SortMyScene'}
+          aria-label={isOrganizer ? 'Trợ lý Sân khấu Ban Tổ Chức' : 'Trợ lý Sự kiện COSH301'}
           className={`flex max-h-[min(82dvh,720px)] flex-col overflow-hidden rounded-[var(--radius-card)] bg-kumo-raised shadow-[var(--shadow-lift)] ring ring-kumo-line transition-[width] duration-200 motion-safe:animate-[sheet-in_220ms_var(--ease-reveal)] ${
             expanded
               ? 'w-[min(620px,calc(100vw-2rem))]'

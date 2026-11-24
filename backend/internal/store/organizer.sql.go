@@ -11,39 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const clampZoneSeatPrices = `-- name: ClampZoneSeatPrices :execrows
-UPDATE event_seats es
-SET current_price = LEAST(GREATEST(es.current_price, $1::numeric), $2::numeric),
-    version = es.version + 1,
-    updated_at = now()
-FROM seats s
-WHERE es.seat_id = s.id
-  AND es.event_id = $3
-  AND s.zone_id = $4
-  AND es.status IN ('AVAILABLE', 'HELD')
-  AND (es.current_price < $1::numeric OR es.current_price > $2::numeric)
-`
-
-type ClampZoneSeatPricesParams struct {
-	FloorPrice   pgtype.Numeric `json:"floor_price"`
-	CeilingPrice pgtype.Numeric `json:"ceiling_price"`
-	EventID      pgtype.UUID    `json:"event_id"`
-	ZoneID       pgtype.UUID    `json:"zone_id"`
-}
-
-func (q *Queries) ClampZoneSeatPrices(ctx context.Context, arg ClampZoneSeatPricesParams) (int64, error) {
-	result, err := q.db.Exec(ctx, clampZoneSeatPrices,
-		arg.FloorPrice,
-		arg.CeilingPrice,
-		arg.EventID,
-		arg.ZoneID,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const getEventOrganizer = `-- name: GetEventOrganizer :one
 SELECT organizer_id FROM events WHERE id = $1
 `

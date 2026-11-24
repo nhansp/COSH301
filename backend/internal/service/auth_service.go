@@ -237,37 +237,22 @@ func (s *AuthService) VerifyOTP(ctx context.Context, destination, code, ipAddres
 	return rawToken, &user, nil
 }
 
-// DemoLogin allows 1-click test login without OTP verification.
-// It creates a real authenticated session in PostgreSQL.
-func (s *AuthService) DemoLogin(ctx context.Context, role, ipAddress, userAgent string) (string, *store.User, error) {
-	var dest string
-	userRole := store.UserRoleCUSTOMER
-	fullName := "Khán giả Demo"
-
-	if strings.EqualFold(role, "ORGANIZER") {
-		dest = "btc@cosh301.nhansp.id.vn"
-		userRole = store.UserRoleORGANIZER
-		fullName = "Ban Tổ chức"
-	} else {
-		dest = "khangia.demo@sortmyscene.live"
+// DemoLogin signs in a new customer account without OTP. Each visitor gets
+// their own account, so one visitor's holds or demo reset never touch another's.
+func (s *AuthService) DemoLogin(ctx context.Context, ipAddress, userAgent string) (string, *store.User, error) {
+	token, err := GenerateToken()
+	if err != nil {
+		return "", nil, err
 	}
-
-	user, err := s.findUser(ctx, dest, "EMAIL")
-	if errors.Is(err, pgx.ErrNoRows) {
-		params := store.CreateUserParams{
-			Role:            userRole,
-			Status:          store.UserStatusACTIVE,
-			Email:           pgtype.Text{String: dest, Valid: true},
-			FullName:        pgtype.Text{String: fullName, Valid: true},
-			EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-		}
-		if user, err = s.queries.CreateUser(ctx, params); err != nil {
-			return "", nil, fmt.Errorf("create demo user: %w", err)
-		}
-	} else if err != nil {
-		return "", nil, fmt.Errorf("lookup demo user: %w", err)
-	} else if user.Status != store.UserStatusACTIVE {
-		return "", nil, ErrAccountInactive
+	user, err := s.queries.CreateUser(ctx, store.CreateUserParams{
+		Role:            store.UserRoleCUSTOMER,
+		Status:          store.UserStatusACTIVE,
+		Email:           pgtype.Text{String: "demo-" + token[:12] + "@demo.invalid", Valid: true},
+		FullName:        pgtype.Text{String: "Khán giả demo", Valid: true},
+		EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("create demo user: %w", err)
 	}
 
 	if err := s.queries.UpdateUserLastLogin(ctx, user.ID); err != nil {

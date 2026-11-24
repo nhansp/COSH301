@@ -96,7 +96,7 @@ func (s *AssistantService) Chat(ctx context.Context, caller AssistantCaller, req
 	}
 
 	systemPrompt := fmt.Sprintf(
-		"You are the SortMyScene EventTicketing assistant speaking to a %s. %s "+
+		"You are the COSH301 Concerts EventTicketing assistant speaking to a %s. %s "+
 			"Use ONLY the live PostgreSQL JSON data below. Never invent events, prices, seat counts, or revenue figures. "+
 			"All prices and revenue are strictly in Vietnamese Dong (VND / ₫), NEVER USD or $. "+
 			"Keep your reply concise (2 to 4 sentences) because interactive UI cards and stage charts display the detailed breakdown right beneath your message.\n\n"+

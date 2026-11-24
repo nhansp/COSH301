@@ -12,7 +12,7 @@ const menuItem =
 
 /** Sticky header. On stage pages the theme switch is hidden: those pages are always dark. */
 export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) => {
-  const { user, isAuthenticated, logout, bookings } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const { isEnabled } = useFeatures();
   const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const showOrganizerLink = isOrganizer && isEnabled('organizer_console');
@@ -22,7 +22,6 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const activeTickets = bookings.filter(b => b.status === 'confirmed').length;
 
   useEffect(() => {
     setShowMobileMenu(false);
@@ -60,7 +59,7 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
 
   const nav = [
     { to: '/', label: 'Lịch diễn', show: true, count: 0 },
-    { to: '/my-tickets', label: 'Vé của tôi', show: isAuthenticated, count: activeTickets },
+    { to: '/my-tickets', label: 'Ghế đang giữ', show: isAuthenticated && isEnabled('seat_hold'), count: 0 },
     { to: '/organizer', label: 'Quản lý sự kiện', show: showOrganizerLink, count: 0 }
   ].filter(item => item.show);
 
@@ -142,8 +141,7 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
                   <div className="border-t border-kumo-hairline pt-1.5">
                     <Link role="menuitem" to="/my-tickets" className={menuItem}>
                       <Ticket className="size-4 text-kumo-subtle" />
-                      <span className="flex-1">Vé của tôi</span>
-                      {activeTickets > 0 && <span className="type-figure text-sm text-kumo-subtle">{activeTickets}</span>}
+                      <span className="flex-1">Ghế đang giữ</span>
                     </Link>
                     {showOrganizerLink && (
                       <Link role="menuitem" to="/organizer" className={menuItem}>

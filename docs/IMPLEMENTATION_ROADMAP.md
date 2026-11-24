@@ -8,7 +8,7 @@ Chỉ bắt đầu sau khi hướng thiết kế được duyệt.
 - Hướng thiết kế và bốn câu hỏi ở mục 5 của `CREATIVE_DIRECTION.md` đã được trả lời.
 - Thư mục `frontend/` thuộc việc T12 của Nhân (`nhansp`) trong [`TASKS.md`](TASKS.md).
   Cần thống nhất với người phụ trách trước khi sửa.
-- Mỗi giai đoạn là một nhánh tạo từ `origin/staging` và một PR nhắm vào `staging`.
+- Mỗi giai đoạn là một nhánh tạo từ `origin/rewrite` và một PR nhắm vào `rewrite`.
 - Không sửa `backend/`.
   Mọi nhu cầu dữ liệu mới nằm trong danh sách ở mục 14 của [`3D_EXPERIENCE.md`](3D_EXPERIENCE.md).
 

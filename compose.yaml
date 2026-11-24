@@ -90,6 +90,8 @@ services:
     command: tunnel --no-autoupdate run
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+      # The tunnel has no dashboard ingress; every request goes to the frontend.
+      TUNNEL_URL: http://frontend:80
     depends_on:
       - frontend
 

@@ -37,7 +37,7 @@ export const VenueOverlay: React.FC<VenueOverlayProps> = ({ mode, zone, isActive
           <div className={`${panel} p-3.5`}>
             <div className="flex items-baseline justify-between gap-3">
               <span className="font-display text-3xl leading-none font-bold [font-stretch:68%]">{seat.label}</span>
-              <span className="font-display text-lg font-semibold tabular-nums [font-stretch:75%]">{formatPrice(seat.price, '₫')}</span>
+              <span className="font-display text-lg font-semibold tabular-nums [font-stretch:75%]">{formatPrice(seat.price)}</span>
             </div>
             <p className="mt-1.5 text-sm text-stage-muted">{seat.zoneName}</p>
             <p className={`mt-2 text-sm font-medium ${seat.status === 'available' ? 'text-seat-available' : seat.status === 'selected' ? 'text-spot' : 'text-stage-muted'}`}>
@@ -60,8 +60,8 @@ export const VenueOverlay: React.FC<VenueOverlayProps> = ({ mode, zone, isActive
                 <dt className="text-stage-muted">Giá</dt>
                 <dd className="font-display text-base font-semibold tabular-nums [font-stretch:75%]">
                   {priceRange && priceRange[1] > priceRange[0]
-                    ? `${formatPrice(priceRange[0], '₫')} – ${formatPrice(priceRange[1], '₫')}`
-                    : formatPrice(zone.priceFrom, '₫')}
+                    ? `${formatPrice(priceRange[0])} – ${formatPrice(priceRange[1])}`
+                    : formatPrice(zone.priceFrom)}
                 </dd>
               </div>
               <div>

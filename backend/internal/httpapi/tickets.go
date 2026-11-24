@@ -2,12 +2,12 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"eventticketing/internal/service"
 	"eventticketing/internal/store"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type TicketHandler struct {
@@ -20,42 +20,42 @@ func NewTicketHandler(ts *service.TicketService, es *service.EventService) *Tick
 }
 
 type CancelTicketRequest struct {
-	BookingID     string         `json:"bookingId"`
-	BookingCode   string         `json:"bookingCode"`
-	EventID       string         `json:"eventId"`
-	Reason        string         `json:"reason"`
-	Seats         []string       `json:"seats"`
-	Concert       map[string]any `json:"concert"`
-	TicketDetails map[string]any `json:"ticketDetails"`
+	BookingID   string   `json:"bookingId"`
+	BookingCode string   `json:"bookingCode"`
+	EventID     string   `json:"eventId"`
+	Reason      string   `json:"reason"`
+	Seats       []string `json:"seats"`
 }
 
 // HandleCancelTicket handles POST /api/tickets/cancel. Only the caller's own
 // holds and tickets are released; the cancellation is written to audit_logs.
 func (h *TicketHandler) HandleCancelTicket(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
 	var req CancelTicketRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_payload")
 		return
 	}
 
-	// Bookings for events unknown to the backend are still recorded, without seat changes.
-	var eventID pgtype.UUID
-	if req.EventID != "" {
-		if id, err := h.events.ResolveEventID(r.Context(), req.EventID); err == nil {
-			eventID = id
-		}
+	eventID, err := h.events.ResolveEventID(r.Context(), req.EventID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, service.ErrEventNotFound.Error())
+		return
 	}
 
 	res, err := h.tickets.Cancel(r.Context(), sess.UserID, sess.Email.String, eventID, service.CancelRequest{
-		BookingID:     req.BookingID,
-		BookingCode:   req.BookingCode,
-		EventRef:      req.EventID,
-		Reason:        req.Reason,
-		Seats:         req.Seats,
-		Concert:       req.Concert,
-		TicketDetails: req.TicketDetails,
+		BookingID:   req.BookingID,
+		BookingCode: req.BookingCode,
+		Reason:      req.Reason,
+		Seats:       req.Seats,
 	})
-	if err != nil {
+	switch {
+	case errors.Is(err, service.ErrNothingToCancel):
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	case errors.Is(err, service.ErrTooManySeats):
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	case err != nil:
 		internalError(w, r, err)
 		return
 	}

@@ -4,7 +4,7 @@
 -
 
 **Kiểm tra trước khi gửi:**
-- [ ] PR nhắm vào nhánh `staging`
+- [ ] PR nhắm vào nhánh `rewrite`
 - [ ] Chỉ sửa file thuộc việc này
 - [ ] Không có file rác, file xuất, file bí mật
 - [ ] Commit có `--signoff`, tiêu đề ≤ 80 ký tự

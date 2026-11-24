@@ -32,12 +32,12 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
 
 | STT | Họ và tên | Mã sinh viên | Nhiệm vụ chính trong dự án | Đóng góp | Điểm số | Chữ ký |
 |:---:|---|:---:|---|:---:|:---:|:---:|
-| 1 | **Vũ Đức Huy** | 2412960011 | Thiết kế ERD 26 bảng, Sơ đồ lớp BCE, Kế hoạch Sprint & Realtime SSE Hub | 100% | | |
+| 1 | **Vũ Đức Huy** | 2412960011 | Thiết kế ERD (23 bảng), Sơ đồ lớp BCE, Kế hoạch Sprint, giữ ghế và Realtime SSE Hub | 100% | | |
 | 2 | **Trần Trung Nhân** | 2412960019 | Kiến trúc hệ thống, Backend Go, Frontend React, Sequence OTP & API Spec | 100% | | |
 | 3 | **Đinh Tiến Thành** | 2413960023 | Bóc tách bài toán nghiệp vụ, Bảng 23 FRs & 13 NFRs, Ma trận truy vết yêu cầu (Traceability Matrix), Kịch bản kiểm thử thủ công FR-06 | 100% | | |
-| 4 | **Lê Đức Anh** | 2411960002 | Sơ đồ & Đặc tả Use Case, Kiểm thử người dùng thực tế (Khảo sát SUS) | 100% | | |
+| 4 | **Lê Đức Anh** | 2411960002 | Sơ đồ và Đặc tả Use Case, Kế hoạch kiểm thử người dùng và form khảo sát SUS (chưa thực hiện) | 100% | | |
 | 5 | **Nguyễn Đức Phúc** | 2413960020 | Sơ đồ luồng dữ liệu (DFD), Sơ đồ tuần tự Chống bán trùng ghế đa luồng | 100% | | |
-| 6 | **Nguyễn Anh Dũng** | 2413960006 | Phản biện & Bãi bỏ Dynamic Pricing, Thiết kế Hệ thống Gợi ý Thông minh (Recommendation Engine - FR-22), Khung tiêu chí Priority Scoring, Sequence Giữ ghế 5:00 | 100% | | |
+| 6 | **Nguyễn Anh Dũng** | 2413960006 | Bài toán và thiết kế Định giá động (FR-22), Sequence Giữ ghế 5:00 | 100% | | |
 
 ### 2. Đánh giá của Giảng viên hướng dẫn
 
@@ -55,6 +55,7 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
   - [1.2. Mục tiêu nghiên cứu và Giới hạn phạm vi (MVP vs. Won't-Have)](#12-mục-tiêu-nghiên-cứu-và-giới-hạn-phạm-vi-mvp-vs-wont-have)
   - [1.3. Phương pháp luận phân tích và thiết kế hệ thống](#13-phương-pháp-luận-phân-tích-và-thiết-kế-hệ-thống)
   - [1.4. Danh sách các bên liên quan (Stakeholders)](#14-danh-sách-các-bên-liên-quan-stakeholders)
+  - [1.5. Trạng thái triển khai](#15-trạng-thái-triển-khai)
 - [PHẦN 2. BÓC TÁCH VÀ ĐẶC TẢ YÊU CẦU HỆ THỐNG](#phần-2-bóc-tách-và-đặc-tả-yêu-cầu-hệ-thống)
   - [2.1. Yêu cầu Chức năng (23 FRs phân bổ 5 Sprint)](#21-yêu-cầu-chức-năng-23-frs-phân-bổ-5-sprint)
   - [2.2. Yêu cầu Phi chức năng (13 NFRs gắn SLA định lượng)](#22-yêu-cầu-phi-chức-năng-13-nfrs-gắn-sla-định-lượng)
@@ -69,23 +70,23 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
   - [3.5. Sơ đồ lớp theo mô hình BCE (Class Diagram)](#35-sơ-đồ-lớp-theo-mô-hình-bce-class-diagram)
   - [3.6. Cơ chế Quản lý Cờ tính năng (Feature Flags theo Profile)](#36-cơ-chế-quản-lý-cờ-tính-năng-feature-flags-theo-profile)
 - [PHẦN 4. THIẾT KẾ CƠ SỞ DỮ LIỆU VÀ QUY TRÌNH NGHIỆP VỤ CỐT LÕI](#phần-4-thiết-kế-cơ-sở-dữ-liệu-và-quy-trình-nghiệp-vụ-cốt-lõi)
-  - [4.1. Thiết kế Mô hình Thực thể Liên kết (ERD 26 bảng chuẩn hóa)](#41-thiết-kế-mô-hình-thực-thể-liên-kết-erd-26-bảng-chuẩn-hóa)
+  - [4.1. Thiết kế Mô hình Thực thể Liên kết (ERD 23 bảng)](#41-thiết-kế-mô-hình-thực-thể-liên-kết-erd-23-bảng)
   - [4.2. Từ điển dữ liệu các thực thể cốt lõi (Data Dictionary)](#42-từ-điển-dữ-liệu-các-thực-thể-cốt-lõi-data-dictionary)
   - [4.3. Thiết kế quy trình nghiệp vụ qua Sơ đồ tuần tự (Sequence Diagrams)](#43-thiết-kế-quy-trình-nghiệp-vụ-qua-sơ-đồ-tuần-tự-sequence-diagrams)
   - [4.4. Cơ chế bảo đảm tính toàn vẹn và bất biến dữ liệu](#44-cơ-chế-bảo-đảm-tính-toàn-vẹn-và-bất-biến-dữ-liệu)
 - [PHẦN 5. THIẾT KẾ CÁC PHÂN HỆ NÂNG CAO VÀ VẬN HÀNH THỰC TẾ](#phần-5-thiết-kế-các-phân-hệ-nâng-cao-và-vận-hành-thực-tế)
-  - [5.1. Phản biện Định giá động và Giải pháp Hệ thống Gợi ý Thông minh cho Khán giả](#51-phản-biện-cơ-chế-định-giá-động-dynamic-pricing-và-giải-pháp-hệ-thống-gợi-ý-thông-minh-recommendation-engine-cho-khán-giả)
+  - [5.1. Định giá động (FR-22): bài toán, quy tắc và phản biện](#51-định-giá-động-fr-22-bài-toán-quy-tắc-và-phản-biện)
   - [5.2. Thiết kế Cơ chế Hàng chờ ảo (Virtual Waiting Room)](#52-thiết-kế-cơ-chế-hàng-chờ-ảo-virtual-waiting-room)
   - [5.3. Thiết kế Bảo mật vé với Mã QR động xoay vòng 30s](#53-thiết-kế-bảo-mật-vé-với-mã-qr-động-xoay-vòng-30s)
   - [5.4. Thiết kế Phân hệ Soát vé tại Cổng và Đồng bộ Ngoại tuyến](#54-thiết-kế-phân-hệ-soát-vé-tại-cổng-và-đồng-bộ-ngoại-tuyến)
   - [5.5. Tích hợp Cổng thanh toán trực tuyến và Tự động đối soát/hoàn tiền](#55-tích-hợp-cổng-thanh-toán-trực-tuyến-và-tự-động-đối-soáthoàn-tiền)
 - [PHẦN 6. KẾ HOẠCH TRIỂN KHAI, KIỂM THỬ VÀ ĐÁNH GIÁ THỰC TẾ](#phần-6-kế-hoạch-triển-khai-kiểm-thử-và-đánh-giá-thực-tế)
   - [6.1. Phân bổ các Yêu cầu Chức năng (FR) theo 5 Sprint của dự án](#61-phân-bổ-các-yêu-cầu-chức-năng-fr-theo-5-sprint-của-dự-án)
-  - [6.2. Tiến trình chi tiết và Tiêu chí nghiệm thu 23 Yêu cầu Chức năng theo từng Sprint](#62-tiến-trình-chi-tiết-và-tiêu-chí-nghiệm-thu-23-yêu-cầu-chức-năng-theo-từng-sprint)
+  - [6.2. Trạng thái 23 Yêu cầu Chức năng theo từng Sprint](#62-trạng-thái-23-yêu-cầu-chức-năng-theo-từng-sprint)
   - [6.3. Bảng phân rã công việc (WBS) Sprint 2 (Mốc Giữa kỳ - T01 … T14)](#63-bảng-phân-rã-công-việc-wbs-sprint-2-mốc-giữa-kỳ---t01--t14)
   - [6.4. Tổng hợp phân bổ nguồn lực và giờ công toàn dự án qua 5 Sprint](#64-tổng-hợp-phân-bổ-nguồn-lực-và-giờ-công-toàn-dự-án-qua-5-sprint)
-  - [6.5. Kiểm thử hệ thống: Concurrency Test Chống bán trùng tuyệt đối](#65-kiểm-thử-hệ-thống-concurrency-test-chống-bán-trùng-tuyệt-đối)
-  - [6.6. Kiểm thử Khả năng Sử dụng với Người dùng Thực tế (Thang đo SUS)](#66-kiểm-thử-khả-năng-sử-dụng-với-người-dùng-thực-tế-thang-đo-sus)
+  - [6.5. Kiểm thử hệ thống: Concurrency Test chống bán trùng](#65-kiểm-thử-hệ-thống-concurrency-test-chống-bán-trùng)
+  - [6.6. Kiểm thử với người dùng (chưa thực hiện)](#66-kiểm-thử-với-người-dùng-chưa-thực-hiện)
   - [6.7. Hạn chế của hệ thống và Định hướng phát triển tương lai](#67-hạn-chế-của-hệ-thống-và-định-hướng-phát-triển-tương-lai)
 - [PHẦN 7. KẾT LUẬN VÀ BÀI HỌC KINH NGHIỆM](#phần-7-kết-luận-và-bài-học-kinh-nghiệm)
 - [TÀI LIỆU THAM KHẢO](#tài-liệu-tham-khảo)
@@ -103,24 +104,27 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
 - **Bảng 5:** Phân loại ưu tiên tính năng MoSCoW cho phiên bản MVP
 - **Bảng 6:** Ma trận truy vết yêu cầu (Traceability Matrix)
 - **Bảng 7:** Các thành phần kiến trúc triển khai hệ thống EventTicketing
-- **Bảng 8:** Danh mục 13 trường hợp sử dụng (Use Cases UC-01 … UC-13)
-- **Bảng 9:** Ánh xạ Kho dữ liệu DFD vào 26 bảng cơ sở dữ liệu PostgreSQL
+- **Bảng 8:** Danh mục 17 trường hợp sử dụng (Use Cases UC-01 … UC-17)
+- **Bảng 9:** Ánh xạ Kho dữ liệu DFD vào 23 bảng cơ sở dữ liệu PostgreSQL
 - **Bảng 10:** Quản lý cờ tính năng (Feature Flags) theo Profile Sprint
 - **Bảng 11:** Từ điển dữ liệu (Data Dictionary) các bảng thực thể cốt lõi
-- **Bảng 12:** Khung tiêu chí và Trọng số chấm điểm Độ ưu tiên của Recommendation Engine
+- **Bảng 12:** Dữ liệu đầu vào của thuật toán Định giá động (FR-22)
 - **Bảng 13:** Phân bổ các Yêu cầu Chức năng (FR) theo 5 Sprint của dự án
-- **Bảng 14:** Tiến trình chi tiết và Tiêu chí nghiệm thu 23 Yêu cầu Chức năng (FR-01 … FR-23) theo từng Sprint
-- **Bảng 15:** Bảng phân rã công việc (WBS) và ước lượng thời gian Sprint 1 – 5
+- **Bảng 14:** Trạng thái và căn cứ trong code của 23 Yêu cầu Chức năng (FR-01 … FR-23) theo từng Sprint
+- **Bảng 15:** Bảng phân rã công việc (WBS) và ước lượng thời gian Sprint 2
 - **Bảng 16:** Tổng hợp phân bổ nguồn lực và giờ công toàn dự án qua 5 Sprint
-- **Bảng 17:** Danh mục Endpoint RESTful API cốt lõi của hệ thống
+- **Bảng 17:** Endpoint đã có trong router
 
 ### Danh mục Hình
+
+Các hình là sơ đồ Mermaid nằm trong `docs/`.
+Báo cáo dẫn liên kết tới tài liệu chứa từng sơ đồ, không dùng ảnh xuất.
 - **Hình 1:** Sơ đồ kiến trúc triển khai hệ thống tổng thể (Deployment Architecture)
 - **Hình 2:** Sơ đồ trường hợp sử dụng tổng thể (Use Case Diagram)
 - **Hình 3:** Sơ đồ luồng dữ liệu Mức ngữ cảnh (Context Diagram)
-- **Hình 4:** Sơ đồ luồng dữ liệu Mức 0 (DFD Level 0 - 7 Tiến trình chính)
+- **Hình 4:** Sơ đồ luồng dữ liệu Mức 0 (DFD Level 0 - 9 tiến trình)
 - **Hình 5:** Sơ đồ lớp theo mô hình phân tầng BCE (Boundary – Control – Entity)
-- **Hình 6:** Sơ đồ thực thể liên kết (ERD 26 bảng chuẩn hóa trong PostgreSQL 18)
+- **Hình 6:** Sơ đồ thực thể liên kết (ERD 23 bảng trong PostgreSQL 18)
 - **Hình 7:** Sơ đồ tuần tự: Giữ ghế độc quyền 5 phút và đồng bộ Realtime SSE (FR-06, FR-05)
 - **Hình 8:** Sơ đồ tuần tự: Khóa hàng nguyên tử Chống bán trùng tuyệt đối (FR-07)
 
@@ -130,9 +134,10 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
 
 Thị trường tổ chức sự kiện âm nhạc và thể thao quy mô lớn tại Việt Nam đang phát triển bùng nổ, kéo theo nhu cầu mua vé trực tuyến tăng vọt. Tuy nhiên, các hệ thống bán vé truyền thống hiện nay thường xuyên bộc lộ các điểm yếu nghiêm trọng: tê liệt hệ thống do lượng truy cập đột biến (flash-sale), nạn phe vé dùng bot tự động đầu cơ, xung đột dữ liệu dẫn đến bán trùng ghế (double-booking), và gian lận vé điện tử tại cửa soát vé.
 
-Nhằm giải quyết triệt để các thách thức trên, trong khuôn khổ học phần **Phân tích và Thiết kế Hệ thống (COSH301 / COSH201)** tại Trường Đại học Ngoại thương, nhóm nghiên cứu đã xây dựng đề tài: **"Thiết kế hệ thống đặt vé trực tuyến cho sự kiện (EventTicketing)"**. Đồ án tập trung nghiên cứu, áp dụng bài bản quy trình kỹ nghệ phần mềm: bóc tách yêu cầu chi tiết (23 FRs, 13 NFRs, 7 User Stories); mô hình hóa hệ thống bằng các biểu đồ UML và DFD chuẩn mực; thiết kế kiến trúc hiệu năng cao theo mô hình phân tầng **BCE (Boundary – Control – Entity)** và triết lý **"Single Source of Truth"** trên PostgreSQL 18, loại bỏ tầng cache Redis phân tán để cam kết bảo đảm an toàn giao dịch ACID với zero double-booking.
+Nhằm giải quyết triệt để các thách thức trên, trong khuôn khổ học phần **Phân tích và Thiết kế Hệ thống (COSH301 / COSH201)** tại Trường Đại học Ngoại thương, nhóm nghiên cứu đã xây dựng đề tài: **"Thiết kế hệ thống đặt vé trực tuyến cho sự kiện (EventTicketing)"**. Đồ án tập trung nghiên cứu, áp dụng bài bản quy trình kỹ nghệ phần mềm: bóc tách yêu cầu chi tiết (23 FRs, 13 NFRs, 7 User Stories); mô hình hóa hệ thống bằng các biểu đồ UML và DFD chuẩn mực; thiết kế kiến trúc theo mô hình phân tầng **BCE (Boundary – Control – Entity)** và triết lý **"Single Source of Truth"** trên PostgreSQL 18, loại bỏ tầng cache Redis phân tán để giữ an toàn giao dịch ACID và không bán trùng ghế.
 
-Báo cáo gồm 7 phần chính và 1 phụ lục kỹ thuật: (1) Giới thiệu và tổng quan; (2) Bóc tách và đặc tả yêu cầu; (3) Thiết kế kiến trúc và mô hình hóa; (4) Thiết kế cơ sở dữ liệu và quy trình nghiệp vụ cốt lõi; (5) Thiết kế các phân hệ nâng cao; (6) Kế hoạch triển khai, kiểm thử và đánh giá; (7) Kết luận; cùng Phụ lục A cung cấp đặc tả API và mã nguồn kiểm chứng.
+Báo cáo gồm 7 phần chính và 1 phụ lục kỹ thuật: (1) Giới thiệu và tổng quan; (2) Bóc tách và đặc tả yêu cầu; (3) Thiết kế kiến trúc và mô hình hóa; (4) Thiết kế cơ sở dữ liệu và quy trình nghiệp vụ cốt lõi; (5) Thiết kế các phân hệ nâng cao; (6) Kế hoạch triển khai, kiểm thử và đánh giá; (7) Kết luận; cùng Phụ lục A về API và mã nguồn.
+Báo cáo ghi rõ phần nào đã chạy trong code và phần nào mới ở mức thiết kế.
 
 Nhóm nghiên cứu xin chân thành cảm ơn **TS. Phạm Thị Kim Dung** đã tận tình hướng dẫn, trang bị phương pháp luận khoa học và định hướng chuyên môn sâu sắc trong suốt quá trình thực hiện đồ án.
 
@@ -153,9 +158,10 @@ Xuất phát từ đó, việc thiết kế một nền tảng bán vé hiện �
 
 ## 1.2. Mục tiêu nghiên cứu và Giới hạn phạm vi (MVP vs. Won't-Have)
 
-- **Mục tiêu cốt lõi:** Chuẩn hóa toàn bộ yêu cầu nghiệp vụ, mô hình hóa kiến trúc theo chuẩn BCE, thiết kế cơ sở dữ liệu PostgreSQL 18 bảo đảm ACID không bán trùng ghế, xây dựng cơ chế SSE thời gian thực và thuật toán hỗ trợ định giá động thông minh.
-- **Phạm vi MVP:** Đăng nhập OTP không mật khẩu, sơ đồ ghế thời gian thực, giữ ghế 5 phút chống bán trùng, cấu hình giá sàn/trần, thanh toán MoMo/VNPAY, phát hành vé email và soát vé tại cổng.
-- **Giới hạn hoãn lại (Won't-Have):** Không tự động đổi giá trực tiếp không qua người duyệt (`W-01`), không hỗ trợ sàn giao dịch vé ngang hàng P2P (`W-02`), hoãn tích hợp Apple/Google Wallet (`W-04`).
+- **Mục tiêu cốt lõi:** Chuẩn hóa toàn bộ yêu cầu nghiệp vụ, mô hình hóa kiến trúc theo chuẩn BCE, thiết kế cơ sở dữ liệu PostgreSQL 18 bảo đảm ACID không bán trùng ghế, xây dựng cơ chế SSE thời gian thực và thiết kế thuật toán Định giá động để Ban Tổ chức duyệt (FR-22).
+- **Phạm vi thiết kế:** Đăng nhập OTP không mật khẩu, sơ đồ ghế thời gian thực, giữ ghế 5 phút chống bán trùng, cấu hình giá sàn/trần, thanh toán MoMo/VNPAY, phát hành vé email và soát vé tại cổng.
+- **Đã chạy trong code (profile `sprint2`):** đăng nhập OTP, danh sách sự kiện, sơ đồ ghế realtime, giữ ghế 5 phút, đặt giá khu vực. Thanh toán, phát vé, soát vé chưa làm.
+- **Không làm (Won't-Have):** AI tự đổi giá không cần BTC duyệt (`W-01`), sàn bán lại vé chính thức (`W-02`), eKYC đầy đủ (`W-03`), sơ đồ sân khấu 3D (`W-04`), đa ngôn ngữ và đa tiền tệ (`W-05`). Apple/Google Wallet cũng không làm vì cần tài khoản nhà phát triển trả phí.
 
 ## 1.3. Phương pháp luận phân tích và thiết kế hệ thống
 
@@ -176,41 +182,51 @@ Xuất phát từ đó, việc thiết kế một nền tảng bán vé hiện �
 | **SH-05** | Cổng thanh toán (MoMo, VNPAY)| Đối tác bên ngoài | Giao dịch an toàn, xử lý Webhook/IPN lũy quyền, tự động hoàn tiền. | Sai lệch dòng tiền, khiếu nại giao dịch treo. |
 | **SH-06** | Phe vé / Botnet (Threat Actor)| Tác nhân tiêu cực | Tận dụng công cụ tự động để gom vé số lượng lớn đầu cơ. | Hệ thống tê liệt, phá vỡ tính công bằng. |
 
+## 1.5. Trạng thái triển khai
+
+- **Profile đang chạy:** `sprint2`. Bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`. Hệ thống có 19 cờ tính năng, 14 cờ còn lại đang tắt.
+- **Cờ tắt:** giao diện ẩn tính năng, API trả `404 feature_disabled`. Vì vậy `payments` tắt nghĩa là chưa có đơn hàng, thanh toán và phát vé.
+- **Cơ sở dữ liệu:** 23 bảng trong migration. ERD Sprint 1 trên MySQL có 26 bảng.
+- **Nơi chạy:** một máy ảo GCP (Compute Engine), Docker Compose gồm `db`, `api`, `frontend`, `tunnel` (cloudflared), công bố qua Cloudflare Tunnel tại `https://cosh301.nhansp.id.vn`.
+- **Môi trường:** bản trực tuyến chạy `APP_ENV=production`, nên không có `POST /api/auth/demo-login` và `POST /api/tickets/reset-demo`.
+- **Trạng thái từng yêu cầu:** xem [`docs/spec.md`](spec.md). Bảng 2 và Bảng 14 của báo cáo dùng cùng trạng thái.
+
 ---
 
 # PHẦN 2. BÓC TÁCH VÀ ĐẶC TẢ YÊU CẦU HỆ THỐNG
 
 ## 2.1. Yêu cầu Chức năng (23 FRs phân bổ 5 Sprint)
 
-Dưới đây là danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) của hệ thống. Đặc biệt, bên cạnh mô tả kỹ thuật, hệ thống bổ sung **cột diễn giải thực tế dành cho Stakeholder (các bên liên quan không có chuyên môn IT như Ban Tổ chức, Giám đốc, Nhân viên cổng và Khán giả)** để dễ dàng nắm bắt trải nghiệm thực tế và giá trị mang lại.
+Dưới đây là danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) của hệ thống. Bên cạnh mô tả kỹ thuật, báo cáo bổ sung **cột diễn giải thực tế dành cho Stakeholder (các bên liên quan không có chuyên môn IT như Ban Tổ chức, Giám đốc, Nhân viên cổng và Khán giả)** để dễ nắm bắt trải nghiệm và giá trị mang lại.
+Cột Trạng thái dùng ba mức như [`docs/spec.md`](spec.md): Xong, Đang làm, Chưa làm. Cờ tắt thì không thể là Xong.
 
 **Bảng 2. Danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) và Diễn giải cho Stakeholder**
 
 | Mã FR | Tên tính năng | Ý nghĩa & Trải nghiệm thực tế cho Stakeholder (Dễ hiểu cho người không chuyên IT) | Mô tả kỹ thuật nghiệp vụ | Sprint & Cờ tính năng | Trạng thái |
 |:---:|---|---|---|:---:|:---:|
-| **FR-01** | Đăng nhập bằng mã OTP | Khán giả không cần nhớ mật khẩu phức tạp hay sợ lộ mật khẩu; chỉ cần nhập số điện thoại hoặc email là nhận ngay mã số 6 chữ số về máy để vào hệ thống tức thì, tương tự như đăng nhập app ngân hàng hay Zalo. | Tiếp nhận SĐT/Email, sinh OTP 6 số ngẫu nhiên, giới hạn 3 lần/10 phút, gửi SMS/Email, băm SHA-256 lưu trong `otp_verifications`. | Sprint 2<br/>(`otp_login`) | Hoàn thành |
-| **FR-02** | Khám phá & Tìm kiếm sự kiện | Khán giả dễ dàng tìm thấy chương trình ca nhạc, kịch hay trận bóng đá yêu thích với ảnh poster đẹp mắt, thời gian, địa điểm và giá vé rõ ràng; có thể lọc nhanh theo thể loại hoặc thành phố. | Hiển thị danh mục sự kiện từ bảng `events`, hỗ trợ lọc theo danh mục, ngày diễn ra, dải giá vé và kiểm tra trạng thái mở bán (`ON_SALE`). | Sprint 1<br/>*(Luôn bật)* | Hoàn thành |
-| **FR-03** | Sơ đồ ghế trực quan đa màu sắc | Khán giả nhìn vào màn hình giống như đang nhìn trực tiếp xuống khán đài sân khấu: phân biệt rõ 4 màu sắc (Xanh = Ghế trống; Tím = Ghế mình đang chọn; Vàng = Ghế người khác đang giữ; Xám = Ghế đã bán). | Hiển thị ma trận ghế SVG/Canvas theo tọa độ (x, y) và phân khu khán đài, phản ánh trạng thái màu và giá vé tương ứng của từng chiếc ghế. | Sprint 2<br/>(`seat_map_realtime`) | Hoàn thành |
-| **FR-04** | Đăng nhập an toàn không mật khẩu | Sau khi vào hệ thống, ứng dụng tự động ghi nhớ phiên làm việc an toàn; khán giả tắt trình duyệt mở lại vẫn giữ nguyên trạng thái đăng nhập, và có thể bấm Đăng xuất an toàn khi dùng máy tính lạ. | Quản lý phiên máy chủ bằng bảng `sessions`, lưu token băm an toàn, truyền cookie `HttpOnly; Secure; SameSite=Strict`, hỗ trợ `/api/auth/me`. | Sprint 2<br/>(`otp_login`) | Hoàn thành |
-| **FR-05** | Đồng bộ ghế thời gian thực | Khi có người khác vừa bấm giữ hoặc mua một chiếc ghế, chiếc ghế đó trên màn hình của tất cả mọi người sẽ tự đổi màu tức thì (dưới 3 giây) mà không bắt khán giả phải bấm phím tải lại trang (F5). | Thiết lập kết nối Server-Sent Events (SSE) `/api/events/{id}/stream`, nhận tín hiệu `LISTEN/NOTIFY` từ PostgreSQL và cập nhật màn hình máy khách tức thì. | Sprint 2<br/>(`seat_map_realtime`) | Hoàn thành |
-| **FR-06** | Giữ ghế độc quyền trong 5 phút | Ngay khi bấm chọn ghế, chiếc ghế đó được 'khóa riêng' cho người mua trong 5 phút kèm đồng hồ đếm ngược 05:00. Trong thời gian này không ai khác có thể chọn đè vào, giúp khán giả an tâm điền thông tin và trả tiền. | Mở transaction ACID, chuyển trạng thái ghế sang `HELD`, ghi bản ghi `seat_holds` với hạn 300s; worker `HoldReaper` tự động thu hồi ghế nếu quá giờ. | Sprint 2<br/>(`seat_hold`) | Hoàn thành |
-| **FR-07** | Chống bán trùng ghế tuyệt đối | Dù có hàng nghìn người cùng bấm vào một chiếc ghế đẹp ở cùng một phần nghìn giây, hệ thống cam kết chỉ người nhanh nhất được giữ ghế, những người sau nhận thông báo ghế đã có người chọn; tuyệt đối không bán trùng. | Khóa hàng nguyên tử (`UPDATE ... WHERE status = 'AVAILABLE'`) kết hợp Partial Unique Index `idx_seat_holds_active_seat` chặn đứng bán trùng ở tầng vật lý CSDL. | Sprint 2<br/>(`seat_hold`) | Hoàn thành |
-| **FR-08** | Cấu hình khu vực & dải giá sàn/trần | Ban Tổ chức tự do vẽ sơ đồ phân khu khán đài (VIP, Khán đài A, Fanzone), đặt tên khu vực và cài đặt mức giá thấp nhất (giá sàn) cũng như giá cao nhất (giá trần) mà vé được phép bán ra. | Quản trị địa điểm (`venues`), phân khu (`zones`), lưu cấu hình dải giá vé hợp lệ ($P_{\text{floor}} \le P_{\text{base}} \le P_{\text{ceiling}}$) vào bảng `event_zones`. | Sprint 2<br/>(`zone_pricing`) | Hoàn thành |
-| **FR-09** | Phòng chờ ảo xếp hàng công bằng | Khi mở bán trận cầu lớn hay concert ca sĩ nổi tiếng, trang web không bị sập hay quay đơ; hệ thống mời người mua vào 'phòng chờ ảo', bốc số thứ tự công bằng và hiển thị thời gian chờ ước tính trước khi vào mua. | Kích hoạt hàng đợi FIFO khi lưu lượng vượt ngưỡng thiết kế, lưu vào `queue_entries`, duy trì luồng SSE báo vị trí và xả hàng theo mẻ 200 người mỗi 30s. | Sprint 3<br/>(`waiting_room`) | Đang hoàn thiện |
-| **FR-10** | Tự động phát hiện và chặn Bot | 'Vệ sĩ vô hình' tự động nhận diện xem ai là người thật đang thao tác và ai là phần mềm máy tính (bot) do phe vé cài đặt để gom hàng loạt vé; các công cụ gian lận sẽ bị chặn đứng ngay ngoài cửa hệ thống. | Tích hợp dịch vụ Cloudflare Turnstile CAPTCHA vô hình kết hợp cơ chế kiểm soát tốc độ truy vấn (Rate Limiting) theo địa chỉ IP và tài khoản. | Sprint 3<br/>(`bot_check`) | Đang hoàn thiện |
-| **FR-11** | Giới hạn tối đa 4 vé mỗi người | Ngăn chặn việc một cá nhân hoặc phe vé 'ôm' hàng chục vé để đầu cơ bán lại kiếm lời; mỗi tài khoản đã xác thực chỉ được phép mua và giữ tối đa 4 vé cho một sự kiện, mua thêm sẽ bị hệ thống từ chối. | Khóa cố vấn `pg_advisory_xact_lock(user_id, event_id)` tuần tự hóa thao tác, đếm tổng số ghế đang giữ và đã mua, từ chối với mã 400 nếu tổng vượt trần 4 vé. | Sprint 3<br/>(`ticket_limit`) | Hoàn thành |
-| **FR-12** | Mã QR vé tự đổi sau mỗi 30 giây | Mã QR trên vé điện tử tự động làm mới sau mỗi 30 giây (kèm thanh đếm ngược); nếu có ai chụp ảnh màn hình vé gửi bán lại trên mạng thì bức ảnh đó sẽ trở nên vô giá trị sau 30 giây, dẹp nạn lừa đảo vé lậu. | Sinh mã QR động bằng thuật toán mật mã học TOTP kết hợp HMAC-SHA256 trên chu kỳ 30 giây và khóa bí mật `qr_secret`, kiểm tra độ lệch thời gian tại cổng soát vé. | Sprint 3<br/>(`rotating_qr`) | Đang hoàn thiện |
-| **FR-13** | Thanh toán trực tuyến đa kênh | Khán giả thuận tiện thanh toán tiền vé bằng cách quét mã QR qua ứng dụng ngân hàng (VNPAY), ví điện tử MoMo hoặc thẻ tín dụng quốc tế Visa/Mastercard mà không lo bị lộ thông tin thẻ. | Tích hợp API cổng MoMo và VNPAY, sinh liên kết thanh toán có chữ ký số SHA-512, tiếp nhận và xử lý Webhook/IPN xác nhận giao dịch đạt tính lũy quyền (Idempotent). | Sprint 4<br/>(`payments`) | Đang hoàn thiện |
-| **FR-14** | Nhận vé điện tử tức thì qua Email | Ngay khi ngân hàng báo trừ tiền thành công, hệ thống lập tức gửi một thư email chứa thông tin vé (họ tên, vị trí hàng ghế, mã QR) và người mua có thể mở mục 'Vé của tôi' trên web để xem bất cứ lúc nào. | Cập nhật ghế sang `SOLD`, tạo bản ghi trong bảng `tickets`, kích hoạt tác vụ nền gửi email vé định dạng HTML chuẩn qua máy chủ SMTP. | Sprint 4<br/>(`ticket_email`) | Đang hoàn thiện |
-| **FR-15** | Tự động hoàn tiền khi thanh toán trễ | Nếu khán giả chuyển khoản ở ngân hàng quá chậm khiến thời hạn giữ chỗ 5 phút bị trôi qua và ghế đã bị người khác mua: Hệ thống sẽ tự động hoàn trả 100% số tiền về tài khoản ngân hàng trong thời gian $\le 15$ phút. | Worker chạy ngầm quét các giao dịch thanh toán thành công khi hold đã hết hạn, tự động kích hoạt API Auto Refund của cổng thanh toán để hoàn tiền an toàn. | Sprint 4<br/>(`reconciliation`) | Kế hoạch S4 |
-| **FR-16** | Ứng dụng quét vé di động cho cổng | Nhân viên an ninh soát vé tại cổng chỉ cần cầm điện thoại thông minh hướng camera vào mã QR của khán giả; màn hình hiển thị kết quả Xanh (Hợp lệ) / Đỏ (Từ chối) trong vòng chưa đầy 1 giây. | Xây dựng ứng dụng Web di động PWA (`gate_checkin`), nhận diện mã QR từ camera máy khách, gửi lệnh xác thực tới `/api/gate/checkin` với tốc độ phản hồi $\le 1$ giây. | Sprint 5<br/>(`gate_checkin`) | Đang hoàn thiện |
-| **FR-17** | Chống dùng một vé vào cửa hai lần | Mỗi chiếc vé chỉ có giá trị cho đúng 1 người vào cửa một lần; nếu vé đã được quét vào rồi mà lại gửi cho người khác quét tiếp, màn hình sẽ báo động đỏ và hiện rõ: 'Vé đã được sử dụng lúc 19h05 tại Cổng A'. | Thao tác nguyên tử kiểm tra trạng thái vé, chuyển sang `USED`, lưu bản ghi kiểm soát vào bảng `checkins` và nhật ký `checkin_logs`. | Sprint 5<br/>(`gate_checkin`) | Đang hoàn thiện |
-| **FR-18** | Soát vé bình thường khi mất mạng | Tại các sân vận động đông hàng vạn người khiến sóng 4G/Wifi bị nghẽn hoàn toàn, thiết bị soát vé của nhân viên vẫn xác thực được vé thật hay giả nhờ dữ liệu đã tải trước; khi có mạng sẽ tự gửi dữ liệu về. | Tải danh sách vé và chữ ký số vào bộ nhớ nội bộ IndexedDB của máy trước giờ mở cổng; xác thực chữ ký số offline, tự động đồng bộ khi có kết nối mạng trở lại. | Sprint 5<br/>(`offline_checkin`) | Kế hoạch S5 |
-| **FR-19** | Bảng theo dõi doanh thu cho CEO | Giám đốc hoặc Ban Lãnh đạo chỉ cần mở điện thoại là thấy ngay biểu đồ doanh thu theo từng phút, số vé đã bán và tỷ lệ lấp đầy của từng khán đài theo thời gian thực để chỉ đạo vận hành kịp thời. | Dashboard di động trực quan hóa dữ liệu kinh doanh, tối ưu hóa truy vấn tổng hợp trên bảng `orders` và `payments` với độ trễ cập nhật số liệu $\le 60$ giây. | Sprint 5<br/>(`ceo_dashboard`) | Kế hoạch S5 |
-| **FR-20** | Sổ nhật ký giá vé bất biến | Mọi thao tác thay đổi giá vé (ai đổi, đổi lúc mấy giờ, từ giá bao nhiêu sang giá bao nhiêu) đều được ghi vào cuốn sổ cái điện tử bất biến; không một ai (kể cả quản trị viên máy chủ) có thể sửa hoặc xóa được. | Lưu dữ liệu vào bảng `price_changes`, thiết lập Database Trigger chặn đứng hoàn toàn câu lệnh `UPDATE` và `DELETE` trên bảng để bảo đảm tính kiểm toán. | Sprint 5<br/>(`price_log`) | Hoàn thành |
-| **FR-21** | Xuất báo cáo tài chính Excel & PDF | Phòng kế toán và ban tổ chức có thể tải toàn bộ danh mục giao dịch bán vé và tổng doanh thu ra bảng tính Excel (XLSX) hoặc file PDF chỉ bằng 1 cú nhấp chuột để phục vụ đối soát và khai báo thuế. | Cung cấp endpoint `/api/ceo/reports/export`, tích hợp thư viện xuất dữ liệu ra file bảng tính Microsoft Excel và tệp định dạng chuẩn CSV. | Sprint 5<br/>(`reports_export`) | Kế hoạch S5 |
-| **FR-22** | Trợ lý định giá động thông minh | Hệ thống tự quan sát xem khu nào bán quá chạy hoặc khu nào bán quá chậm để gửi gợi ý cho Ban Tổ chức: 'Khu VIP nên tăng nhẹ giá để chống phe vé, khu C nên giảm giá để kích cầu'. BTC bấm duyệt thì giá mới đổi. | Tác vụ chạy ngầm định kỳ 5 phút phân tích cung cầu, sinh đề xuất giá vào `price_suggestions`, đảm bảo dải $[P_{\text{floor}}, P_{\text{ceiling}}]$ và người duyệt (`W-01`). | Sprint 5<br/>(`dynamic_pricing`) | Đang hoàn thiện |
-| **FR-23** | Tự động gợi ý mã giảm giá kích cầu | Nếu nhận thấy còn 3 ngày nữa sự kiện diễn ra mà một khu khán đài vẫn còn trống nhiều ghế, hệ thống sẽ tự động nhắc nhở và đề xuất Ban Tổ chức phát hành mã giảm giá 10% - 20% để bán hết vé kịp thời. | Tác vụ nền phân tích tỷ lệ lấp đầy theo thời gian còn lại đến sự kiện ($R_{\text{fill}} < 40\%$ khi $T_{\text{rem}} \le 3$ ngày), tự động tạo bản ghi đề xuất chiến dịch trong `promotions`. | Sprint 5<br/>(`promo_suggestions`) | Kế hoạch S5 |
+| **FR-01** | Đăng nhập bằng mã OTP | Khán giả không cần nhớ mật khẩu; chỉ cần nhập số điện thoại hoặc email rồi nhập mã 6 chữ số. Hiện mã hiện trên màn hình (`OTP_DEMO`) hoặc ghi vào log, chưa gửi qua SMS hay email. | Nhận SĐT hoặc email, sinh OTP 6 số, hạn 5 phút, tối đa 5 lần nhập, cách 60 giây giữa hai lần xin mã. Chỉ lưu SHA-256 của mã trong `otp_verifications`. | Sprint 2<br/>(`otp_login`) | Đang làm |
+| **FR-02** | Khám phá & Tìm kiếm sự kiện | Khán giả dễ dàng tìm thấy chương trình ca nhạc, kịch hay trận bóng đá yêu thích với ảnh poster đẹp mắt, thời gian, địa điểm và giá vé rõ ràng; có thể lọc nhanh theo thể loại hoặc thành phố. | Hiển thị danh mục sự kiện từ bảng `events`, hỗ trợ lọc theo danh mục, ngày diễn ra, dải giá vé và kiểm tra trạng thái mở bán (`ON_SALE`). | Sprint 2<br/>*(Luôn bật)* | Xong |
+| **FR-03** | Sơ đồ ghế trực quan đa màu sắc | Khán giả nhìn sơ đồ khán đài và phân biệt 4 trạng thái: ghế trống, ghế đã bán, ghế người khác đang giữ, ghế mình đang giữ. Mỗi trạng thái có thêm dấu hiệu ngoài màu. | Hiển thị ghế theo tọa độ (x, y) và khu, kèm trạng thái và giá của từng ghế (`GET /api/events/{id}/seats`). | Sprint 2<br/>(`seat_map_realtime`) | Xong |
+| **FR-04** | Đăng nhập an toàn không mật khẩu | Sau khi vào hệ thống, ứng dụng tự động ghi nhớ phiên làm việc an toàn; khán giả tắt trình duyệt mở lại vẫn giữ nguyên trạng thái đăng nhập, và có thể bấm Đăng xuất an toàn khi dùng máy tính lạ. | Bảng `sessions` chỉ lưu SHA-256 của token. Cookie `session_token`: `HttpOnly`, `SameSite=Lax`, `Secure` khi `COOKIE_SECURE=true`. Hiệu lực 7 ngày. `GET /api/auth/me`, `POST /api/auth/logout`. | Sprint 2<br/>(`otp_login`) | Xong |
+| **FR-05** | Đồng bộ ghế thời gian thực | Khi có người khác vừa bấm giữ hoặc mua một chiếc ghế, chiếc ghế đó trên màn hình của tất cả mọi người sẽ tự đổi màu tức thì (dưới 3 giây) mà không bắt khán giả phải bấm phím tải lại trang (F5). | Thiết lập kết nối Server-Sent Events (SSE) `/api/events/{id}/stream`, nhận tín hiệu `LISTEN/NOTIFY` từ PostgreSQL và cập nhật màn hình máy khách tức thì. | Sprint 2<br/>(`seat_map_realtime`) | Xong |
+| **FR-06** | Giữ ghế độc quyền trong 5 phút | Ngay khi bấm chọn ghế, chiếc ghế đó được 'khóa riêng' cho người mua trong 5 phút kèm đồng hồ đếm ngược 05:00. Trong thời gian này không ai khác có thể chọn đè vào, giúp khán giả an tâm điền thông tin và trả tiền. | Mở transaction ACID, chuyển trạng thái ghế sang `HELD`, ghi bản ghi `seat_holds` với hạn 300s; worker `HoldReaper` tự động thu hồi ghế nếu quá giờ. | Sprint 2<br/>(`seat_hold`) | Xong |
+| **FR-07** | Chống bán trùng ghế tuyệt đối | Khi nhiều người cùng bấm một ghế cùng lúc, hệ thống chỉ cho người nhanh nhất giữ ghế. Những người còn lại nhận thông báo ghế đã có người chọn. | `UPDATE` có điều kiện (`status = 'AVAILABLE'`) chuyển ghế sang `HELD`, kết hợp unique index một phần `uq_seat_holds_active` trên `seat_holds`. | Sprint 2<br/>(`seat_hold`) | Xong |
+| **FR-08** | Cấu hình khu vực & dải giá sàn/trần | Ban Tổ chức xem các sự kiện của mình và đặt giá thấp nhất (giá sàn), giá cơ bản và giá cao nhất (giá trần) cho từng khu. Tạo địa điểm, khu vực và sự kiện mới chưa có. | `PUT /api/organizer/events/{id}/zones/{zoneId}/pricing` lưu `floor_price <= base_price <= ceiling_price` vào `event_zones`, đổi giá ghế `AVAILABLE` và ghi `price_changes`. Khu vực nằm ở `venue_zones`. | Sprint 2<br/>(`zone_pricing`) | Đang làm |
+| **FR-09** | Phòng chờ ảo xếp hàng công bằng | Khi mở bán trận cầu lớn hay concert ca sĩ nổi tiếng, trang web không bị sập hay quay đơ; hệ thống mời người mua vào 'phòng chờ ảo', bốc số thứ tự công bằng và hiển thị thời gian chờ ước tính trước khi vào mua. | Hàng đợi FIFO trong `queue_entries`. Số người mua cùng lúc tối đa `waiting_room_capacity`, mỗi lượt vào có hạn 10 phút. Hiện mới có bảng, chưa có API. | Sprint 3<br/>(`waiting_room`) | Chưa làm |
+| **FR-10** | Tự động phát hiện và chặn Bot | 'Vệ sĩ vô hình' tự động nhận diện xem ai là người thật đang thao tác và ai là phần mềm máy tính (bot) do phe vé cài đặt để gom hàng loạt vé; các công cụ gian lận sẽ bị chặn đứng ngay ngoài cửa hệ thống. | Cloudflare Turnstile khi xin mã OTP, cộng giới hạn tốc độ theo IP. Hiện mới có giới hạn tốc độ; chưa kiểm tra token Turnstile. | Sprint 3<br/>(`bot_check`) | Chưa làm |
+| **FR-11** | Giới hạn số vé mỗi người | Mỗi tài khoản chỉ được giữ và mua tối đa `max_tickets_per_user` vé cho một sự kiện (mặc định 4), mua thêm sẽ bị từ chối. Ngăn một người hoặc phe vé ôm nhiều vé. | Khi cờ `ticket_limit` bật: `pg_advisory_xact_lock` theo (người dùng, sự kiện), đếm ghế đang giữ cộng vé đã mua, vượt giới hạn thì trả `400 ticket_limit_reached`. Cờ đang tắt ở `sprint2`. | Sprint 3<br/>(`ticket_limit`) | Đang làm |
+| **FR-12** | Mã QR vé tự đổi sau mỗi 30 giây | Mã QR trên vé điện tử tự động làm mới sau mỗi 30 giây (kèm thanh đếm ngược); nếu có ai chụp ảnh màn hình vé gửi bán lại trên mạng thì bức ảnh đó sẽ trở nên vô giá trị sau 30 giây, dẹp nạn lừa đảo vé lậu. | QR chứa `ticket_code.step.HMAC(qr_secret, step)`, `step` tăng 1 sau mỗi 30 giây. Cổng chấp nhận `step` hiện tại, liền trước và liền sau. Đã có cột `tickets.qr_secret`, chưa có code sinh QR. | Sprint 3<br/>(`rotating_qr`) | Chưa làm |
+| **FR-13** | Thanh toán trực tuyến đa kênh | Khán giả thanh toán tiền vé bằng ví MoMo hoặc cổng VNPAY và được chuyển về trang kết quả. | Tích hợp MoMo và VNPAY: tạo liên kết thanh toán có chữ ký, nhận IPN, kiểm tra chữ ký, mỗi `provider_txn_id` chỉ xử lý một lần. | Sprint 4<br/>(`payments`) | Chưa làm |
+| **FR-14** | Nhận vé điện tử tức thì qua Email | Ngay khi ngân hàng báo trừ tiền thành công, hệ thống lập tức gửi một thư email chứa thông tin vé (họ tên, vị trí hàng ghế, mã QR) và người mua có thể mở mục 'Vé của tôi' trên web để xem bất cứ lúc nào. | Cập nhật ghế sang `SOLD`, tạo bản ghi trong bảng `tickets`, kích hoạt tác vụ nền gửi email vé định dạng HTML chuẩn qua máy chủ SMTP. | Sprint 4<br/>(`ticket_email`) | Chưa làm |
+| **FR-15** | Tự động hoàn tiền khi thanh toán trễ | Nếu khán giả chuyển khoản ở ngân hàng quá chậm khiến thời hạn giữ chỗ 5 phút bị trôi qua và ghế đã bị người khác mua: Hệ thống sẽ tự động hoàn trả 100% số tiền về tài khoản ngân hàng trong thời gian $\le 15$ phút. | Worker chạy ngầm quét các giao dịch thanh toán thành công khi hold đã hết hạn, tự động kích hoạt API Auto Refund của cổng thanh toán để hoàn tiền an toàn. | Sprint 4<br/>(`reconciliation`) | Chưa làm |
+| **FR-16** | Ứng dụng quét vé di động cho cổng | Nhân viên an ninh soát vé tại cổng chỉ cần cầm điện thoại thông minh hướng camera vào mã QR của khán giả; màn hình hiển thị kết quả Xanh (Hợp lệ) / Đỏ (Từ chối) trong vòng chưa đầy 1 giây. | Ứng dụng web di động (PWA) quét QR bằng camera, gửi `POST /api/gate/checkins`, phản hồi ≤ 1 giây. | Sprint 5<br/>(`gate_checkin`) | Chưa làm |
+| **FR-17** | Chống dùng một vé vào cửa hai lần | Mỗi chiếc vé chỉ có giá trị cho đúng 1 người vào cửa một lần; nếu vé đã được quét vào rồi mà lại gửi cho người khác quét tiếp, màn hình sẽ báo động đỏ và hiện rõ: 'Vé đã được sử dụng lúc 19h05 tại Cổng A'. | Chuyển vé sang `USED` chỉ khi đang `ISSUED` hoặc `ACTIVE`, ghi bản ghi vào bảng `checkins`. | Sprint 5<br/>(`gate_checkin`) | Chưa làm |
+| **FR-18** | Soát vé bình thường khi mất mạng | Tại các sân vận động đông hàng vạn người khiến sóng 4G/Wifi bị nghẽn hoàn toàn, thiết bị soát vé của nhân viên vẫn xác thực được vé thật hay giả nhờ dữ liệu đã tải trước; khi có mạng sẽ tự gửi dữ liệu về. | Tải danh sách vé và chữ ký số vào bộ nhớ nội bộ IndexedDB của máy trước giờ mở cổng; xác thực chữ ký số offline, tự động đồng bộ khi có kết nối mạng trở lại. | Sprint 5<br/>(`offline_checkin`) | Chưa làm |
+| **FR-19** | Bảng theo dõi doanh thu cho CEO | Giám đốc hoặc Ban Lãnh đạo chỉ cần mở điện thoại là thấy ngay biểu đồ doanh thu theo từng phút, số vé đã bán và tỷ lệ lấp đầy của từng khán đài theo thời gian thực để chỉ đạo vận hành kịp thời. | Dashboard cập nhật qua `GET /api/dashboard/stream` (SSE), số liệu từ `sales_snapshots`, độ trễ ≤ 60 giây. | Sprint 5<br/>(`ceo_dashboard`) | Chưa làm |
+| **FR-20** | Sổ nhật ký giá vé bất biến | Mọi lần đổi giá vé (ai đổi, lúc nào, từ giá nào sang giá nào) đều được ghi vào sổ nhật ký. Ứng dụng không sửa hoặc xóa được các dòng này. | Bảng `price_changes` có trigger chặn `UPDATE` và `DELETE`. Mỗi lần BTC đổi giá cơ bản đều ghi một dòng. Chưa có trang xem nhật ký. | Sprint 5<br/>(`price_log`) | Đang làm |
+| **FR-21** | Xuất báo cáo CSV và XLSX | Phòng kế toán và Ban Tổ chức tải danh mục giao dịch bán vé và tổng doanh thu ra bảng tính Excel (XLSX) hoặc CSV chỉ bằng một cú nhấp chuột. | `GET /api/reports/sales.csv` và `GET /api/reports/sales.xlsx`. | Sprint 5<br/>(`reports_export`) | Chưa làm |
+| **FR-22** | Định giá động (đề xuất giá, BTC duyệt) | Hệ thống tự quan sát xem khu nào bán quá chạy hoặc khu nào bán quá chậm để gửi gợi ý cho Ban Tổ chức: 'Khu VIP nên tăng nhẹ giá để chống phe vé, khu C nên giảm giá để kích cầu'. BTC bấm duyệt thì giá mới đổi. | Tác vụ nền mỗi 5 phút phân tích cung cầu, sinh đề xuất giá vào `price_suggestions`, giữ giá trong `[giá sàn, giá trần]`, chờ BTC duyệt (`W-01`). Chưa làm: cờ `dynamic_pricing` tắt, mới có bảng. Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md). | Sprint 5<br/>(`dynamic_pricing`) | Chưa làm |
+| **FR-23** | Tự động gợi ý mã giảm giá kích cầu | Nếu sự kiện đến gần mà một khu khán đài vẫn còn nhiều ghế trống, hệ thống nhắc Ban Tổ chức phát hành mã giảm giá để bán hết vé kịp thời. | Tác vụ nền phân tích tỷ lệ lấp đầy theo thời gian còn lại, tạo gợi ý chiến dịch trong `promotions` để BTC duyệt. | Sprint 5<br/>(`promo_suggestions`) | Chưa làm |
 
 
 ## 2.2. Yêu cầu Phi chức năng (13 NFRs gắn SLA định lượng)
@@ -219,8 +235,8 @@ Dưới đây là danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) của 
 
 | Mã | Nhóm tiêu chuẩn | Chỉ số SLA đo lường định lượng | Giải pháp kỹ thuật áp dụng |
 |:---:|---|---|---|
-| **NFR-01** | Hiệu năng & Chịu tải | Chịu tải $\ge 50.000$ active connections; Latency p95 $\le 2$ giây. | Go HTTP engine, `pgxpool`, Nginx reverse proxy. |
-| **NFR-02** | Độ sẵn sàng dịch vụ | Uptime $\ge 99.9\%$; RTO $\le 5$ phút; RPO $= 0$. | Docker Compose container, health check `/api/health`. |
+| **NFR-01** | Hiệu năng & Chịu tải | Chịu tải $\ge 50.000$ active connections; Latency p95 $\le 2$ giây. | Go `net/http`, `pgxpool`, nginx reverse proxy. Chưa đo. |
+| **NFR-02** | Độ sẵn sàng dịch vụ | Uptime $\ge 99.9\%$; RTO $\le 5$ phút; RPO $= 0$. | Docker Compose `restart: unless-stopped`, health check `/api/health`. Chưa đo. |
 | **NFR-03** | Tính toàn vẹn dữ liệu | Tỷ lệ bán trùng ghế $= 0\%$ tuyệt đối; chuẩn giao dịch ACID. | Khóa hàng nguyên tử, Partial Unique Index trên `seat_holds`. |
 | **NFR-04** | Nhất quán thanh toán | $100\%$ giao dịch lỗi được đối soát xử lý trong $\le 15$ phút. | Idempotency Key trên `provider_txn_id`, worker tự đối soát. |
 | **NFR-05** | Tốc độ quét vé | Thời gian xác thực vé tại cổng $\le 1$ giây/vé. | HMAC-SHA256 đối xứng, đánh index B-tree trên `tickets(ticket_code)`. |
@@ -232,6 +248,11 @@ Dưới đây là danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) của 
 | **NFR-11** | Giám sát CEO Realtime| Độ trễ cập nhật số liệu doanh thu lên Dashboard $\le 60$ giây. | Truy vấn tối ưu trên `orders` và `payments`, snapshot định kỳ. |
 | **NFR-12** | Kiểm toán bất biến | $100\%$ lịch sử đổi giá được lưu trữ bất biến $\ge 2$ năm. | Trigger PostgreSQL chặn đứng `UPDATE` và `DELETE`. |
 | **NFR-13** | Tuân thủ bảo mật | Tuân thủ Nghị định 13/2023/NĐ-CP và tiêu chuẩn bảo mật PCI-DSS. | Không lưu trữ số thẻ ngân hàng trên máy chủ nội bộ. |
+
+Trạng thái từng NFR theo [`docs/spec.md`](spec.md) mục 2:
+- Xong: NFR-03, NFR-10.
+- Đang làm: NFR-02, NFR-07, NFR-12, NFR-13.
+- Chưa làm: các NFR còn lại. Chưa chạy kiểm thử tải k6, nên NFR-01 chưa có số đo.
 
 ## 2.3. User Stories và Tiêu chí chấp nhận (Given-When-Then)
 
@@ -253,10 +274,10 @@ Dưới đây là danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) của 
 
 | Phân nhóm MoSCoW | Nguyên tắc phân loại nghiệp vụ | Danh mục Yêu cầu liên quan |
 |---|---|---|
-| **MUST-HAVE (M)** | Bắt buộc phải có để hệ thống vận hành và bàn giao phiên bản MVP. | Đăng nhập OTP (`FR-01, 04`), Danh mục sự kiện & Sơ đồ ghế (`FR-02, 03`), SSE Realtime (`FR-05`), Giữ ghế 5 phút & Chống bán trùng (`FR-06, 07`), Giá trần/sàn (`FR-08`), Phòng chờ (`FR-09`), Chống bot & Trần 4 vé (`FR-10, 11`), Thanh toán & Cấp vé (`FR-13, 14`), Tự hoàn tiền (`FR-15`), Soát vé cổng (`FR-16, 17`). |
+| **MUST-HAVE (M)** | Bắt buộc phải có để hệ thống vận hành và bàn giao phiên bản MVP. | Đăng nhập OTP (`FR-01, 04`), Danh mục sự kiện & Sơ đồ ghế (`FR-02, 03`), SSE Realtime (`FR-05`), Giữ ghế 5 phút & Chống bán trùng (`FR-06, 07`), Giá trần/sàn (`FR-08`), Phòng chờ (`FR-09`), Chống bot & Giới hạn vé (`FR-10, 11`), Thanh toán & Cấp vé (`FR-13, 14`), Tự hoàn tiền (`FR-15`), Soát vé cổng (`FR-16, 17`). |
 | **SHOULD-HAVE (S)** | Rất quan trọng, nâng cao trải nghiệm và độ an toàn vận hành. | Mã QR xoay vòng 30s (`FR-12`), Soát vé ngoại tuyến (`FR-18`), Dashboard CEO (`FR-19`), Nhật ký giá bất biến (`FR-20`). |
 | **COULD-HAVE (C)** | Tính năng giá trị gia tăng thông minh; làm khi còn nguồn lực. | Thuật toán Định giá động (`FR-22`), Gợi ý khuyến mãi (`FR-23`), Xuất báo cáo CSV/XLSX (`FR-21`). |
-| **WON'T-HAVE (W)** | Hoãn lại trong phiên bản này để tránh rủi ro pháp lý và chi phí ngoài phạm vi. | Tự đổi giá không qua người duyệt (`W-01`), Sàn đổi vé P2P (`W-02`), Tích hợp Apple/Google Wallet (`W-04`). |
+| **WON'T-HAVE (W)** | Hoãn lại trong phiên bản này để tránh rủi ro pháp lý và chi phí ngoài phạm vi. | Tự đổi giá không qua người duyệt (`W-01`), Sàn bán lại vé chính thức (`W-02`), eKYC đầy đủ (`W-03`), Sơ đồ sân khấu 3D (`W-04`), Đa ngôn ngữ và đa tiền tệ (`W-05`). |
 
 ## 2.5. Ma trận truy vết yêu cầu (Traceability Matrix)
 
@@ -268,17 +289,20 @@ Dưới đây là danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) của 
 | **FR-02** | Khám phá danh mục sự kiện | SH-03 | US-01 | NFR-01 | `EventHandler`, `EventService`, `events` |
 | **FR-03, 05** | Sơ đồ ghế tương tác & Đồng bộ SSE | SH-03 | US-02 | NFR-10 | `SeatHandler`, `RealtimeHub`, `LISTEN/NOTIFY`, `event_seats` |
 | **FR-06, 07** | Giữ ghế 5 phút & Chống bán trùng | SH-01, 03 | US-03 | NFR-01, 03 | `SeatService`, Row-lock nguyên tử, Partial Unique Index |
-| **FR-08** | Cấu hình khu vực & giá sàn/trần | SH-01 | — | NFR-12 | `OrganizerHandler`, `zones`, `event_zones` |
+| **FR-08** | Cấu hình khu vực & giá sàn/trần | SH-01 | — | NFR-12 | `OrganizerHandler`, `OrganizerService`, `venue_zones`, `event_zones` |
 | **FR-09** | Phòng chờ ảo điều tiết tải FIFO | SH-03, 06 | US-01 | NFR-01, 09 | `QueueHandler`, `QueueService`, `queue_entries` |
 | **FR-10, 11** | Chống bot & Giới hạn trần 4 vé | SH-01, 06 | US-03 | NFR-03, 07 | Middleware Cloudflare Turnstile, Advisory Lock kiểm tra quota |
-| **FR-12** | Mã QR vé động xoay vòng 30s | SH-01, 03 | US-05 | NFR-08 | `TicketService`, Thuật toán TOTP HMAC-SHA256 |
+| **FR-12** | Mã QR vé động xoay vòng 30s | SH-01, 03 | US-05 | NFR-08 | HMAC theo `qr_secret` (chưa có code) |
 | **FR-13, 14** | Thanh toán đa kênh & Phát hành vé | SH-03, 05 | US-04, 05 | NFR-01, 04 | `PaymentHandler`, `OrderService`, `payments`, `tickets` |
 | **FR-15** | Tự động đối soát và hoàn tiền | SH-03, 05 | US-06 | NFR-04 | `ReconciliationWorker`, API Hoàn tiền đối tác |
-| **FR-16, 17** | Soát vé cổng & Chống dùng 2 lần | SH-04 | US-07 | NFR-05 | `GateHandler`, `GateService`, `checkin_logs` |
+| **FR-16, 17** | Soát vé cổng & Chống dùng 2 lần | SH-04 | US-07 | NFR-05 | `GateHandler`, `GateService`, `checkins` (chưa có code) |
 | **FR-18** | Soát vé ngoại tuyến khi mất sóng | SH-04 | US-07 | NFR-06 | Mobile PWA, Bộ nhớ IndexedDB, Offline Signature Verifier |
-| **FR-19, 21** | Dashboard CEO & Xuất báo cáo | SH-02 | — | NFR-11 | `CEOHandler`, `CEODashboard.tsx`, Export CSV/XLSX |
+| **FR-19, 21** | Dashboard CEO & Xuất báo cáo | SH-02 | — | NFR-11 | Dashboard và xuất CSV/XLSX (chưa có code) |
 | **FR-20** | Nhật ký kiểm toán giá bất biến | SH-01, 02 | — | NFR-12 | `price_changes`, PostgreSQL Database Trigger cấm sửa/xóa |
-| **FR-22, 23** | Định giá động & Gợi ý khuyến mãi | SH-01 | — | NFR-01 | `DynamicPricingWorker`, `price_suggestions`, `promotions` |
+| **FR-22, 23** | Định giá động & Gợi ý khuyến mãi | SH-01 | — | NFR-12 | `price_suggestions`, `price_changes`, `promotions` (chưa có code) |
+
+Chỉ các thành phần của Sprint 2 đã có trong `backend/internal/`.
+Các thành phần còn lại là dự kiến, xem [`docs/class-diagram.md`](class-diagram.md) mục 5.
 
 ---
 
@@ -288,95 +312,152 @@ Dưới đây là danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) của 
 
 Hệ thống được thiết kế theo mô hình phân tầng **BCE (Boundary – Control – Entity)** kết hợp triết lý **Single Source of Truth**:
 - **Boundary (`internal/httpapi`):** Tiếp nhận yêu cầu HTTP/SSE, kiểm tra hợp lệ dữ liệu, xác thực phiên cookie, phân quyền và kiểm tra cờ tính năng (`RequireFeature`).
-- **Control (`internal/service`):** Chứa toàn bộ nghiệp vụ cốt lõi (khóa ghế nguyên tử, trần 4 vé, thuật toán định giá, worker thu hồi ghế `HoldReaper` và điều phối sự kiện qua `RealtimeHub`).
-- **Entity (`internal/store`):** Mô hình hóa dữ liệu PostgreSQL thông qua mã nguồn được sinh tự động bằng `sqlc` và driver driver `pgx/v5`, bảo đảm an toàn kiểu dữ liệu 100% tại thời điểm biên dịch.
+- **Control (`internal/service`):** Chứa toàn bộ nghiệp vụ cốt lõi (khóa ghế nguyên tử, giới hạn vé mỗi người (cờ `ticket_limit`), giá khu vực, worker thu hồi ghế `HoldReaper` và điều phối sự kiện qua `RealtimeHub`).
+- **Entity (`internal/store`):** Mô hình hóa dữ liệu PostgreSQL thông qua mã nguồn được sinh tự động bằng `sqlc` và driver `pgx/v5`, kiểu dữ liệu được kiểm tra khi biên dịch.
 
-**Lý do loại bỏ hoàn toàn Redis:** Việc kết hợp Redis làm bộ nhớ đệm phân tán dễ dẫn đến thảm họa mất đồng bộ dữ liệu (cache inconsistency) và sụp đổ bộ đệm (cache stampede). Bằng cách sử dụng **PostgreSQL 18** làm nguồn chân lý duy nhất, hệ thống đạt hiệu năng cực cao nhờ khóa mức hàng nguyên tử (`atomic row update`), khóa cố vấn (`pg_advisory_xact_lock`), chỉ mục một phần duy nhất (`partial unique index`), và kênh Pub/Sub thời gian thực nội tại `LISTEN/NOTIFY` chạy trong cùng giao dịch ACID.
+**Lý do loại bỏ hoàn toàn Redis:** Việc kết hợp Redis làm bộ nhớ đệm phân tán dễ dẫn đến thảm họa mất đồng bộ dữ liệu (cache inconsistency) và sụp đổ bộ đệm (cache stampede). Bằng cách sử dụng **PostgreSQL 18** làm nguồn chân lý duy nhất, hệ thống chỉ cần một nguồn dữ liệu nhờ khóa mức hàng nguyên tử (`atomic row update`), khóa cố vấn (`pg_advisory_xact_lock`), chỉ mục một phần duy nhất (`partial unique index`), và kênh Pub/Sub thời gian thực nội tại `LISTEN/NOTIFY` chạy trong cùng giao dịch ACID.
 
 ## 3.2. Sơ đồ kiến trúc triển khai hệ thống (Deployment Architecture)
 
-![Hình 1. Sơ đồ kiến trúc triển khai hệ thống (Deployment Architecture)](images/hinh1_deployment.png)
+```mermaid
+flowchart LR
+    B["Trình duyệt"]
+    CF["Cloudflare<br/>cosh301.nhansp.id.vn"]
+
+    subgraph VM["Máy ảo GCP (Compute Engine) - Docker Compose"]
+        T["tunnel<br/>cloudflared"]
+        F["frontend<br/>nginx: SPA + proxy /api"]
+        A["api<br/>Go, cổng 8080"]
+        D[("db<br/>PostgreSQL 18")]
+    end
+
+    B -- HTTPS --> CF
+    CF -- "Cloudflare Tunnel" --- T
+    T -- "HTTP :80" --> F
+    F -- "/api/*" --> A
+    A -- "SQL + LISTEN" --> D
+```
+
+**Hình 1.** Kiến trúc triển khai. Mô tả đầy đủ ở [`docs/architecture.md`](architecture.md).
 
 **Bảng 7. Các thành phần kiến trúc triển khai hệ thống EventTicketing**
 
 | Thành phần | Nền tảng công nghệ | Trách nhiệm chính trong hệ thống |
 |---|---|---|
-| **Edge Proxy** | Cloudflare Tunnel | Bảo vệ hạ tầng chống DDoS, tự động cấp chứng chỉ SSL, chặn bot bằng Cloudflare Turnstile. |
+| **Máy chủ** | Một máy ảo GCP (Compute Engine), Docker Compose | Chạy `db`, `api`, `frontend`, `tunnel`. |
+| **Edge Proxy** | Cloudflare Tunnel (`cloudflared`) | Công bố `https://cosh301.nhansp.id.vn` ra Internet, không mở cổng vào máy chủ. Chưa kiểm tra Turnstile. |
 | **Frontend Web** | React 19, Vite, Tailwind | Ứng dụng SPA hiển thị sơ đồ ghế tương tác đa màu sắc, quản lý đếm ngược 5:00 giữ chỗ. |
-| **Web Server** | Nginx Alpine | Phục vụ file tĩnh, reverse proxy sang backend Go, tắt đệm (`proxy_buffering off`) cho luồng SSE. |
-| **Backend API** | Go 1.24+ (`net/http`) | Single Binary siêu nhẹ ($< 50\text{MB}$ RAM), khởi động tức thì ($< 100\text{ms}$), xử lý hàng vạn Goroutines. |
-| **Cơ sở dữ liệu** | PostgreSQL 18 | Single Source of Truth, 26 bảng chuẩn hóa, khóa hàng nguyên tử, pub/sub `LISTEN/NOTIFY`. |
+| **Web Server** | nginx (image Alpine) | Phục vụ file tĩnh, reverse proxy sang backend Go, tắt đệm (`proxy_buffering off`) cho luồng SSE. |
+| **Backend API** | Go 1.26 (`net/http`) | Một file chạy duy nhất, chia lớp theo BCE. |
+| **Cơ sở dữ liệu** | PostgreSQL 18 | Single Source of Truth, 23 bảng, khóa hàng nguyên tử, pub/sub `LISTEN/NOTIFY`. |
 | **Realtime Hub** | Go Goroutines & SSE | Kết nối `LISTEN` cơ sở dữ liệu, phát sóng sự kiện đổi màu ghế tức thì tới các máy khách. |
 | **Hold Reaper Worker** | Background Worker (Go) | Quét định kỳ mỗi 5 giây, tự động nhả ghế quá hạn 300 giây về `AVAILABLE` và phát tín hiệu SSE. |
 
 ## 3.3. Sơ đồ và Đặc tả trường hợp sử dụng (Use Case Diagram)
 
-![Hình 2. Sơ đồ trường hợp sử dụng tổng thể (Use Case Diagram)](images/hinh2_usecase.png)
+**Hình 2.** Sơ đồ Use Case tổng thể nằm ở [`docs/use-cases.md`](use-cases.md) mục 2.
 
-**Bảng 8. Danh mục 13 trường hợp sử dụng (Use Cases UC-01 … UC-13)**
+**Bảng 8. Danh mục 17 trường hợp sử dụng (Use Cases UC-01 … UC-17)**
 
-| Mã UC | Tên Use Case | Tác nhân chính | Yêu cầu | Tóm tắt hành vi |
-|:---:|---|:---:|:---:|---|
-| **UC-01** | Đăng nhập OTP không mật khẩu | Mọi tác nhân | FR-01, 04 | Xác thực bằng OTP 6 số qua SMS/Email, tạo phiên máy chủ `sessions`. |
-| **UC-02** | Xem danh mục sự kiện | Khán giả | FR-02 | Khám phá sự kiện mở bán, xem sơ đồ phân khu và khoảng giá vé. |
-| **UC-03** | Xếp hàng phòng chờ ảo | Khán giả | FR-09 | Nhận số thứ tự FIFO và thời gian chờ ước tính khi lưu lượng mở bán quá tải. |
-| **UC-04** | Chọn & Giữ ghế 5 phút | Khán giả | FR-03, 06, 07 | Khóa nguyên tử chiếc ghế trong 300 giây, đếm ngược đồng hồ trên màn hình. |
-| **UC-05** | Thanh toán & Nhận vé điện tử | Khán giả | FR-13, 14, 15 | Thanh toán qua MoMo/VNPAY, cập nhật ghế `SOLD` và gửi vé qua Email. |
-| **UC-06** | Xem vé & Mã QR xoay vòng 30s | Khán giả | FR-12 | Hiển thị vé điện tử với mã QR tự đổi sau mỗi 30s chống chụp trộm. |
-| **UC-07** | Quản trị Sự kiện & Khu vực | Ban Tổ chức | FR-08 | Khởi tạo sự kiện, cấu hình phân khu ghế và thiết lập dải giá trần/sàn. |
-| **UC-08** | Duyệt đề xuất Định giá động | Ban Tổ chức | FR-22 | Xem các khuyến nghị đổi giá vé của thuật toán và bấm duyệt áp dụng. |
-| **UC-09** | Xem Dashboard Doanh thu Mobile | CEO | FR-19 | Theo dõi doanh thu theo phút và tỷ lệ lấp đầy ghế trên thiết bị di động. |
-| **UC-10** | Xuất Báo cáo Bán vé | CEO | FR-21 | Xuất dữ liệu giao dịch và doanh thu sự kiện ra file CSV hoặc Excel. |
-| **UC-11** | Soát vé tại Cổng bằng QR | Nhân viên cổng | FR-16, 17 | Quét mã QR kiểm tra tính hợp lệ của vé trong $\le 1$ giây, chặn vé đã dùng. |
-| **UC-12** | Đồng bộ Soát vé Ngoại tuyến | Nhân viên cổng | FR-18 | Soát vé bằng chữ ký số offline khi mất mạng và tự đồng bộ khi có kết nối lại. |
-| **UC-13** | Giám sát & Kiểm toán Hệ thống | Quản trị viên | NFR-12, 13 | Quản trị phân quyền tài khoản và tra cứu nhật ký kiểm toán bất biến. |
+| Mã UC | Tên Use Case | Tác nhân chính | Cờ | Yêu cầu |
+|:---:|---|:---:|---|:---:|
+| **UC-01** | Đăng nhập bằng OTP | Mọi tác nhân | `otp_login` | FR-01, 04, 10 |
+| **UC-02** | Xem danh sách sự kiện | Khán giả | Luôn bật | FR-02 |
+| **UC-03** | Vào phòng chờ | Khán giả | `waiting_room` | FR-09 |
+| **UC-04** | Xem sơ đồ ghế | Khán giả | `seat_map_realtime` | FR-03, 05 |
+| **UC-05** | Giữ ghế | Khán giả | `seat_hold` | FR-06, 07, 11 |
+| **UC-06** | Thanh toán và nhận vé | Khán giả | `payments`, `ticket_email`, `reconciliation` | FR-13, 14, 15 |
+| **UC-07** | Xem vé và QR xoay vòng | Khán giả | `rotating_qr` | FR-12 |
+| **UC-08** | Quản lý địa điểm, khu vực, sự kiện | Ban Tổ chức | `organizer_console` | FR-08 |
+| **UC-09** | Đặt giá khu vực | Ban Tổ chức | `zone_pricing` | FR-08, 20 |
+| **UC-10** | Duyệt đề xuất giá | Ban Tổ chức | `dynamic_pricing` | FR-22, 20 |
+| **UC-11** | Xem nhật ký giá | Ban Tổ chức | `price_log` | FR-20 |
+| **UC-12** | Duyệt gợi ý khuyến mãi | Ban Tổ chức | `promo_suggestions` | FR-23 |
+| **UC-13** | Xem dashboard doanh thu | CEO | `ceo_dashboard` | FR-19 |
+| **UC-14** | Xuất báo cáo | CEO | `reports_export` | FR-21 |
+| **UC-15** | Soát vé tại cổng | Nhân viên cổng | `gate_checkin` | FR-16, 17 |
+| **UC-16** | Soát vé offline và đồng bộ | Nhân viên cổng | `offline_checkin` | FR-18 |
+| **UC-17** | Phân quyền | Quản trị | Luôn bật | — |
+
+Danh sách và tác nhân lấy từ [`docs/use-cases.md`](use-cases.md).
+Ở profile `sprint2`, chỉ UC-01, 02, 04, 05, 09 và một phần UC-08 có code.
 
 ## 3.4. Sơ đồ luồng dữ liệu (Data Flow Diagram - DFD)
 
 ### 3.4.1. DFD Mức ngữ cảnh (Context Diagram) và DFD Mức 0 (Diagram 0)
 
-![Hình 3. Sơ đồ luồng dữ liệu Mức ngữ cảnh (Context Diagram)](images/hinh3_context_dfd.png)
+**Hình 3.** DFD mức ngữ cảnh nằm ở [`docs/dfd.md`](dfd.md) mục 1.
 
-![Hình 4. Sơ đồ luồng dữ liệu Mức 0 (DFD Level 0 - 7 Tiến trình chính và 4 Kho dữ liệu)](images/hinh4_dfd_level0.png)
+**Hình 4.** DFD mức 0 (9 tiến trình, 17 kho dữ liệu) nằm ở [`docs/dfd.md`](dfd.md) mục 2.
 
-**Bảng 9. Ánh xạ Kho dữ liệu DFD vào 26 bảng cơ sở dữ liệu (Khớp DFD Level 0 & Schema)**
+**Bảng 9. Ánh xạ Kho dữ liệu DFD vào 23 bảng cơ sở dữ liệu**
 
-| Ký hiệu kho | Tên kho dữ liệu DFD | Các bảng cơ sở dữ liệu tương ứng (EventTicketingSchema.sql) | Mục đích lưu trữ cốt lõi |
-|:---:|---|---|---|
-| **D1** | User DB (Tài khoản & Phiên) | `users`, `otp_verifications`, `sessions`, `audit_logs` | Quản lý danh tính, mã xác thực OTP 6 số, phiên đăng nhập an toàn và nhật ký kiểm toán hệ thống. |
-| **D2** | Event & Seat DB (Sự kiện & Ghế) | `venues`, `venue_zones`, `seats`, `events`, `event_seats`, `zone_price_rules` | Lưu trữ thông tin địa điểm, phân khu, vị trí ghế vật lý, trạng thái ghế (`AVAILABLE`, `HELD`, `SOLD`) và khung giá sàn/trần. |
-| **D3** | Transaction DB (Giao dịch & Giữ chỗ) | `orders`, `order_items`, `seat_holds`, `payment_transactions`, `payment_reconciliations`, `refunds` | Quản lý lượt giữ ghế 300s, đơn hàng, giao dịch cổng thanh toán (MoMo/VNPAY), đối soát tự động và hoàn tiền. |
-| **D4** | Ticket DB (Vé điện tử & Soát vé) | `tickets`, `ticket_qr_tokens`, `ticket_deliveries`, `gate_devices`, `checkins`, `price_changes`, `promotions`, `sales_snapshots` | Quản lý vé số hóa, mã QR động 30s, nhật ký quét vé tại cổng (online/offline), lịch sử giá bất biến và thống kê doanh thu CEO. |
+| Kho | Bảng PostgreSQL | Kho | Bảng PostgreSQL |
+|:---:|---|:---:|---|
+| D1 | `users` | D10 | `payments` |
+| D2 | `sessions` | D11 | `tickets` |
+| D3 | `otp_verifications` | D12 | `gate_devices`, `checkins` |
+| D4 | `venues`, `venue_zones`, `seats` | D13 | `price_suggestions` |
+| D5 | `events`, `event_zones` | D14 | `price_changes` |
+| D6 | `event_seats` | D15 | `promotions`, `promotion_usages` |
+| D7 | `queue_entries` | D16 | `audit_logs` |
+| D8 | `seat_holds` | D17 | `sales_snapshots` |
+| D9 | `orders`, `order_items` | | |
+
+Bảng lấy từ [`docs/dfd.md`](dfd.md) mục 5. Mỗi bảng trong 23 bảng thuộc đúng một kho.
 
 ## 3.5. Sơ đồ lớp theo mô hình BCE (Class Diagram)
 
-![Hình 5. Sơ đồ lớp theo mô hình phân tầng BCE (Boundary – Control – Entity)](images/hinh5_class_diagram.png)
+**Hình 5.** Sơ đồ lớp BCE nằm ở [`docs/class-diagram.md`](class-diagram.md) mục 2. Mục 5 của tài liệu đó liệt kê các lớp dự kiến cho Sprint 3–5.
 
 ## 3.6. Cơ chế Quản lý Cờ tính năng (Feature Flags theo Profile)
 
 Hệ thống quản lý tính năng thông qua middleware `RequireFeature(flagName)`. Khi một cờ bị tắt, giao diện tự động ẩn và API trả về `404 Not Found {"error": "feature_disabled"}`.
 
-**Bảng 10. Quản lý cờ tính năng (Feature Flags) theo Profile Sprint**
+**Bảng 10. 19 cờ tính năng theo Profile Sprint** (lấy từ `backend/internal/config/features.go`)
 
-| Nhóm Cờ tính năng | Tên cờ (`flag`) | Yêu cầu | sprint2 (Giữa kỳ) | sprint3 | sprint4 | final (Cuối kỳ) |
-|---|---|:---:|:---:|:---:|:---:|:---:|
-| **Xác thực & Sơ đồ ghế** | `otp_login`, `seat_map_realtime` | FR-01, 03, 04, 05 | **BẬT** | **BẬT** | **BẬT** | **BẬT** |
-| **Giữ chỗ & Giá khu vực** | `seat_hold`, `zone_pricing` | FR-06, 07, 08 | **BẬT** | **BẬT** | **BẬT** | **BẬT** |
-| **Phòng chờ & Chống bot** | `waiting_room`, `bot_check` | FR-09, 10 | Tắt | **BẬT** | **BẬT** | **BẬT** |
-| **Trần 4 vé & QR xoay vòng**| `ticket_limit`, `rotating_qr` | FR-11, 12 | Tắt | **BẬT** | **BẬT** | **BẬT** |
-| **Thanh toán & Cấp vé email**| `payments`, `ticket_email` | FR-13, 14, 15 | Tắt | Tắt | **BẬT** | **BẬT** |
-| **Soát vé Cổng & Offline** | `gate_checkin`, `offline_checkin` | FR-16, 17, 18 | Tắt | Tắt | Tắt | **BẬT** |
-| **Dashboard CEO & Giá động**| `ceo_dashboard`, `dynamic_pricing`| FR-19, 20, 21, 22 | Tắt | Tắt | Tắt | **BẬT** |
+| Cờ (`flag`) | Yêu cầu | sprint2 (đang chạy) | sprint3 | sprint4 | final |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `otp_login` | FR-01, 04 | **Bật** | **Bật** | **Bật** | **Bật** |
+| `seat_map_realtime` | FR-03, 05, NFR-10 | **Bật** | **Bật** | **Bật** | **Bật** |
+| `seat_hold` | FR-06, 07, NFR-03 | **Bật** | **Bật** | **Bật** | **Bật** |
+| `zone_pricing` | FR-08 | **Bật** | **Bật** | **Bật** | **Bật** |
+| `organizer_console` | FR-08 | **Bật** | **Bật** | **Bật** | **Bật** |
+| `waiting_room` | FR-09, NFR-09 | Tắt | **Bật** | **Bật** | **Bật** |
+| `bot_check` | FR-10, NFR-07 | Tắt | **Bật** | **Bật** | **Bật** |
+| `ticket_limit` | FR-11 | Tắt | **Bật** | **Bật** | **Bật** |
+| `rotating_qr` | FR-12, NFR-08 | Tắt | **Bật** | **Bật** | **Bật** |
+| `payments` | FR-13 | Tắt | Tắt | **Bật** | **Bật** |
+| `ticket_email` | FR-14 | Tắt | Tắt | **Bật** | **Bật** |
+| `reconciliation` | FR-15, NFR-04 | Tắt | Tắt | **Bật** | **Bật** |
+| `gate_checkin` | FR-16, 17, NFR-05 | Tắt | Tắt | Tắt | **Bật** |
+| `offline_checkin` | FR-18, NFR-06 | Tắt | Tắt | Tắt | **Bật** |
+| `ceo_dashboard` | FR-19 | Tắt | Tắt | Tắt | **Bật** |
+| `price_log` | FR-20, NFR-12 | Tắt | Tắt | Tắt | **Bật** |
+| `reports_export` | FR-21 | Tắt | Tắt | Tắt | **Bật** |
+| `dynamic_pricing` | FR-22, W-01 | Tắt | Tắt | Tắt | **Bật** |
+| `promo_suggestions` | FR-23 | Tắt | Tắt | Tắt | **Bật** |
+
+FR-02 luôn bật. Nhật ký giá luôn được ghi, cờ `price_log` chỉ ẩn hoặc hiện trang xem.
 
 ---
 
 # PHẦN 4. THIẾT KẾ CƠ SỞ DỮ LIỆU VÀ QUY TRÌNH NGHIỆP VỤ CỐT LÕI
 
-## 4.1. Thiết kế Mô hình Thực thể Liên kết (ERD 26 bảng chuẩn hóa)
+## 4.1. Thiết kế Mô hình Thực thể Liên kết (ERD 23 bảng)
 
-![Hình 6. Sơ đồ thực thể liên kết (ERD 26 bảng dữ liệu chuẩn hóa từ EventTicketingSchema.sql)](images/hinh6_erd.png)
+**Hình 6.** Sơ đồ ERD sinh từ migration nằm ở [`docs/erd.md`](erd.md) mục 1.
 
-26 bảng dữ liệu được chuẩn hóa thành 6 nhóm nghiệp vụ: (1) Định danh & Bảo mật (`users`, `sessions`, `otp_verifications`, `audit_logs`); (2) Địa điểm & Ghế (`venues`, `venue_zones`, `seats`, `events`, `event_zones`, `event_seats`); (3) Hàng chờ & Giữ chỗ (`queue_entries`, `seat_holds`); (4) Đơn hàng & Thanh toán (`orders`, `order_items`, `payments`); (5) Vé & Soát vé (`tickets`, `gate_devices`, `checkins`, `checkin_logs`); (6) Giá động & Thống kê (`price_suggestions`, `price_changes`, `promotions`, `promotion_usages`, `sales_snapshots`).
+Schema trong `backend/internal/store/migrations/` có 23 bảng, chia thành 6 nhóm:
+1. Định danh và bảo mật (4): `users`, `sessions`, `otp_verifications`, `audit_logs`.
+2. Địa điểm và ghế (6): `venues`, `venue_zones`, `seats`, `events`, `event_zones`, `event_seats`.
+3. Hàng chờ và giữ chỗ (2): `queue_entries`, `seat_holds`.
+4. Đơn hàng và thanh toán (3): `orders`, `order_items`, `payments`.
+5. Vé và soát vé (3): `tickets`, `gate_devices`, `checkins`.
+6. Giá, khuyến mãi và thống kê (5): `price_suggestions`, `price_changes`, `promotions`, `promotion_usages`, `sales_snapshots`.
+
+ERD Sprint 1 trên MySQL có 26 bảng.
+Điểm khác giữa hai bản được liệt kê ở [`docs/erd.md`](erd.md) mục 2.
 
 ## 4.2. Từ điển dữ liệu các thực thể cốt lõi (Data Dictionary)
 
@@ -385,110 +466,128 @@ Hệ thống quản lý tính năng thông qua middleware `RequireFeature(flagNa
 | Tên Bảng | Thuộc tính (Column) | Kiểu dữ liệu | Ràng buộc chính | Ý nghĩa nghiệp vụ |
 |---|---|---|---|---|
 | `users` | `id`, `phone`, `email`, `role`, `status` | `UUID`, `VARCHAR`, `ENUM` | `PK`, `UNIQUE`, `role NOT NULL` | Quản lý danh tính và vai trò người dùng. |
-| `event_seats` | `id`, `event_id`, `seat_id`, `status`, `current_price` | `UUID`, `ENUM`, `BIGINT` | `PK`, `FK`, `current_price > 0` | Trạng thái ghế (`AVAILABLE`, `HELD`, `SOLD`) và giá bán. |
-| `seat_holds` | `id`, `seat_id`, `user_id`, `hold_token`, `status`, `expires_at` | `UUID`, `VARCHAR`, `ENUM`, `TIMESTAMPTZ` | `PK`, `FK`, `expires_at = now() + 300s` | Quản lý lượt khóa giữ ghế 5 phút độc quyền. |
-| `orders` | `id`, `user_id`, `event_id`, `total_amount`, `status` | `UUID`, `BIGINT`, `ENUM` | `PK`, `FK`, `status: PENDING, PAID...` | Đơn hàng mua vé và tổng giá trị thanh toán. |
+| `event_seats` | `id`, `event_id`, `seat_id`, `status`, `current_price` | `UUID`, `ENUM`, `NUMERIC(14,0)` | `PK`, `FK`, `current_price >= 0` | Trạng thái ghế (`AVAILABLE`, `HELD`, `SOLD`, `BLOCKED`) và giá bán. |
+| `seat_holds` | `id`, `event_id`, `seat_id`, `user_id`, `hold_token`, `status`, `expires_at` | `UUID`, `VARCHAR`, `ENUM`, `TIMESTAMPTZ` | `PK`, `FK`, unique `(event_id, seat_id)` khi `status = 'ACTIVE'` | Quản lý lượt giữ ghế 5 phút. |
+| `orders` | `id`, `user_id`, `event_id`, `total_amount`, `status` | `UUID`, `NUMERIC(14,0)`, `ENUM` | `PK`, `FK`, `status: PENDING, PAID...` | Đơn hàng mua vé và tổng giá trị thanh toán. Chưa có code ghi bảng này. |
 | `tickets` | `id`, `order_id`, `ticket_code`, `qr_secret`, `status` | `UUID`, `VARCHAR`, `ENUM` | `PK`, `FK`, `ticket_code UNIQUE` | Vé điện tử số hóa và khóa mật mã sinh QR xoay vòng. |
-| `price_changes`| `id`, `event_id`, `zone_id`, `old_price`, `new_price`, `created_at` | `UUID`, `BIGINT`, `TIMESTAMPTZ` | `PK`, `FK`, `TRIGGER cấm UPDATE/DELETE` | Bảng nhật ký kiểm toán giá bất biến phục vụ đối soát. |
+| `price_changes`| `id`, `event_id`, `zone_id`, `old_price`, `new_price`, `reason`, `created_at` | `BIGSERIAL`, `UUID`, `NUMERIC(14,0)`, `TIMESTAMPTZ` | `PK`, `FK`, trigger cấm `UPDATE`/`DELETE` | Nhật ký đổi giá không sửa được. |
 
 ## 4.3. Thiết kế quy trình nghiệp vụ qua Sơ đồ tuần tự (Sequence Diagrams)
 
 ### 4.3.1. Sơ đồ tuần tự: Giữ ghế độc quyền 5 phút và đồng bộ SSE Realtime (FR-06, FR-05)
 
-![Hình 7. Sơ đồ tuần tự: Giữ ghế độc quyền 5 phút và đồng bộ Realtime SSE (FR-06, FR-05)](images/hinh7_seq_hold.png)
+**Hình 7.** Sơ đồ tuần tự giữ ghế và tự thu hồi khi hết hạn nằm ở [`docs/sequences/hold.md`](sequences/hold.md).
 
 ### 4.3.2. Sơ đồ tuần tự: Khóa hàng nguyên tử Chống bán trùng tuyệt đối (FR-07)
 
-![Hình 8. Sơ đồ tuần tự: Khóa hàng nguyên tử Chống bán trùng tuyệt đối (FR-07)](images/hinh8_seq_double_booking.png)
+**Hình 8.** Sơ đồ tuần tự chống bán trùng nằm ở [`docs/sequences/double-booking.md`](sequences/double-booking.md).
 
 ## 4.4. Cơ chế bảo đảm tính toàn vẹn và bất biến dữ liệu
 
-1. **Khóa cố vấn (`pg_advisory_xact_lock`):** Khóa phạm vi `(user_id, event_id)` trong suốt thời gian mở transaction, ngăn chặn việc mở nhiều tab hoặc chạy script song song để vượt trần 4 vé (`FR-11`).
-2. **Khóa hàng nguyên tử & Chiếm lượt giữ quá hạn (Stale Hold Stealing):** Dùng câu lệnh `UPDATE ... WHERE status = 'AVAILABLE'` để tận dụng khóa vật lý của PostgreSQL; tự động hủy lượt giữ cũ đã hết hạn và cấp cho người mới trong cùng một thao tác đơn nhất.
+1. **Khóa cố vấn (`pg_advisory_xact_lock`):** khi cờ `ticket_limit` bật, khóa phạm vi `(user_id, event_id)` trong suốt giao dịch giữ ghế, để mở nhiều tab hoặc chạy script song song cũng không vượt `events.max_tickets_per_user` (`FR-11`).
+2. **Khóa hàng nguyên tử và chiếm lượt giữ quá hạn:** `UPDATE` có điều kiện `status = 'AVAILABLE'` chuyển ghế sang `HELD`. Nếu ghế còn `HELD` nhưng lượt giữ đã hết hạn mà `HoldReaper` chưa quét tới, `TryStealExpiredSeatHold` lấy lại lượt đó trong cùng giao dịch.
 3. **Chỉ mục một phần duy nhất chống bán trùng (`Partial Unique Index`):**
    ```sql
-   CREATE UNIQUE INDEX idx_seat_holds_active_seat ON seat_holds (seat_id) WHERE status = 'ACTIVE';
+   CREATE UNIQUE INDEX uq_seat_holds_active ON seat_holds(event_id, seat_id) WHERE status = 'ACTIVE';
    ```
-   Bảo đảm tại một thời điểm chỉ tồn tại tối đa một bản ghi giữ chỗ `ACTIVE` cho một ghế, chặn đứng bán trùng ở tầng vật lý cơ sở dữ liệu.
-4. **Trigger kiểm toán bất biến (Immutable Audit Log):** Thiết lập database trigger ngăn chặn tuyệt đối các thao tác `UPDATE` và `DELETE` trên bảng `price_changes` và `audit_logs`, bảo đảm dữ liệu lịch sử giá tồn tại vĩnh viễn phục vụ thanh tra tài chính (`NFR-12`).
+   Tại một thời điểm, mỗi ghế của một sự kiện chỉ có tối đa một lượt giữ `ACTIVE`. Đây là lớp chặn thứ hai sau câu `UPDATE`.
+4. **Trigger nhật ký không sửa được:** trigger chặn `UPDATE` và `DELETE` trên `price_changes` và `audit_logs` (`NFR-12`). Ứng dụng chỉ thêm dòng mới.
 
 ---
 
 # PHẦN 5. THIẾT KẾ CÁC PHÂN HỆ NÂNG CAO VÀ VẬN HÀNH THỰC TẾ
 
-## 5.1. Phản biện Cơ chế Định giá động (Dynamic Pricing) và Giải pháp Hệ thống Gợi ý Thông minh (Recommendation Engine) cho Khán giả
+## 5.1. Định giá động (FR-22): bài toán, quy tắc và phản biện
 
-### 5.1.1. Luận điểm phản biện và Căn cứ thực tiễn bãi bỏ Định giá động
-Ban đầu, trong giai đoạn phân tích sơ bộ, Ban Tổ chức từng đề xuất áp dụng cơ chế Định giá động (Dynamic Pricing / Surge Pricing) với kỳ vọng tối đa hóa doanh thu dựa trên quy luật cung – cầu thời gian thực. Tuy nhiên, qua quá trình nghiên cứu chuyên sâu các bài học thực tiễn trong ngành công nghiệp âm nhạc toàn cầu kết hợp kết quả thử nghiệm mô phỏng của nhóm nghiên cứu, nhóm quyết định **chính thức bãi bỏ yêu cầu Định giá động từ phía Stakeholder** dựa trên 6 căn cứ:
-1. **Khủng hoảng niềm tin & vi phạm Luật bảo vệ quyền lợi người tiêu dùng:** Giá vé thay đổi bất ngờ khi khách hàng đang xếp hàng/thanh toán làm sai lệch thông tin (dẫn chứng kết luận của Cơ quan Cạnh tranh & Thị trường Anh - CMA trong vụ Oasis Live '25 và cam kết của Ticketmaster bỏ nhãn Platinum).
-2. **Phân biệt giá (Price Discrimination) tạo bất bình đẳng tiếp cận văn hóa:** Surge pricing bản chất là phân biệt giá cấp độ 3, trừng phạt nhóm fan trung thành nhất (những người ít linh hoạt về mặt thời gian, gia đình có con nhỏ) bằng mức giá cắt cổ cho cùng một trải nghiệm nghe nhìn.
-3. **Khủng hoảng truyền thông & phá hủy thương hiệu:** Tiền lệ từ các tour diễn của Bruce Springsteen ($5,000–$5,500/vé), Harry Styles (2026), Oasis gây phẫn nộ công luận và bị đưa ra chất vấn nghị viện; nghệ sĩ và ban tổ chức gánh chịu toàn bộ thiệt hại hình ảnh.
-4. **Ngụy biện "Chống phe vé":** Thực chất chỉ hợp pháp hóa việc "phe vé chính danh" do chính nền tảng thực hiện; khán giả vẫn phải trả giá chợ đen và nạn đầu cơ không hề thuyên giảm.
-5. **Rủi ro pháp lý toàn cầu:** Dự luật cấm dynamic pricing tại Ireland, bang Illinois (Mỹ - HB3838), kiến nghị cấm trong EU Digital Fairness Act, và cam kết không dùng tại UEFA Euro 2028.
-6. **Bằng chứng thực nghiệm từ mô hình nghiên cứu của Đồ án:**
-   - **Tỷ lệ bỏ giỏ hàng (Cart Abandonment) tăng vọt 42%:** Khán giả cảm thấy bị ép giá, hủy giao dịch và chuyển sang tâm lý tẩy chay sự kiện.
-   - **Hiệu ứng "Chờ giá chạm đáy":** Khi thuật toán tự động hạ giá khu vực bán chậm, khán giả trì hoãn mua vé để đợi giá tiếp tục giảm, vô tình làm đóng băng dòng tiền bán vé của Ban Tổ chức.
-   - **Chi phí vận hành và giải quyết khiếu nại vượt xa doanh thu kỳ vọng.**
-   - $\rightarrow$ **Quyết định:** Nhóm chính thức bãi bỏ yêu cầu Dynamic Pricing từ phía Stakeholder, duy trì **Chính sách Giá Cố định Minh bạch theo từng phân khu (Fixed Tiered Pricing)**.
+**Trạng thái:** cờ `dynamic_pricing` tắt, FR-22 chưa làm.
+Code đã có bảng `price_suggestions`, bảng `price_changes` và giá sàn, cơ bản, trần theo khu vực (FR-08).
+Chưa có job tính đề xuất và endpoint duyệt.
+Đặc tả đầy đủ, gồm cả ba ví dụ tính tay, nằm ở [`docs/dynamic-pricing.md`](dynamic-pricing.md).
 
-### 5.1.2. Đề xuất Giải pháp Thay thế: Hệ thống Gợi ý Thông minh cho Khán giả (Recommendation Engine)
-Thay vì áp dụng cơ chế định giá ép người dùng chi trả mức giá biến động bất định, hệ thống EventTicketing giải quyết bài toán tối ưu hóa doanh thu và lấp đầy khán đài bằng cách tiếp cận tích cực, hướng tới người dùng: Xây dựng **Hệ thống Gợi ý Thông minh (Audience Recommendation Engine - FR-22)** do thành viên **Nguyễn Anh Dũng** chủ trì thiết kế.
+### 5.1.1. Bài toán
+- Khu vực "hot" bán hết trong vài phút đầu, tạo chỗ cho phe vé bán lại giá cao.
+- Khu vực xa sân khấu bán chậm, dễ còn ghế trống.
+- Ban Tổ chức cần đề xuất giá theo cung cầu, nhưng hệ thống không được tự đổi giá (`W-01`).
 
-Hệ thống hoạt động dựa trên nguyên lý:
-- Phân tích đa chiều hồ sơ khán giả: Kết hợp lịch sử đặt vé, thể loại âm nhạc yêu thích, mức chi tiêu trung bình và vị trí địa lý.
-- Xếp hạng ưu tiên theo thời gian thực (Real-time Priority Scoring): Định lượng hóa độ phù hợp của từng sự kiện và từng vị trí ghế đối với từng cá nhân khán giả qua thang điểm từ 0 đến 100.
-- Điều hướng lưu lượng tự nhiên (Organic Traffic Balancing): Ưu tiên hiển thị các phân khu ghế còn trống có góc nhìn đẹp trong tầm ngân sách của khán giả, kết hợp với các mã giảm giá kích cầu hợp lý (FR-23) khi sự kiện đến gần, bảo đảm tính minh bạch và công bằng tuyệt đối.
+### 5.1.2. Quy tắc đổi giá
+Cứ 5 phút, với từng khu vực:
 
-### 5.1.3. Khung tiêu chí và Thuật toán Chấm điểm Độ ưu tiên (Priority Scoring Framework)
-Thuật toán tính toán Điểm Ưu tiên Tổng hợp $\text{PriorityScore}(User, Event, Zone, Seat) \in [0, 100]$ được nghiên cứu và thiết kế bởi thành viên **Nguyễn Anh Dũng**, dựa trên 5 tiêu chí định lượng chuẩn mực với trọng số được tối ưu hóa:
+1. Tính chỉ số áp lực thị trường:
+   $$\alpha = 0.50 \cdot \frac{v_{\text{actual}}}{v_{\text{target}}} + 0.30 \cdot \left(1 + \frac{Q}{500}\right) + 0.20 \cdot \left(1 + r_{\text{held}}\right)$$
+2. Tính tỉ lệ điều chỉnh, tối đa ±20% mỗi chu kỳ:
+   $$\delta = \text{clamp}\left(0.25 \cdot (\alpha - 1), -0.20, +0.20\right)$$
+3. Tính giá sơ bộ $P_{\text{raw}} = P_{\text{current}} \cdot (1 + \delta)$.
+4. Chặn trong $[P_{\text{floor}}, P_{\text{ceiling}}]$ rồi làm tròn tới 10.000 VNĐ.
+5. Chênh dưới 5% so với giá hiện tại thì bỏ qua, ngược lại tạo dòng `PENDING` trong `price_suggestions`.
 
-$$\mathbf{PriorityScore} = 0.35 \cdot S_{\text{affinity}} + 0.25 \cdot S_{\text{budget}} + 0.15 \cdot S_{\text{geo\_time}} + 0.15 \cdot S_{\text{view}} + 0.10 \cdot S_{\text{fill}}$$
+**Bảng 12. Dữ liệu đầu vào của thuật toán Định giá động**
 
-**Bảng 12. Khung tiêu chí và Trọng số chấm điểm Độ ưu tiên của Hệ thống Gợi ý (Recommendation Engine)**
+| Ký hiệu | Ý nghĩa | Nguồn |
+|---|---|---|
+| $P_{\text{current}}$ | Giá hiện tại của khu vực | `event_zones.base_price` |
+| $P_{\text{floor}}$, $P_{\text{ceiling}}$ | Giá sàn, giá trần | `event_zones.floor_price`, `ceiling_price` |
+| $v_{\text{target}}$ | Tốc độ bán cần đạt: ghế chưa bán chia số phút còn lại | `event_seats`, `events.sales_ends_at` |
+| $v_{\text{actual}}$ | Tốc độ bán thực tế trong 15 phút gần nhất | `tickets.issued_at` |
+| $Q$ | Số người đang chờ trong phòng chờ | `queue_entries` có `status = 'WAITING'` |
+| $r_{\text{held}}$ | Tỷ lệ ghế đang giữ trên ghế chưa bán | `event_seats` có `status = 'HELD'` |
 
-| Mã | Tiêu chí đánh giá | Trọng số ($w_i$) | Công thức định lượng ($S_i \in [0, 100]$) | Ý nghĩa thực tế cho Khán giả & Ban Tổ chức |
-|---|---|:---:|---|---|
-| **C-01** | **Độ tương thích Thể loại & Nghệ sĩ** (*Affinity Match*) | **35%** | $S_{\text{affinity}} = \frac{\vec{U}_{\text{genre}} \cdot \vec{E}_{\text{genre}}}{\|\vec{U}_{\text{genre}}\| \|\vec{E}_{\text{genre}}\|} \times 100$ | Gợi ý chính xác gu âm nhạc khán giả yêu thích dựa trên lịch sử xem, tìm kiếm và nghệ sĩ đã lưu; kích thích tương tác tự nhiên. |
-| **C-02** | **Độ phù hợp Ngân sách** (*Budget & Price Elasticity Fit*) | **25%** | $S_{\text{budget}} = \max\left(0, 100 \times \left(1 - \frac{\|P_{\text{zone}} - \bar{P}_{\text{user}}\|}{\bar{P}_{\text{user}}}\right)\right)$ | Khán giả tìm thấy các phân khu vừa vặn túi tiền quen thuộc, không gặp áp lực tăng giá; giảm 42% tỷ lệ bỏ giỏ hàng so với dynamic pricing. |
-| **C-03** | **Thuận tiện Địa lý & Thời gian** (*Geo & Timing Proximity*) | **15%** | $S_{\text{geo\_time}} = 100 \times \exp(-\lambda \cdot d(User, Venue))$ | Ưu tiên concert tại thành phố sinh sống hoặc lân cận, khung giờ cuối tuần thuận tiện đi lại; nâng cao tỷ lệ tham dự thực tế. |
-| **C-04** | **Chất lượng Góc nhìn Ghế** (*Seat View Quality*) | **15%** | $S_{\text{view}} = 100 \times \left(0.5 \frac{D_{\text{max}}-d_{\text{stage}}}{D_{\text{max}}} + 0.3 \cos\theta + 0.2 C_{\text{group}}\right)$ | Tối ưu hóa trải nghiệm thị giác và âm thanh; ưu tiên ghế trung tâm khán đài, gần lối đi và cụm ghế liền kề cho nhóm bạn. |
-| **C-05** | **Cân bằng Lấp đầy Khán đài** (*Fill-Rate Balancing*) | **10%** | $S_{\text{fill}} = 100 \times (1 - \text{FillRate}_{\text{zone}})$ | Hỗ trợ Ban Tổ chức điều hướng khán giả khám phá các khu vực còn trống một cách văn minh, tránh ghế trống loang lổ mà không cần phá giá vé. |
-| **Tổng** | **Điểm Ưu tiên Tổng hợp** | **100%** | $\sum w_i \cdot S_i \in [0, 100]$ | Xếp hạng 3 phân tầng ưu tiên (Tier 1: Top Picks $\ge 80$; Tier 2: Trending 65–79; Tier 3: Discovery 50–64). |
+Ví dụ khu Fanzone ở Kịch bản 1 của `dynamic-pricing.md`: $\alpha = 1{,}73$, $\delta = +18{,}25\%$, giá đề xuất tăng từ 1.200.000 lên 1.420.000 VNĐ.
 
-Hệ thống phân loại kết quả đề xuất thành 3 Phân tầng Ưu tiên (Priority Tiers) trực quan:
-- **Phân tầng 1 (Tier 1 - Priority Score $\ge 80$ điểm - "Gợi ý Hoàn hảo cho Bạn / Top Picks"):** Được ghim nổi bật tại đầu trang chủ ứng dụng, gửi thông báo đẩy và tự động highlight vị trí ghế đẹp nhất trên sơ đồ khán đài.
-- **Phân tầng 2 (Tier 2 - Priority Score từ 65 đến 79 điểm - "Xu hướng Phù hợp / Trending for You"):** Hiển thị trong carousel đề xuất cá nhân hóa trên trang sự kiện và danh mục tìm kiếm.
-- **Phân tầng 3 (Tier 3 - Priority Score từ 50 đến 64 điểm - "Khám phá Mở rộng / Broad Discovery"):** Gợi ý các thể loại âm nhạc giao thoa hoặc các phân khu phổ thông giá tốt nhằm mở rộng trải nghiệm cho khán giả.
+### 5.1.3. Quy trình duyệt và kiểm soát
+- Hệ thống chỉ sinh đề xuất, kèm lý do và số liệu (`reason`, `metrics`).
+- BTC duyệt thì giá các ghế `AVAILABLE` của khu vực mới đổi. Từ chối thì giữ nguyên giá.
+- Giá luôn nằm trong $[P_{\text{floor}}, P_{\text{ceiling}}]$ do BTC đặt.
+- Mọi lần đổi giá ghi vào `price_changes`, không sửa hoặc xóa được (`NFR-12`).
+- Endpoint duyệt và từ chối (`POST /api/organizer/suggestions/{id}/approve`, `reject`) mới có trong thiết kế.
+
+### 5.1.4. Phản biện
+Định giá động gây tranh cãi vì ba lý do chính: người mua không biết trước giá có thể tăng, nhóm khán giả ít linh hoạt chịu bất lợi, và BTC hoặc nghệ sĩ chịu phản ứng của công chúng.
+Một ví dụ công khai là cuộc điều tra của CMA (Anh) về cách Ticketmaster trình bày giá vé Oasis.
+Thiết kế giảm các rủi ro này bằng người duyệt, biên độ ±20%, ngưỡng 5%, giá sàn và giá trần, và nhật ký giá.
+Nhóm chưa chạy thực nghiệm nào về hành vi người mua, nên báo cáo không nêu số liệu thực nghiệm.
+Phần phản biện đầy đủ nằm ở mục 7 của `dynamic-pricing.md`, cần bổ sung nguồn trích dẫn trước khi nộp.
+
+Gợi ý sự kiện và chỗ ngồi cho từng khán giả là ý tưởng ngoài phạm vi, không có mã FR và không nằm trong thiết kế.
 
 ## 5.2. Thiết kế Cơ chế Hàng chờ ảo (Virtual Waiting Room)
 
-Khi lưu lượng truy cập vượt ngưỡng an toàn ($> 2.000$ người dùng đồng thời), hệ thống tự kích hoạt chế độ phòng chờ:
-- Người dùng được cấp số thứ tự FIFO trong bảng `queue_entries` và duy trì kết nối SSE `/api/queue/stream` để nhận vị trí hàng chờ và thời gian chờ ước tính định kỳ mỗi 5 giây.
-- Cơ chế xả hàng theo mẻ (Leaky Bucket): Định kỳ mỗi 30 giây, hệ thống cấp quyền cho một mẻ 200 người dùng có số thứ tự nhỏ nhất kèm `queue_access_token` có hạn 10 phút để vào trang chọn ghế mà không gây sốc tải máy chủ.
+Thiết kế cho FR-09 (cờ `waiting_room`), chưa làm. Hiện mới có bảng `queue_entries`.
+- Khi sự kiện đông, người mua được cấp số thứ tự trong `queue_entries`.
+- Số người được mua cùng lúc tối đa bằng `events.waiting_room_capacity`.
+- Có chỗ trống thì người kế tiếp trong hàng được vào. Mỗi lượt vào có hạn 10 phút.
+- Thời gian chờ ước tính bằng vị trí chia tốc độ cho vào gần đây.
+- Vị trí và thời gian chờ cập nhật tối đa 10 giây một lần (`NFR-09`).
+- Endpoint: `POST /api/events/{id}/queue`, `GET /api/events/{id}/queue/me`.
 
-## 5.3. Thiết kế Bảo mật vé với Mã QR động xoay vòng 30s
+## 5.3. Thiết kế Bảo mật vé với Mã QR xoay vòng 30 giây
 
-Ngăn chặn triệt để hành vi chụp ảnh màn hình vé lậu để bán lại:
-- Mỗi vé sở hữu một khóa mật mã ngẫu nhiên `qr_secret`. Mã QR hiển thị trên màn hình ứng dụng được sinh động theo thuật toán TOTP kết hợp HMAC-SHA256 với chu kỳ **30 giây**:
-  $$\text{dynamic\_qr} = \text{ticket\_code} \parallel \text{time\_step} \parallel \text{HMAC-SHA256}(\text{qr\_secret}, \text{ticket\_id} \parallel \text{time\_step})[0..16]$$
-- Ảnh chụp màn hình gửi qua mạng xã hội sẽ trở nên hoàn toàn vô giá trị sau 30 giây. Máy quét tại cổng kiểm tra thời gian và chữ ký số; nếu mã quá hạn sẽ lập tức từ chối (`NFR-08`).
+Thiết kế cho FR-12 (cờ `rotating_qr`), chưa làm. Hiện mới có cột `tickets.qr_secret`.
+- Nội dung QR: `ticket_code.step.HMAC(qr_secret, step)`.
+- `step` tăng 1 sau mỗi 30 giây, theo ý tưởng của TOTP (RFC 6238).
+- Cổng chấp nhận `step` hiện tại, liền trước và liền sau. Ảnh chụp màn hình cũ hơn 60 giây bị từ chối (`NFR-08`).
 
 ## 5.4. Thiết kế Phân hệ Soát vé tại Cổng và Đồng bộ Ngoại tuyến
 
-- **Soát vé siêu tốc:** Nhân viên cổng sử dụng ứng dụng Web di động PWA quét mã QR từ camera, tốc độ xác thực cực nhanh $\le 1$ giây/vé (`NFR-05`).
-- **Soát vé ngoại tuyến khi mất sóng (Offline Mode):** Trước giờ biểu diễn, thiết bị tải trước danh sách chữ ký vé vào bộ nhớ IndexedDB nội bộ. Khi mất mạng, máy quét tự kiểm tra chữ ký cục bộ và lưu lịch sử quét vào máy.
-- **Xử lý xung đột ngoại tuyến:** Khi có mạng trở lại, thiết bị đẩy log lên `/api/gate/sync-offline`. Nếu một vé bị quét tại hai cổng khác nhau lúc mất mạng, hệ thống phát hiện và gắn cờ cảnh báo đỏ `OFFLINE_CONFLICT` để lực lượng an ninh can thiệp tại khán đài.
+Thiết kế cho FR-16, FR-17, FR-18 (cờ `gate_checkin`, `offline_checkin`), chưa làm.
+- Nhân viên dùng ứng dụng web di động quét QR bằng camera, xác thực ≤ 1 giây (`NFR-05`).
+- Vé chỉ chuyển sang `USED` nếu đang `ISSUED` hoặc `ACTIVE`. Không chuyển được nghĩa là vé đã dùng.
+- Trước giờ mở cổng, máy tải sẵn danh sách vé (`GET /api/gate/events/{id}/manifest`). Mất mạng thì máy tự kiểm tra chữ ký QR và lưu lượt quét trên máy.
+- Có mạng lại thì đồng bộ qua `POST /api/gate/sync`. Hai cổng cùng quét một vé khi offline thì ghi `OFFLINE_CONFLICT`.
 
 ## 5.5. Tích hợp Cổng thanh toán trực tuyến và Tự động đối soát/hoàn tiền
 
-- **Xử lý Webhook/IPN lũy quyền (Idempotent):** Kiểm tra mã giao dịch đối tác `provider_txn_id` trong bảng `payments`. Nếu giao dịch đã ghi nhận thành công trước đó, hệ thống bỏ qua và trả về mã `200 OK` ngay lập tức, ngăn ngừa xử lý trùng tiền.
-- **Tác vụ tự động hoàn tiền (`ReconciliationWorker`):** Khi người dùng chuyển khoản thanh toán thành công sau khi ghế đã hết hạn 5 phút và bị người khác mua mất, hệ thống tự động phát hiện tình trạng xung đột và kích hoạt API Auto Refund để hoàn tiền 100% về tài khoản người mua trong $\le 15$ phút (`FR-15, NFR-04`).
+Thiết kế cho FR-13, FR-15 (cờ `payments`, `reconciliation`), chưa làm.
+- api kiểm tra chữ ký của mọi IPN.
+- Mỗi giao dịch của cổng (`provider_txn_id`) chỉ xử lý một lần, nhờ unique index `uq_payment_provider_txn`. IPN gửi lại thì bỏ qua.
+- Tiền về sau khi lượt giữ đã hết hạn thì đơn chuyển sang đối soát: ghế còn trống thì phát vé, ghế đã bán cho người khác thì hoàn tiền (`NFR-04`).
 
 ---
 
 # PHẦN 6. KẾ HOẠCH TRIỂN KHAI, KIỂM THỬ VÀ ĐÁNH GIÁ THỰC TẾ
 
-Dự án được phân kỳ triển khai theo mô hình Agile/Scrum qua 5 Sprint với tổng quy mô **458 giờ công**, quản lý tiến trình 23 Yêu cầu Chức năng (FR) và phân bổ công việc chi tiết được tổng hợp qua các bảng dưới đây:
+Dự án chia thành 5 Sprint theo mô hình Agile/Scrum, ước lượng tổng cộng **458 giờ công**.
+Các bảng dưới đây phân bổ 23 Yêu cầu Chức năng (FR) theo Sprint và ghi trạng thái thực tế theo [`docs/spec.md`](spec.md).
+Chỉ Sprint 2 đã có code.
 
 ## 6.1. Phân bổ các Yêu cầu Chức năng (FR) theo 5 Sprint của dự án
 
@@ -496,74 +595,81 @@ Lộ trình phát triển hệ thống EventTicketing được phân bổ theo 5
 
 ```mermaid
 flowchart LR
-    S1["Sprint 1 (2 tuần)\nKhảo sát & Phân tích SA\n(FR-02)"] --> S2["Sprint 2 (3 tuần - Giữa kỳ)\nProfile: sprint2\nOTP, Giữ ghế, SSE Realtime\n(FR-01, FR-03..FR-08)"]
-    S2 --> S3["Sprint 3 (2 tuần)\nProfile: sprint3\nPhòng chờ, Chống Bot, QR 30s\n(FR-09..FR-12)"]
-    S3 --> S4["Sprint 4 (2 tuần)\nProfile: sprint4\nThanh toán MoMo/VNPAY, Email\n(FR-13..FR-15)"]
-    S4 --> S5["Sprint 5 (3 tuần - Cuối kỳ)\nProfile: final\nSoát vé Offline, CEO Dashboard, AI\n(FR-16..FR-23)"]
+    S1["Sprint 1 (2 tuần)<br/>Khảo sát và phân tích SA<br/>(đã báo cáo)"] --> S2["Sprint 2 (3 tuần, giữa kỳ)<br/>Profile: sprint2<br/>OTP, Giữ ghế, SSE Realtime<br/>(FR-01 đến FR-08)"]
+    S2 --> S3["Sprint 3 (2 tuần)<br/>Profile: sprint3<br/>Phòng chờ, Chống Bot, QR 30s<br/>(FR-09 đến FR-12)"]
+    S3 --> S4["Sprint 4 (2 tuần)<br/>Profile: sprint4<br/>Thanh toán MoMo/VNPAY, Email<br/>(FR-13 đến FR-15)"]
+    S4 --> S5["Sprint 5 (3 tuần, cuối kỳ)<br/>Profile: final<br/>Soát vé, CEO Dashboard, Định giá động<br/>(FR-16 đến FR-23)"]
 ```
 
 **Bảng 13. Phân bổ các Yêu cầu Chức năng (FR) theo 5 Sprint của dự án**
 
-| Sprint & Thời gian | Tên Sprint & Mục tiêu cốt lõi | Cấu hình Cờ (`FEATURE_PROFILE`) | Các Yêu cầu Chức năng (FR) phân bổ trong Sprint | Số FR | Tiến độ nghiệm thu |
-|:---:|---|---|---|:---:|:---:|
-| **Sprint 1**<br/>*(2 tuần)* | **Khảo sát, Phân tích yêu cầu & Thiết kế sơ bộ**<br/>Khảo sát thực tế 100 khán giả & BTC, lập tài liệu B02/B03, đặc tả 23 FRs, 13 NFRs, dựng mockup UI React và ERD 26 bảng ban đầu. | Môi trường khảo sát & UI Mockup *(Luôn bật)* | • **FR-02**: Khám phá & Tìm kiếm sự kiện (Poster, ngày giờ, địa điểm, bộ lọc phân loại) | 1 FR<br/>*(4.3%)* | **Hoàn thành 100%**<br/>*(Bàn giao B02, B03, Mockup UI React)* |
-| **Sprint 2**<br/>*(3 tuần)* | **Nền tảng Backend Go, Giữ chỗ nguyên tử & Realtime SSE (Mốc Giữa kỳ)**<br/>Chuyển đổi PostgreSQL 18 ACID, backend Go `sqlc`, giữ ghế độc quyền 5:00 chống bán trùng 0%, SSE realtime sơ đồ ghế, đăng nhập OTP session. | `FEATURE_PROFILE=sprint2`<br/>(`otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`) | • **FR-01**: Đăng nhập bằng mã OTP (SMS/Email)<br/>• **FR-03**: Sơ đồ ghế trực quan đa màu sắc (4 màu)<br/>• **FR-04**: Đăng nhập an toàn không mật khẩu (`sessions`)<br/>• **FR-05**: Đồng bộ ghế thời gian thực (SSE < 3s)<br/>• **FR-06**: Giữ ghế độc quyền trong 5 phút (`HoldReaper`)<br/>• **FR-07**: Chống bán trùng ghế tuyệt đối (0% Double-Booking)<br/>• **FR-08**: Cấu hình khu vực & giá sàn/trần (`Organizer`) | 7 FRs<br/>*(30.4%)* | **Hoàn thành 100%**<br/>*(Đạt Concurrency Test 50 luồng; nghiệm thu Giữa kỳ)* |
-| **Sprint 3**<br/>*(2 tuần)* | **Phòng chờ ảo, Kiểm soát tải & Chống đầu cơ vé**<br/>Điều tiết hàng đợi FIFO khi mở bán cao điểm, tích hợp Cloudflare Turnstile chặn bot, giới hạn tối đa vé/người và xoay vòng mã QR 30 giây. | `FEATURE_PROFILE=sprint3`<br/>*(+ `waiting_room`, `bot_check`, `ticket_limit`, `rotating_qr`)* | • **FR-09**: Phòng chờ ảo xếp hàng công bằng (`queue_entries`)<br/>• **FR-10**: Tự động phát hiện và chặn Bot (Turnstile)<br/>• **FR-11**: Giới hạn tối đa vé mỗi tài khoản (`max_tickets`)<br/>• **FR-12**: Mã QR vé tự đổi sau mỗi 30 giây (HMAC-SHA256) | 4 FRs<br/>*(17.4%)* | **Đang hoàn thiện**<br/>*(Đã code bảng queue & HMAC QR 30s; đang chạy k6 test)* |
-| **Sprint 4**<br/>*(2 tuần)* | **Đa kênh thanh toán, Gửi vé điện tử & Đối soát tự động**<br/>Tích hợp cổng thanh toán trực tuyến MoMo/VNPAY với webhook IPN ký số, tự động phát hành vé điện tử qua SMTP và worker đối soát hoàn tiền khi quá hạn. | `FEATURE_PROFILE=sprint4`<br/>*(+ `payments`, `ticket_email`, `reconciliation`)* | • **FR-13**: Thanh toán trực tuyến đa kênh (MoMo, VNPAY)<br/>• **FR-14**: Nhận vé điện tử tức thì qua Email (SMTP)<br/>• **FR-15**: Tự động hoàn tiền khi thanh toán trễ (Worker) | 3 FRs<br/>*(13.0%)* | **Kế hoạch S4**<br/>*(Thiết kế Sequence Payment, sandbox MoMo/VNPAY)* |
-| **Sprint 5**<br/>*(3 tuần)* | **Soát vé ngoại tuyến, CEO Dashboard & Gợi ý Thông minh (Mốc Cuối kỳ)**<br/>Web/PWA camera soát vé cổng ($\le 1$s), soát vé offline manifest đồng bộ sau, CEO Dashboard realtime SSE, audit log bất biến và Recommendation Engine cá nhân hóa chỗ ngồi cho khán giả. | `FEATURE_PROFILE=final`<br/>*(+ `gate_checkin`, `offline_checkin`, `ceo_dashboard`, `price_log`, `reports_export`, `dynamic_pricing`, `promo_suggestions`)* | • **FR-16**: Ứng dụng quét vé di động cho cổng (Camera PWA)<br/>• **FR-17**: Chống dùng một vé vào cửa hai lần (`checkins`)<br/>• **FR-18**: Soát vé bình thường khi mất mạng (Offline SQLite)<br/>• **FR-19**: Bảng theo dõi doanh thu cho CEO (SSE Dashboard)<br/>• **FR-20**: Sổ nhật ký giá vé & audit log bất biến (Triggers)<br/>• **FR-21**: Xuất báo cáo tài chính Excel & PDF (CSV/XLSX)<br/>• **FR-22**: Hệ thống Đề xuất Sự kiện & Chỗ ngồi Thông minh (Recommendation Engine)<br/>• **FR-23**: Tự động gợi ý mã giảm giá kích cầu (Discount) | 8 FRs<br/>*(34.8%)* | **Kế hoạch S5**<br/>*(Đã hoàn thành bảng `audit_logs` & trigger; đang code PWA & Engine)* |
-| **Tổng cộng** | **Toàn diện hệ thống EventTicketing từ khảo sát, phân tích, thiết kế, triển khai nguyên tử đến vận hành thực tế.** | **17 Cờ tính năng phân tầng độc lập** | **Trọn bộ 23 Yêu cầu Chức năng (FR-01 … FR-23) đáp ứng đầy đủ nghiệp vụ cho Khán giả, Ban Tổ chức, CEO và Nhân viên soát vé cổng.** | **23 FRs**<br/>*(100%)* | **Hoàn thành 100% Core MVP**<br/>*(Sẵn sàng mở rộng S3–S5)* |
+| Sprint | Mục tiêu | Cấu hình cờ | Các FR trong Sprint | Số FR | Trạng thái thực tế |
+|:---:|---|---|---|:---:|---|
+| **Sprint 1**<br/>*(2 tuần)* | Khảo sát, phân tích yêu cầu, thiết kế sơ bộ: tài liệu SA, mockup UI React, ERD MySQL 26 bảng. | Không có profile cờ | Không có FR chạy trong code | 0 | Đã báo cáo, giữ nguyên theo báo cáo Sprint 1. |
+| **Sprint 2**<br/>*(3 tuần)* | Backend Go, giữ ghế chống bán trùng, SSE realtime, đăng nhập OTP. | `sprint2`: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console` | FR-01 đến FR-08 | 8<br/>*(34,8%)* | 6 xong (FR-02 đến FR-07), 2 đang làm (FR-01 chưa gửi OTP qua SMS/email, FR-08 chưa tạo sự kiện). |
+| **Sprint 3**<br/>*(2 tuần)* | Phòng chờ ảo, chống bot, giới hạn vé, QR xoay vòng. | `sprint3`: thêm `waiting_room`, `bot_check`, `ticket_limit`, `rotating_qr` | FR-09, FR-10, FR-11, FR-12 | 4<br/>*(17,4%)* | FR-11 đang làm (logic trong `HoldSeat`, cờ tắt). FR-09, 10, 12 chưa làm. |
+| **Sprint 4**<br/>*(2 tuần)* | Thanh toán MoMo/VNPAY, gửi vé email, đối soát và hoàn tiền. | `sprint4`: thêm `payments`, `ticket_email`, `reconciliation` | FR-13, FR-14, FR-15 | 3<br/>*(13,0%)* | Chưa làm. |
+| **Sprint 5**<br/>*(3 tuần)* | Soát vé, CEO dashboard, nhật ký giá, báo cáo, Định giá động, gợi ý khuyến mãi. | `final`: thêm `gate_checkin`, `offline_checkin`, `ceo_dashboard`, `price_log`, `reports_export`, `dynamic_pricing`, `promo_suggestions` | FR-16 đến FR-23 | 8<br/>*(34,8%)* | FR-20 đang làm (đã ghi `price_changes`, chưa có trang xem). Các FR còn lại chưa làm. |
+| **Tổng cộng** | 23 FR, 19 cờ tính năng | | FR-01 đến FR-23 | **23** | 6 xong, 4 đang làm (FR-01, 08, 11, 20), 13 chưa làm. |
 
-## 6.2. Tiến trình chi tiết và Tiêu chí nghiệm thu 23 Yêu cầu Chức năng theo từng Sprint
+## 6.2. Trạng thái 23 Yêu cầu Chức năng theo từng Sprint
 
-**Bảng 14. Tiến trình chi tiết và Tiêu chí nghiệm thu 23 Yêu cầu Chức năng (FR-01 … FR-23) theo từng Sprint**
+**Bảng 14. Trạng thái và kiểm chứng 23 Yêu cầu Chức năng (FR-01 … FR-23) theo từng Sprint**
 
-| Sprint | Mã FR | Tên yêu cầu chức năng | Cờ tính năng | Trạng thái | Tiêu chí nghiệm thu & Kiểm chứng thực tế |
+| Sprint | Mã FR | Tên yêu cầu | Cờ tính năng | Trạng thái | Căn cứ trong code |
 |:---:|:---:|---|---|:---:|---|
-| **Sprint 1** | **FR-02** | Khám phá & Tìm kiếm sự kiện | Luôn bật | **Hoàn thành 100%** | Xem danh mục sự kiện, poster, ngày giờ, địa điểm, giá vé và bộ lọc phân loại theo thành phố/thể loại. |
-| **Sprint 2** | **FR-01** | Đăng nhập bằng mã OTP | `otp_login` | **Hoàn thành 100%** | OTP 6 số qua SMS/Email, session bảo mật `HttpOnly`, khóa sau 3 lần nhập sai. |
-| **Sprint 2** | **FR-03** | Sơ đồ ghế trực quan đa màu sắc | `seat_map_realtime` | **Hoàn thành 100%** | Ma trận ghế 4 trạng thái màu (Xanh/Tím/Vàng/Xám) tương ứng từng phân khu khán đài. |
-| **Sprint 2** | **FR-04** | Đăng nhập an toàn không mật khẩu | `otp_login` | **Hoàn thành 100%** | Quản lý phiên bảo mật `sessions`, lưu token băm an toàn, hỗ trợ demo 1-click. |
-| **Sprint 2** | **FR-05** | Đồng bộ ghế thời gian thực | `seat_map_realtime` | **Hoàn thành 100%** | SSE `/api/events/{id}/stream` kết nối `LISTEN/NOTIFY`, cập nhật tức thì < 3s không cần F5. |
-| **Sprint 2** | **FR-06** | Giữ ghế độc quyền trong 5 phút | `seat_hold` | **Hoàn thành 100%** | Khóa tạm 5:00 đồng bộ server, tự động nhả ghế qua worker `HoldReaper` khi hết hạn. |
-| **Sprint 2** | **FR-07** | Chống bán trùng ghế tuyệt đối | `seat_hold` | **Hoàn thành 100%** | Giao dịch nguyên tử PostgreSQL, đạt 0% bán trùng dưới tải 50 goroutines đồng thời (`NFR-03`). |
-| **Sprint 2** | **FR-08** | Cấu hình khu vực & giá sàn/trần | `zone_pricing` | **Hoàn thành 100%** | BTC thiết lập giá sàn, cơ bản, trần; lưu vết thay đổi trong bảng `price_changes`. |
-| **Sprint 3** | **FR-09** | Phòng chờ ảo xếp hàng công bằng | `waiting_room` | **Đang hoàn thiện** | Hàng đợi FIFO trong bảng `queue_entries`, tính toán thời gian chờ ước tính khi mở bán cao điểm. |
-| **Sprint 3** | **FR-10** | Tự động phát hiện và chặn Bot | `bot_check` | **Đang hoàn thiện** | Tích hợp Cloudflare Turnstile token tại các bước chọn ghế và đặt vé trực tuyến. |
-| **Sprint 3** | **FR-11** | Giới hạn tối đa vé mỗi tài khoản | `ticket_limit` | **Hoàn thành 100%** | Kiểm tra `max_tickets_per_user` trong giao dịch giữ ghế dưới khóa nguyên tử `pg_advisory_xact_lock`. |
-| **Sprint 3** | **FR-12** | Mã QR vé tự đổi sau mỗi 30 giây | `rotating_qr` | **Đang hoàn thiện** | Thuật toán sinh mã QR động HMAC-SHA256 đổi mỗi 30s chống chụp ảnh màn hình (`NFR-08`). |
-| **Sprint 4** | **FR-13** | Thanh toán trực tuyến đa kênh | `payments` | **Đang hoàn thiện** | Tích hợp cổng thanh toán MoMo, VNPAY, kiểm tra chữ ký số webhook IPN an toàn lũy quyền (`NFR-04`). |
-| **Sprint 4** | **FR-14** | Nhận vé điện tử tức thì qua Email | `ticket_email` | **Đang hoàn thiện** | Tự động phát hành vé điện tử và gửi email xác nhận kèm mã QR qua máy chủ SMTP. |
-| **Sprint 4** | **FR-15** | Tự động hoàn tiền khi thanh toán trễ | `reconciliation` | **Kế hoạch S4** | Worker đối soát định kỳ, tự động hoàn tiền nếu chuyển khoản khi ghế đã bị giải phóng. |
-| **Sprint 5** | **FR-16** | Ứng dụng quét vé di động cho cổng | `gate_checkin` | **Đang hoàn thiện** | Ứng dụng Web/PWA quét camera QR, kiểm tra vé hợp lệ với tốc độ xử lý $\le 1$ giây (`NFR-05`). |
-| **Sprint 5** | **FR-17** | Chống dùng một vé vào cửa hai lần | `gate_checkin` | **Đang hoàn thiện** | Cập nhật bảng `checkins`, phát hiện và cảnh báo vé đã quét hoặc vé giả mạo tức thì. |
-| **Sprint 5** | **FR-18** | Soát vé bình thường khi mất mạng | `offline_checkin` | **Kế hoạch S5** | Tải trước manifest vé mã hóa, lưu SQLite/IndexedDB, đồng bộ dữ liệu sau khi có mạng (`NFR-06`). |
-| **Sprint 5** | **FR-19** | Bảng theo dõi doanh thu cho CEO | `ceo_dashboard` | **Kế hoạch S5** | CEO Dashboard thời gian thực hiển thị doanh thu, fill rate, số vé đã bán qua SSE. |
-| **Sprint 5** | **FR-20** | Sổ nhật ký giá vé & audit log bất biến | `price_log` | **Hoàn thành 100%** | Bảng `price_changes` và `audit_logs` có trigger bất biến chặn sửa/xóa trái phép (`NFR-12`). |
-| **Sprint 5** | **FR-21** | Xuất báo cáo tài chính Excel & PDF | `reports_export` | **Kế hoạch S5** | Xuất dữ liệu kế toán và đối soát vé sự kiện định dạng CSV/XLSX. |
-| **Sprint 5** | **FR-22** | Hệ thống Đề xuất Sự kiện & Chỗ ngồi Thông minh | `dynamic_pricing` | **Kế hoạch S5** | Chấm điểm đa tiêu chí Priority Score (5 tiêu chí), trả về Top-N sự kiện và ghế ngồi trong < 200ms. |
-| **Sprint 5** | **FR-23** | Tự động gợi ý mã giảm giá kích cầu | `promo_suggestions` | **Kế hoạch S5** | Phân tích tỷ lệ lấp đầy thấp, tự động gợi ý chiến dịch khuyến mãi tăng doanh thu. |
+| **Sprint 2** | **FR-01** | Đăng nhập bằng mã OTP | `otp_login` | **Đang làm** | Tạo và kiểm tra mã, tạo tài khoản, mở phiên. Mã hết hạn sau 5 phút, khóa sau 5 lần nhập sai. Chưa gửi qua SMTP hoặc SMS Gateway. |
+| **Sprint 2** | **FR-02** | Khám phá và tìm kiếm sự kiện | Luôn bật | **Xong** | `GET /api/events` trả danh sách sự kiện kèm bộ lọc. Trang chủ hiển thị danh sách. |
+| **Sprint 2** | **FR-03** | Sơ đồ ghế trực quan | `seat_map_realtime` | **Xong** | Sơ đồ ghế hiển thị 4 trạng thái theo từng khu. |
+| **Sprint 2** | **FR-04** | Phiên đăng nhập và đăng xuất | `otp_login` | **Xong** | Bảng `sessions` lưu SHA-256 của token. `GET /api/auth/me`, `POST /api/auth/logout`. |
+| **Sprint 2** | **FR-05** | Đồng bộ ghế thời gian thực | `seat_map_realtime` | **Xong** | SSE `GET /api/events/{id}/stream` nhận `NOTIFY` từ PostgreSQL. Ghế đổi trạng thái mà không cần tải lại trang. |
+| **Sprint 2** | **FR-06** | Giữ ghế độc quyền 5 phút | `seat_hold` | **Xong** | Hạn giữ tính theo giờ server. `HoldReaper` nhả ghế hết hạn, quét 5 giây một lần. |
+| **Sprint 2** | **FR-07** | Chống bán trùng ghế | `seat_hold` | **Xong** | Test `TestHoldSeat_ConcurrentHoldersGetOneSeat`: 50 luồng cùng giữ một ghế, đúng một luồng thành công. Test cần `TEST_DATABASE_URL`. |
+| **Sprint 2** | **FR-08** | Giá sàn, giá trần theo khu vực | `zone_pricing`, `organizer_console` | **Đang làm** | Đã có xem sự kiện của mình, đặt giá khu vực, ghi `price_changes`. Chưa có tạo địa điểm, khu vực, ghế, sự kiện. |
+| **Sprint 3** | **FR-09** | Phòng chờ ảo | `waiting_room` | **Chưa làm** | Mới có bảng `queue_entries`. |
+| **Sprint 3** | **FR-10** | Chặn bot bằng Turnstile | `bot_check` | **Chưa làm** | Chưa kiểm tra Turnstile. Đã giới hạn OTP theo IP và theo SĐT hoặc email. |
+| **Sprint 3** | **FR-11** | Giới hạn vé mỗi tài khoản | `ticket_limit` | **Đang làm** | Có trong `HoldSeat` khi cờ bật. Cờ đang tắt. Chưa kiểm thử tải. |
+| **Sprint 3** | **FR-12** | QR đổi mỗi 30 giây | `rotating_qr` | **Chưa làm** | Mới có cột `tickets.qr_secret`. |
+| **Sprint 4** | **FR-13** | Thanh toán MoMo, VNPAY | `payments` | **Chưa làm** | Cờ tắt. Chưa có đơn hàng, thanh toán và IPN. |
+| **Sprint 4** | **FR-14** | Gửi vé qua email | `ticket_email` | **Chưa làm** | Cờ tắt. Chưa phát hành vé. |
+| **Sprint 4** | **FR-15** | Đối soát, hoàn tiền | `reconciliation` | **Chưa làm** | Cờ tắt. |
+| **Sprint 5** | **FR-16** | Quét vé tại cổng | `gate_checkin` | **Chưa làm** | Cờ tắt. |
+| **Sprint 5** | **FR-17** | Chống dùng vé hai lần | `gate_checkin` | **Chưa làm** | Cờ tắt. Mới có bảng `checkins`. |
+| **Sprint 5** | **FR-18** | Quét vé khi mất mạng | `offline_checkin` | **Chưa làm** | Cờ tắt. |
+| **Sprint 5** | **FR-19** | Dashboard doanh thu cho CEO | `ceo_dashboard` | **Chưa làm** | Cờ tắt. Mới có bảng `sales_snapshots`. |
+| **Sprint 5** | **FR-20** | Nhật ký giá | `price_log` | **Đang làm** | Mỗi lần BTC đổi giá cơ bản đều ghi `price_changes`. Trigger chặn sửa và xóa. Chưa có trang xem. |
+| **Sprint 5** | **FR-21** | Xuất báo cáo CSV/XLSX | `reports_export` | **Chưa làm** | Cờ tắt. |
+| **Sprint 5** | **FR-22** | Định giá động | `dynamic_pricing` | **Chưa làm** | Cờ tắt. Mới có bảng `price_suggestions`. Thiết kế ở `dynamic-pricing.md`. |
+| **Sprint 5** | **FR-23** | Gợi ý khuyến mãi | `promo_suggestions` | **Chưa làm** | Cờ tắt. Mới có bảng `promotions`. |
 
 ## 6.3. Bảng phân rã công việc (WBS) Sprint 2 (Mốc Giữa kỳ - T01 … T14)
 
-**Bảng 15. Bảng phân rã công việc (WBS) và ước lượng thời gian Sprint 1 – 5**
+**Bảng 15. Bảng phân rã công việc (WBS) và ước lượng thời gian Sprint 2**
 
-| Mã việc | Nội dung công việc | Thành viên phụ trách | Ước lượng (h) | Sản phẩm bàn giao |
+| Mã việc | Nội dung công việc | Thành viên phụ trách | Ước lượng (h) | Sản phẩm |
 |:---:|---|---|:---:|---|
-| **T01** | Thiết kế ERD 26 bảng chuẩn hóa trong PostgreSQL 18 | Vũ Đức Huy | 8 | `docs/erd.md` |
-| **T02** | Thiết kế sơ đồ lớp BCE chuẩn hóa 23 thực thể | Vũ Đức Huy | 10 | `docs/class-diagram.md` |
-| **T03** | Lập kế hoạch 5 Sprint, WBS và phân bổ nguồn lực nhóm | Vũ Đức Huy | 6 | `docs/sprints.md` |
-| **T04** | Thiết kế Sequence Diagram: Giữ ghế 5 phút độc quyền | Nguyễn Anh Dũng | 8 | `docs/sequences/hold.md` |
-| **T05** | Kịch bản kiểm thử thủ công giữ ghế theo US-03 | Đinh Tiến Thành | 10 | `docs/checks/fr-06.md` |
-| **T06** | Thiết kế Sequence Diagram: Chống bán trùng ghế đa luồng | Nguyễn Đức Phúc | 8 | `docs/sequences/double-booking.md` |
-| **T07** | Thiết kế Sơ đồ luồng dữ liệu (DFD) 3 cấp độ | Nguyễn Đức Phúc | 12 | `docs/dfd.md` |
-| **T08** | Nghiên cứu khung tiêu chí Priority Scoring & Giải thuật Recommendation Engine | Nguyễn Anh Dũng | 16 | `docs/dynamic-pricing.md` |
-| **T09** | Xây dựng bảng FR/NFR và Ma trận truy vết yêu cầu | Đinh Tiến Thành | 8 | `docs/spec.md` |
-| **T10** | Thiết kế Sơ đồ Use Case tổng thể và đặc tả ca sử dụng | Lê Đức Anh | 12 | `docs/use-cases.md` |
-| **T11** | Thiết kế kịch bản Usability Testing và khảo sát SUS | Lê Đức Anh | 10 | `docs/testing.md` |
-| **T12** | Triển khai Backend Go, PostgreSQL 18, Nginx, Docker | Trần Trung Nhân | 48 | `backend/`, `frontend/`, `compose.yaml` |
-| **T13** | Thiết kế Sequence Diagram: Đăng nhập OTP và phiên bảo mật | Trần Trung Nhân | 6 | `docs/sequences/otp-login.md` |
-| **T14** | Soạn thảo tài liệu kiến trúc và đặc tả OpenAPI 3.0 | Trần Trung Nhân | 12 | `docs/architecture.md`, `openapi.yaml` |
-| **Tổng** | **Toàn bộ dự án (14 đầu việc hoàn thành 100%)** | **6 thành viên** | **174 giờ** | **Hệ thống hoàn chỉnh** |
+| **T12.1** | Backend Go, migration PostgreSQL 18, `sqlc`, Docker Compose | Trần Trung Nhân | 16 | `backend/`, `compose.yaml` |
+| **T12.2** | Xác thực OTP (`/api/auth/otp/*`) và phiên `sessions` | Trần Trung Nhân | 12 | `otp_login` |
+| **T12.3** | Giữ ghế (`/api/holds`), chống bán trùng | Vũ Đức Huy | 18 | `seat_hold` |
+| **T12.4** | SSE Hub với `LISTEN/NOTIFY` và `HoldReaper` | Vũ Đức Huy | 14 | `seat_map_realtime` |
+| **T12.5** | nginx proxy `/api`, nối frontend React với SSE và API giữ ghế | Trần Trung Nhân | 12 | `frontend/` |
+| **T12.6** | Danh sách sự kiện và API Ban Tổ chức: đặt giá khu vực, ghi `price_changes` | Trần Trung Nhân | 8 | `zone_pricing`, `organizer_console` |
+| **T01** | ERD Mermaid từ schema PostgreSQL, so sánh với Sprint 1 | Vũ Đức Huy | 8 | `docs/erd.md` |
+| **T02** | Sơ đồ lớp BCE, ánh xạ các Entity với bảng | Vũ Đức Huy | 10 | `docs/class-diagram.md` |
+| **T03** | Kế hoạch 5 Sprint, WBS, phân bổ nguồn lực | Vũ Đức Huy | 6 | `docs/sprints.md` |
+| **T04** | Sequence giữ ghế 5 phút | Nguyễn Anh Dũng | 8 | `docs/sequences/hold.md` |
+| **T05** | Kiểm thử thủ công giữ ghế theo US-03 | Đinh Tiến Thành | 10 | `docs/checks/fr-06.md` |
+| **T06** | Sequence chống bán trùng | Nguyễn Đức Phúc | 8 | `docs/sequences/double-booking.md` |
+| **T07** | DFD mức ngữ cảnh, mức 0, mức 1 | Nguyễn Đức Phúc | 12 | `docs/dfd.md` |
+| **T08** | Bài toán và thiết kế Định giá động | Nguyễn Anh Dũng | 16 | `docs/dynamic-pricing.md` |
+| **T09** | Bảng FR/NFR và ma trận truy vết | Đinh Tiến Thành | 8 | `docs/spec.md` |
+| **T10** | Sơ đồ và đặc tả Use Case | Lê Đức Anh | 12 | `docs/use-cases.md` |
+| **T11** | Kịch bản kiểm thử người dùng và form khảo sát SUS (chưa thực hiện kiểm thử) | Lê Đức Anh | 10 | `docs/testing.md` |
+| **T13** | Sequence đăng nhập OTP | Trần Trung Nhân | 6 | `docs/sequences/otp-login.md` |
+| **T14** | Kiến trúc và đặc tả OpenAPI | Trần Trung Nhân | 12 | `docs/architecture.md`, `docs/api/openapi.yaml` |
+| **Tổng** | | 6 thành viên | **206** | |
+
+Ước lượng giờ lấy từ [`docs/sprints.md`](sprints.md). Phụ trách chính lấy từ [`docs/TASKS.md`](TASKS.md).
 
 ## 6.4. Tổng hợp phân bổ nguồn lực và giờ công toàn dự án qua 5 Sprint
 
@@ -571,41 +677,52 @@ flowchart LR
 
 | Thành viên | Nhiệm vụ chính trong dự án | Sprint 2 | Sprint 3 | Sprint 4 | Sprint 5 | Tổng cộng |
 |---|---|:---:|:---:|:---:|:---:|:---:|
-| **Vũ Đức Huy** (`vdhwy`) | ERD 26 bảng, Sơ đồ lớp BCE, Kế hoạch Sprint, Giữ ghế nguyên tử & Realtime SSE, Audit Log | 56 giờ | 18 giờ | 14 giờ | 18 giờ | **106 giờ** |
+| **Vũ Đức Huy** (`vdhwy`) | ERD, Sơ đồ lớp BCE, Kế hoạch Sprint, Giữ ghế nguyên tử và Realtime SSE | 56 giờ | 18 giờ | 14 giờ | 18 giờ | **106 giờ** |
 | **Trần Trung Nhân** (`nhansp`) | Hạ tầng Docker, Go API, Xác thực OTP, Frontend React, API Ban Tổ chức, OpenAPI 3.0 | 66 giờ | 10 giờ | 20 giờ | 16 giờ | **112 giờ** |
-| **Nguyễn Anh Dũng** (`Lan-0924`) | Mô hình toán & Giải thuật Recommendation Engine, Sequence giữ ghế 5:00, Kịch bản tải k6 | 24 giờ | 14 giờ | 16 giờ | 20 giờ | **74 giờ** |
-| **Nguyễn Đức Phúc** (`phukzz`) | Sequence chống bán trùng, Sơ đồ luồng dữ liệu DFD 3 cấp độ, Giao diện soát vé PWA camera | 20 giờ | 8 giờ | 8 giờ | 16 giờ | **52 giờ** |
-| **Đinh Tiến Thành** (`Th4nhDT716`) | Bảng đặc tả 23 FR/13 NFR, Ma trận truy vết yêu cầu, Kịch bản kiểm thử thủ công FR-06, QR HMAC 30s | 18 giờ | 14 giờ | 10 giờ | 12 giờ | **54 giờ** |
-| **Lê Đức Anh** | Sơ đồ Use Case tổng thể, Thiết kế kịch bản Usability Testing & Khảo sát trải nghiệm SUS | 22 giờ | 10 giờ | 12 giờ | 16 giờ | **60 giờ** |
-| **Toàn nhóm (6 thành viên)** | **Tổng cộng công số triển khai toàn diện dự án EventTicketing (5 Sprint)** | **206 giờ** | **74 giờ** | **80 giờ** | **98 giờ** | **458 giờ** |
+| **Nguyễn Anh Dũng** (`Lan-0924`) | Bài toán và thiết kế Định giá động, Sequence giữ ghế 5:00, kịch bản tải k6 (kế hoạch Sprint 3, chưa chạy) | 24 giờ | 14 giờ | 16 giờ | 20 giờ | **74 giờ** |
+| **Nguyễn Đức Phúc** (`phukzz`) | Sequence chống bán trùng, DFD, giao diện soát vé (kế hoạch Sprint 5) | 20 giờ | 8 giờ | 8 giờ | 16 giờ | **52 giờ** |
+| **Đinh Tiến Thành** (`Th4nhDT716`) | Bảng đặc tả 23 FR/13 NFR, ma trận truy vết, kiểm thử thủ công FR-06, QR 30s (kế hoạch Sprint 3) | 18 giờ | 14 giờ | 10 giờ | 12 giờ | **54 giờ** |
+| **Lê Đức Anh** | Use Case, kịch bản kiểm thử người dùng và form SUS | 22 giờ | 10 giờ | 12 giờ | 16 giờ | **60 giờ** |
+| **Toàn nhóm (6 thành viên)** | **Tổng ước lượng giờ công của 5 Sprint** | **206 giờ** | **74 giờ** | **80 giờ** | **98 giờ** | **458 giờ** |
 
-## 6.5. Kiểm thử hệ thống: Concurrency Test Chống bán trùng tuyệt đối
+## 6.5. Kiểm thử hệ thống: Concurrency Test chống bán trùng
 
-Nhóm thực hiện kiểm thử tương tranh bằng Go (`go test -race`): Mô phỏng **50 luồng Goroutines đồng thời** cùng gửi lệnh `POST /api/holds` tranh chấp một chiếc ghế duy nhất $S_1$ tại cùng một mili-giây.
-- **Kết quả ghi nhận:** Đúng **1 giao dịch thành công** nhận mã `201 Created` và được ghi vào `seat_holds`; đúng **49 giao dịch xung đột** nhận mã `409 Conflict`.
-- **Tỷ lệ bán trùng:** Đạt chuẩn **0% Zero Double-Booking (`NFR-03`)** tuyệt đối.
+Test `TestHoldSeat_ConcurrentHoldersGetOneSeat` (`backend/internal/service/integration_test.go`) chạy trên PostgreSQL thật:
+- tạo 50 khách hàng và cho 50 goroutine cùng gọi `SeatService.HoldSeat` trên một ghế;
+- mong đợi đúng một lời gọi thành công, 49 lời gọi còn lại nhận `ErrSeatNotAvailable` (handler trả `409 seat_not_available`);
+- kiểm tra `seat_holds` có đúng một dòng `ACTIVE` cho ghế đó.
 
-## 6.6. Kiểm thử Khả năng Sử dụng với Người dùng Thực tế (Thang đo SUS)
+Test chạy ở tầng service, không đi qua HTTP.
+Test bị bỏ qua nếu thiếu biến `TEST_DATABASE_URL`.
+Báo cáo này không ghi lại kết quả của một lần chạy cụ thể.
 
-Kiểm thử thực nghiệm có giám sát trên **8 người dùng thực tế** (sinh viên, fan ca nhạc, chuyên viên đồ họa, kỹ sư phần mềm, giáo viên) thực hiện 5 kịch bản nhiệm vụ (Đăng nhập OTP, Xem sự kiện, Giữ 2 ghế VIP, Bấm thử ghế đang bị giữ, Thanh toán & Nhận vé QR).
-- **Tỷ lệ hoàn thành nhiệm vụ:** Đạt $100\%$ (8/8 người hoàn thành xuất sắc).
-- **Điểm số độ khả dụng SUS tổng hợp:** Đạt **88.75 / 100 điểm (Hạng A+ - Xuất sắc / Best Imaginable)**. Người dùng đánh giá cao nhất sự tiện lợi của đăng nhập OTP không mật khẩu, sự an tâm của đồng hồ đếm ngược 5:00 và tính bảo mật của mã QR xoay vòng 30 giây.
+Kiểm thử tải k6 (`NFR-01`) và kiểm thử Playwright trên hai trình duyệt chưa chạy.
+
+## 6.6. Kiểm thử với người dùng (chưa thực hiện)
+
+Chưa có buổi kiểm thử nào với người dùng thật.
+[`docs/testing.md`](testing.md) mới có kế hoạch, 5 nhiệm vụ, form khảo sát SUS 10 câu và các bảng kết quả để trống.
+Báo cáo không nêu tỷ lệ hoàn thành nhiệm vụ hay điểm SUS.
 
 ## 6.7. Hạn chế của hệ thống và Định hướng phát triển tương lai
 
-- **Hạn chế:** Cụm Docker Compose hiện chạy trên máy chủ đơn lẻ; các cổng thanh toán chạy trên sandbox thử nghiệm; thuật toán định giá động mới dùng công thức kinh tế lượng giả định.
-- **Định hướng phát triển:** Triển khai cụm PostgreSQL phân tán với Patroni và Read Replicas; ứng dụng mô hình học máy tăng cường (Reinforcement Learning) phân tích dữ liệu thảo luận mạng xã hội để tự động thích ứng dải giá vé; hoàn tất chứng chỉ để tích hợp vé vào Apple Wallet / Google Wallet.
+- **Phạm vi code:** chỉ Sprint 2 chạy. Thanh toán, phát vé, QR, soát vé, dashboard, Định giá động chưa làm.
+- **OTP:** chưa gửi qua SMTP hoặc SMS Gateway. Mã hiện trên màn hình (`OTP_DEMO`) hoặc ghi vào log.
+- **Chống bot:** chưa kiểm tra Cloudflare Turnstile.
+- **Hạ tầng:** một máy ảo GCP chạy Docker Compose, không có dự phòng.
+- **Kiểm thử:** chưa chạy k6, chưa kiểm thử với người dùng.
+- **Định hướng:** hoàn thành các Sprint 3 đến 5 theo bảng cờ, rồi cân nhắc PostgreSQL có bản sao đọc nếu tải tăng.
 
 ---
 
 # PHẦN 7. KẾT LUẬN VÀ BÀI HỌC KINH NGHIỆM
 
 ## 7.1. Tổng kết kết quả đạt được của đồ án
-1. Bóc tách và chuẩn hóa trọn vẹn 23 FRs, 13 NFRs, 7 User Stories và ma trận truy vết 4 chiều.
-2. Mô hình hóa hệ thống đầy đủ: Use Case (13 UCs), DFD 3 cấp độ, Class Diagram BCE và 3 Sequence Diagrams trọng yếu.
-3. Thiết kế cơ sở dữ liệu quan hệ ERD 26 bảng chuẩn hóa trên PostgreSQL 18.
-4. Triển khai kiến trúc Single Source of Truth trên Go 1.24+ và PostgreSQL 18, chứng minh thực nghiệm tỷ lệ 0% bán trùng ghế dưới tải 50 luồng đồng thời.
-5. Kiểm thử người dùng thực tế đạt điểm số xuất sắc 88.75/100 theo thang đo quốc tế SUS.
+1. Bóc tách 23 FR, 13 NFR, 7 User Story và ma trận truy vết.
+2. Mô hình hóa: 17 Use Case, DFD ba mức, sơ đồ lớp BCE và các sơ đồ tuần tự giữ ghế, chống bán trùng, đăng nhập OTP.
+3. Thiết kế cơ sở dữ liệu 23 bảng trên PostgreSQL 18, có unique index một phần và trigger nhật ký không sửa được.
+4. Chạy được Sprint 2 trên Go và PostgreSQL 18: đăng nhập OTP, sơ đồ ghế realtime, giữ ghế 5 phút, đặt giá khu vực.
+5. Có test tương tranh cho giữ ghế (50 luồng, một ghế). Kiểm thử tải và kiểm thử người dùng chưa chạy.
 
 ## 7.2. Bài học kinh nghiệm trong Phân tích và Thiết kế Hệ thống
 - **Nguyên tắc "Đơn giản hóa có chủ đích" (KISS):** Khai thác tối đa năng lực khóa nguyên tử và pub/sub của hệ quản trị cơ sở dữ liệu quan hệ hiện đại PostgreSQL 18 mang lại sự ổn định và tin cậy vượt trội so với việc vội vã đưa thêm tầng Redis phân tán phức tạp.
@@ -631,112 +748,119 @@ Kiểm thử thực nghiệm có giám sát trên **8 người dùng thực tế
 
 # PHỤ LỤC A – ĐẶC TẢ KỸ THUẬT API VÀ HƯỚNG DẪN TRIỂN KHAI MÃ NGUỒN
 
-## A.1. Danh mục Endpoint RESTful API cốt lõi
+## A.1. Danh mục Endpoint RESTful API
 
-**Bảng 17. Danh mục Endpoint RESTful API cốt lõi của hệ thống**
+Lấy từ `backend/internal/httpapi/router.go`.
+Cờ tắt thì endpoint trả `404 feature_disabled`.
 
-| Method | Endpoint | Cờ tính năng | Vai trò | Chức năng nghiệp vụ |
+**Bảng 17. Endpoint đã có trong router**
+
+| Method | Endpoint | Cờ / điều kiện | Vai trò | Chức năng |
 |:---:|---|---|:---:|---|
-| `GET` | `/api/health` | *(Mặc định)* | Mọi tác nhân | Kiểm tra sức khỏe máy chủ và kết nối CSDL PostgreSQL. |
-| `POST` | `/api/auth/otp/request` | `otp_login` | Khách | Yêu cầu phát mã xác thực OTP 6 số qua Email/SMS. |
-| `POST` | `/api/auth/otp/verify` | `otp_login` | Khách | Xác thực mã OTP và khởi tạo phiên đăng nhập `sessions`. |
-| `GET` | `/api/events` | *(Mặc định)* | Mọi tác nhân | Lấy danh mục sự kiện đang mở bán kèm bộ lọc. |
-| `GET` | `/api/events/{id}/seats` | `seat_map_realtime` | Mọi tác nhân | Lấy toàn bộ ma trận ghế ngồi và trạng thái màu sắc hiện tại. |
-| `GET` | `/api/events/{id}/stream` | `seat_map_realtime` | Mọi tác nhân | Kết nối SSE dài hạn nhận thông báo đổi màu ghế tức thì. |
-| `POST` | `/api/holds` | `seat_hold` | `CUSTOMER` | Khóa giữ ghế nguyên tử trong đúng 300 giây. |
-| `POST` | `/api/orders` | `payments` | `CUSTOMER` | Tạo đơn hàng mới từ các ghế đang giữ thành công. |
-| `POST` | `/api/payments/create` | `payments` | `CUSTOMER` | Sinh link thanh toán trực tuyến qua cổng MoMo / VNPAY. |
-| `POST` | `/api/payments/momo/ipn` | `payments` | Cổng MoMo | Webhook IPN xử lý kết quả giao dịch thanh toán lũy quyền. |
-| `GET` | `/api/tickets/my` | `ticket_email` | `CUSTOMER` | Xem danh sách vé đã mua kèm mã QR động xoay vòng 30s. |
-| `POST` | `/api/gate/checkin` | `gate_checkin` | `GATE_STAFF` | Quét mã QR xác thực vé tại cửa kiểm soát an ninh. |
-| `POST` | `/api/gate/sync-offline` | `offline_checkin` | `GATE_STAFF` | Đồng bộ lịch sử quét vé ngoại tuyến lên máy chủ. |
-| `GET` | `/api/ceo/dashboard` | `ceo_dashboard` | `CEO` | Lấy dữ liệu doanh thu thời gian thực và tỷ lệ lấp đầy. |
-| `POST` | `/api/pricing/approve` | `dynamic_pricing` | `ORGANIZER` | Ban Tổ chức phê duyệt áp dụng mức giá vé đề xuất mới. |
+| `GET` | `/api/health` | — | Mọi tác nhân | Kiểm tra api sống, trả profile cờ đang chạy. |
+| `GET` | `/api/features` | — | Mọi tác nhân | Trả profile và trạng thái từng cờ. |
+| `POST` | `/api/auth/otp/request` | `otp_login` | Khách | Xin mã OTP. |
+| `POST` | `/api/auth/otp/verify` | `otp_login` | Khách | Xác thực mã, mở phiên. |
+| `POST` | `/api/auth/demo-login` | Chỉ khi `APP_ENV` khác `production` | Khách | Tạo tài khoản khán giả mới và mở phiên, dùng để demo. |
+| `GET` | `/api/auth/me` | — | Đã đăng nhập | Thông tin phiên hiện tại. |
+| `POST` | `/api/auth/logout` | — | Đã đăng nhập | Đăng xuất. |
+| `GET` | `/api/events`, `/api/events/{slug}` | — | Mọi tác nhân | Danh sách và chi tiết sự kiện. |
+| `GET` | `/api/events/{id}/seats` | `seat_map_realtime` | Mọi tác nhân | Sơ đồ ghế và trạng thái. |
+| `GET` | `/api/events/{id}/stream` | `seat_map_realtime` | Mọi tác nhân | SSE thông báo ghế đổi trạng thái. |
+| `POST` | `/api/holds` | `seat_hold` | Đã đăng nhập | Giữ một ghế 5 phút. |
+| `DELETE` | `/api/holds/{seatId}` | `seat_hold` | Đã đăng nhập | Nhả ghế đang giữ. |
+| `GET` | `/api/holds` | `seat_hold` | Đã đăng nhập | Danh sách lượt giữ còn hiệu lực của người gọi. |
+| `GET` | `/api/organizer/events` | `organizer_console` | `ORGANIZER`, `ADMIN` | Sự kiện của Ban Tổ chức. |
+| `PUT` | `/api/organizer/events/{id}/zones/{zoneId}/pricing` | `organizer_console`, `zone_pricing` | `ORGANIZER`, `ADMIN` | Đặt giá sàn, cơ bản, trần của khu vực. |
+| `GET` | `/api/tickets/audit-logs` | `organizer_console` | `ORGANIZER`, `ADMIN` | Nhật ký kiểm toán các sự kiện của BTC. |
+| `POST` | `/api/tickets/cancel` | `payments` | Đã đăng nhập | Hủy ghế hoặc vé của chính người gọi. |
+| `GET` | `/api/tickets/cancelled` | `payments` | Đã đăng nhập | Danh sách đã hủy của người gọi. |
+| `POST` | `/api/tickets/reset-demo` | Chỉ khi `APP_ENV` khác `production` | Đã đăng nhập | Nhả các lượt giữ của người gọi để chạy lại demo. |
+
+Bản trực tuyến chạy `APP_ENV=production`, nên không có `demo-login` và `reset-demo`.
+
+**Endpoint theo thiết kế, chưa có trong router**
+
+| Nhóm | Endpoint | Cờ |
+|---|---|---|
+| Hàng chờ | `POST /api/events/{id}/queue`, `GET /api/events/{id}/queue/me` | `waiting_room` |
+| Đơn hàng | `POST /api/orders`, `GET /api/orders/{id}`, `POST /api/orders/{id}/payments` | `payments` |
+| Cổng thanh toán | `GET /api/payments/{provider}/return`, `POST /api/payments/{provider}/ipn` | `payments` |
+| Vé | `GET /api/me/tickets`, `GET /api/tickets/{id}/qr` | `ticket_email`, `rotating_qr` |
+| Ban Tổ chức | `/api/organizer/venues/…`, `/api/organizer/events/…`, `POST /api/organizer/suggestions/{id}/approve`, `reject` | `organizer_console`, `dynamic_pricing` |
+| Soát vé | `GET /api/gate/events/{id}/manifest`, `POST /api/gate/checkins`, `POST /api/gate/sync` | `gate_checkin`, `offline_checkin` |
+| CEO | `GET /api/dashboard/stream`, `GET /api/reports/sales.csv`, `GET /api/reports/sales.xlsx` | `ceo_dashboard`, `reports_export` |
 
 ## A.2. Cấu trúc thư mục mã nguồn Backend và Frontend
 
 ```
 COSH301/
-├── compose.yaml                # Triển khai đa container Docker Compose
-├── docs/                       # Tài liệu thiết kế hệ thống hoàn chỉnh
-├── backend/                    # Backend API hiệu năng cao (Go 1.24+)
-│   ├── cmd/api/main.go         # Điểm khởi chạy ứng dụng
+├── compose.yaml                # Docker Compose: db, api, frontend, tunnel
+├── docs/                       # Tài liệu thiết kế
+├── backend/                    # Backend Go 1.26
+│   ├── cmd/api/main.go         # Điểm khởi chạy
 │   └── internal/
-│       ├── config/             # Quản lý cấu hình & Cờ tính năng
-│       ├── httpapi/            # Tầng Boundary: Handlers, Routers, Middlewares
-│       ├── service/            # Tầng Control: Core Services, Workers, SSE Hub
-│       └── store/              # Tầng Entity: sqlc generated queries & migrations
-└── frontend/                   # Frontend ứng dụng Web (React 19 SPA)
+│       ├── config/             # Cấu hình và cờ tính năng
+│       ├── httpapi/            # Boundary: handler, router, middleware
+│       ├── service/            # Control: service, RealtimeHub, HoldReaper
+│       └── store/              # Entity: truy vấn sqlc và migration
+└── frontend/                   # Frontend React 19
     └── src/
-        ├── components/         # Sơ đồ ghế tương tác, đồng hồ đếm ngược, mã QR
-        ├── pages/              # Màn hình sự kiện, thanh toán, dashboard
-        └── services/           # Kết nối API RESTful và luồng sự kiện SSE
+        ├── components/         # Giao diện dùng chung, sơ đồ ghế, đồng hồ đếm ngược
+        ├── pages/              # Trang chủ, sự kiện, chọn ghế, đăng nhập, Ban Tổ chức
+        └── services/           # Gọi API và nhận SSE
 ```
 
 ## A.3. Hướng dẫn thiết lập và Triển khai với Docker Compose
 
 ```bash
-# 1. Khởi động toàn bộ cụm dịch vụ (Database, Backend Go, Nginx Frontend)
-cd /Users/ad/Downloads/COSH301
+# 1. Tạo .env từ mẫu và đặt POSTGRES_PASSWORD
+cp .env.example .env
+
+# 2. Khởi động db, api, frontend
 docker compose up -d --build
 
-# 2. Kiểm tra sức khỏe hệ thống qua HTTP API
-curl -s http://localhost:8080/api/health
-# Phản hồi chuẩn: {"status":"pass","database":"connected"}
+# 3. Kiểm tra qua nginx của frontend
+curl -s http://127.0.0.1:3001/api/health
+# {"profile":"sprint2","service":"eventticketing-api","status":"ok"}
 ```
 
-## A.4. Đoạn mã Go cốt lõi: Khóa hàng nguyên tử `HoldSeat`
+Muốn mở ra Internet qua Cloudflare Tunnel thì đặt `COMPOSE_PROFILES=tunnel` và `TUNNEL_TOKEN` trong `.env`.
+Bản trực tuyến đặt thêm `APP_ENV=production` và `COOKIE_SECURE=true`.
+
+## A.4. Đoạn mã Go cốt lõi: `HoldSeat`
+
+Trích từ `backend/internal/service/seat_service.go`.
+Giao dịch kiểm tra sự kiện đang bán, khóa người dùng (khi `ticket_limit` bật), rồi khóa ghế.
 
 ```go
-// HoldSeat thực thi giao dịch khóa giữ ghế nguyên tử trong 300s dưới chuẩn ACID
-func (s *SeatService) HoldSeat(ctx context.Context, eventID, seatID, userID pgtype.UUID) (*store.SeatHold, error) {
-    tx, err := s.dbPool.Begin(ctx)
-    if err != nil { return nil, err }
-    defer tx.Rollback(ctx)
+	sale, err := qtx.GetEventSaleState(ctx, eventID)
+	// (lược bớt) trả ErrEventNotOnSale nếu sự kiện không ON_SALE hoặc ngoài thời gian bán
 
-    qtx := s.queries.WithTx(tx)
+	if s.limitTickets {
+		// Serializes concurrent holds by the same user on the same event.
+		if err := qtx.LockUserEventAdvisory(ctx, store.LockUserEventAdvisoryParams{
+			Column1: store.UUIDToString(userID),
+			Column2: store.UUIDToString(eventID),
+		}); err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
+		count, err := qtx.CountUserHeldAndBoughtTickets(ctx, store.CountUserHeldAndBoughtTicketsParams{
+			EventID: eventID,
+			UserID:  userID,
+		})
+		// ...
+		if count >= sale.MaxTicketsPerUser {
+			return nil, ErrTicketLimitReached
+		}
+	}
 
-    // 1. Khóa cố vấn tuần tự hóa yêu cầu của user, ngăn chạy script vượt trần 4 vé
-    if err := qtx.LockUserEventAdvisory(ctx, store.LockUserEventAdvisoryParams{
-        Column1: store.UUIDToString(userID), Column2: store.UUIDToString(eventID),
-    }); err != nil { return nil, err }
-
-    // 2. Kiểm tra giới hạn tối đa 4 vé/user theo FR-11
-    count, err := qtx.CountUserHeldAndBoughtTickets(ctx, store.CountUserHeldAndBoughtTicketsParams{
-        EventID: eventID, UserID: userID,
-    })
-    if err != nil || count >= 4 { return nil, ErrTicketLimitReached }
-
-    // 3. Khóa hàng nguyên tử: Chỉ update khi status hiện tại là AVAILABLE
-    lockedSeat, err := qtx.TryLockSeat(ctx, store.TryLockSeatParams{EventID: eventID, SeatID: seatID})
-    if err != nil {
-        if errors.Is(err, pgx.ErrNoRows) {
-            // Chiếm lượt giữ cũ đã hết hạn quá 5 phút (Stale Hold Stealing)
-            stolen, stealErr := qtx.TryStealExpiredSeatHold(ctx, store.TryStealExpiredSeatHoldParams{
-                EventID: eventID, SeatID: seatID,
-            })
-            if stealErr != nil { return nil, ErrSeatNotAvailable }
-            lockedSeat = stolen
-        } else { return nil, err }
-    }
-
-    // 4. Tạo bản ghi seat_holds với thời hạn đúng 300 giây
-    seatHold, err := qtx.CreateSeatHold(ctx, store.CreateSeatHoldParams{
-        EventID: eventID, SeatID: seatID, UserID: userID,
-        HoldToken: uuid.New().String(),
-        ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(5 * time.Minute), Valid: true},
-    })
-    if err != nil { return nil, err }
-
-    // 5. Phát tín hiệu thời gian thực qua kênh nội tại pg_notify
-    notifyPayload, _ := json.Marshal(SeatUpdateMessage{
-        Type: "seat_held", EventID: store.UUIDToString(eventID),
-        SeatID: store.UUIDToString(seatID), Status: "HELD", Timestamp: time.Now(),
-    })
-    _ = qtx.NotifySeatUpdate(ctx, string(notifyPayload))
-
-    // 6. Commit giao dịch ACID
-    if err := tx.Commit(ctx); err != nil { return nil, err }
-    return &seatHold, nil
-}
+	if err := s.lockSeat(ctx, qtx, eventID, seatID); err != nil {
+		return nil, err
+	}
 ```
+
+`lockSeat` thử chuyển ghế sang `HELD` bằng `TryLockSeat`.
+Nếu không được, nó thử lấy lượt giữ đã hết hạn bằng `TryStealExpiredSeatHold`, rồi mới trả `ErrSeatNotAvailable`.
+Sau đó `CreateSeatHold` ghi `seat_holds` với `HoldSeconds: holdSeconds` (300), lỗi vi phạm unique index (mã `23505`) cũng trả `ErrSeatNotAvailable`.
+`NOTIFY` chỉ được gửi nếu giao dịch commit.

@@ -481,8 +481,8 @@ export function recommendByPreferences(
         score += 24;
         reasons.push(
           lang === 'en'
-            ? `Starts at ${formatPrice(item.minPrice, '₫')} (within budget)`
-            : `Giá từ ${formatPrice(item.minPrice, '₫')} (hợp ngân sách)`
+            ? `Starts at ${formatPrice(item.minPrice)} (within budget)`
+            : `Giá từ ${formatPrice(item.minPrice)} (hợp ngân sách)`
         );
       } else {
         score -= 22;
@@ -494,8 +494,8 @@ export function recommendByPreferences(
         score += 20;
         reasons.push(
           lang === 'en'
-            ? `Premium tiers up to ${formatPrice(item.maxPrice, '₫')}`
-            : `Có hạng VIP tới ${formatPrice(item.maxPrice, '₫')}`
+            ? `Premium tiers up to ${formatPrice(item.maxPrice)}`
+            : `Có hạng VIP tới ${formatPrice(item.maxPrice)}`
         );
       } else {
         score -= 10;
@@ -653,8 +653,8 @@ export async function generateAssistantReply(
         sender: 'assistant',
         text:
           lang === 'en'
-            ? `Sales analytics and revenue breakdowns are restricted to the **Organizer** role. Sign in with **Demo Ban Tổ Chức** on the Login page to unlock sales analysis and stage graphs, or browse the public brief for **${matched.event.title}** below.`
-            : `Phân tích doanh thu và hiệu suất bán vé chỉ dành cho vai trò **Ban Tổ Chức**. Bạn có thể đăng nhập nhanh bằng nút **Demo Ban Tổ Chức** tại trang Đăng nhập, hoặc xem tóm tắt công khai của **${matched.event.title}** bên dưới.`,
+            ? `Sales analytics and revenue breakdowns are restricted to the **Organizer** role. Sign in with an Organizer account to unlock sales analysis and stage graphs, or browse the public brief for **${matched.event.title}** below.`
+            : `Phân tích doanh thu và hiệu suất bán vé chỉ dành cho vai trò **Ban Tổ Chức**. Hãy đăng nhập bằng tài khoản Ban Tổ Chức để mở tính năng này, hoặc xem tóm tắt công khai của **${matched.event.title}** bên dưới.`,
         payload: { kind: 'brief', events: [matched], focusSingle: true },
         suggestions:
           lang === 'en'
@@ -674,8 +674,8 @@ export async function generateAssistantReply(
         sender: 'assistant',
         text:
           lang === 'en'
-            ? `Stage graph analytics (topology, occupancy heatmap & pricing bands) are tailored for the Organizer role. You can sign in with 1-click **Organizer Demo** on the Login page to unlock stage graphs, or preview the live audience seat map for "${matched.event.title}" below.`
-            : `Công cụ trực quan hoá biểu đồ sân khấu (sơ đồ khu vực, bản đồ nhiệt lấp đầy & khung giá) dành riêng cho vai trò **Ban Tổ Chức**. Bạn có thể đăng nhập nhanh bằng nút **Demo Ban Tổ Chức** ở trang Đăng nhập, hoặc xem tóm tắt sự kiện "${matched.event.title}" bên dưới.`,
+            ? `Stage graph analytics (topology, occupancy heatmap & pricing bands) are tailored for the Organizer role. Sign in with an Organizer account to unlock stage graphs, or preview the live audience seat map for "${matched.event.title}" below.`
+            : `Công cụ trực quan hoá biểu đồ sân khấu (sơ đồ khu vực, bản đồ nhiệt lấp đầy & khung giá) dành riêng cho vai trò **Ban Tổ Chức**. Hãy đăng nhập bằng tài khoản Ban Tổ Chức để mở biểu đồ này, hoặc xem tóm tắt sự kiện "${matched.event.title}" bên dưới.`,
         payload: { kind: 'brief', events: [matched], focusSingle: true },
         suggestions:
           lang === 'en'
@@ -708,8 +708,8 @@ export async function generateAssistantReply(
       sender: 'assistant',
       text:
         lang === 'en'
-          ? `Here are the top trending concerts right now based on live seat demand, production scale, and schedule. Leading the chart is **${top.event.title}** (${top.zones.length} zones, from ${formatPrice(top.minPrice, '₫')}).`
-          : `Đây là bảng xếp hạng các đêm diễn nổi bật nhất hiện tại dựa trên mật độ giữ/mua ghế trực tiếp, quy mô khu vực và lịch diễn. Dẫn đầu là **${top.event.title}** (${top.zones.length} khu vực, từ ${formatPrice(top.minPrice, '₫')}).`,
+          ? `Here are the top trending concerts right now based on live seat demand, production scale, and schedule. Leading the chart is **${top.event.title}** (${top.zones.length} zones, from ${formatPrice(top.minPrice)}).`
+          : `Đây là bảng xếp hạng các đêm diễn nổi bật nhất hiện tại dựa trên mật độ giữ/mua ghế trực tiếp, quy mô khu vực và lịch diễn. Dẫn đầu là **${top.event.title}** (${top.zones.length} khu vực, từ ${formatPrice(top.minPrice)}).`,
       payload: { kind: 'trending', events: ranked },
       suggestions: isOrganizer
         ? lang === 'en'
@@ -737,8 +737,8 @@ export async function generateAssistantReply(
       sender: 'assistant',
       text:
         lang === 'en'
-          ? `Here is the live brief for **${matchedEvent.event.title}** at ${matchedEvent.event.venue} (${matchedEvent.event.city}): ${matchedEvent.zones.length} zones (${seatedCount} seated, ${standingCount} standing), prices from **${formatPrice(matchedEvent.minPrice, '₫')}** to **${formatPrice(matchedEvent.maxPrice, '₫')}**, with **${matchedEvent.availableSeats}/${matchedEvent.totalSeats}** seats currently open.`
-          : `Tóm tắt nhanh **${matchedEvent.event.title}** tại ${matchedEvent.event.venue} (${matchedEvent.event.city}): gồm **${matchedEvent.zones.length} khu vực** (${seatedCount} khu ngồi, ${standingCount} khu đứng), giá từ **${formatPrice(matchedEvent.minPrice, '₫')}** đến **${formatPrice(matchedEvent.maxPrice, '₫')}**, hiện còn **${matchedEvent.availableSeats}/${matchedEvent.totalSeats}** chỗ trống.`,
+          ? `Here is the live brief for **${matchedEvent.event.title}** at ${matchedEvent.event.venue} (${matchedEvent.event.city}): ${matchedEvent.zones.length} zones (${seatedCount} seated, ${standingCount} standing), prices from **${formatPrice(matchedEvent.minPrice)}** to **${formatPrice(matchedEvent.maxPrice)}**, with **${matchedEvent.availableSeats}/${matchedEvent.totalSeats}** seats currently open.`
+          : `Tóm tắt nhanh **${matchedEvent.event.title}** tại ${matchedEvent.event.venue} (${matchedEvent.event.city}): gồm **${matchedEvent.zones.length} khu vực** (${seatedCount} khu ngồi, ${standingCount} khu đứng), giá từ **${formatPrice(matchedEvent.minPrice)}** đến **${formatPrice(matchedEvent.maxPrice)}**, hiện còn **${matchedEvent.availableSeats}/${matchedEvent.totalSeats}** chỗ trống.`,
       payload: { kind: 'brief', events: [matchedEvent], focusSingle: true },
       suggestions: isOrganizer
         ? lang === 'en'
@@ -782,8 +782,8 @@ export async function generateAssistantReply(
       sender: 'assistant',
       text:
         lang === 'en'
-          ? `There are **${enriched.length} concerts** live in the database across **${cities.join(', ')}** (${genres.join(', ')}), with tickets ranging from **${formatPrice(minAll, '₫')}** to **${formatPrice(maxAll, '₫')}**. Tap any show below for details or seats.`
-          : `Hiện có **${enriched.length} đêm diễn** đang mở bán tại **${cities.join(', ')}** (thể loại ${genres.join(', ')}), giá vé từ **${formatPrice(minAll, '₫')}** đến **${formatPrice(maxAll, '₫')}**. Chọn một đêm diễn bên dưới để xem chi tiết hoặc đặt ghế.`,
+          ? `There are **${enriched.length} concerts** live in the database across **${cities.join(', ')}** (${genres.join(', ')}), with tickets ranging from **${formatPrice(minAll)}** to **${formatPrice(maxAll)}**. Tap any show below for details or seats.`
+          : `Hiện có **${enriched.length} đêm diễn** đang mở bán tại **${cities.join(', ')}** (thể loại ${genres.join(', ')}), giá vé từ **${formatPrice(minAll)}** đến **${formatPrice(maxAll)}**. Chọn một đêm diễn bên dưới để xem chi tiết hoặc đặt ghế.`,
       payload: { kind: 'brief', events: enriched, focusSingle: false },
       suggestions: isOrganizer
         ? lang === 'en'
@@ -815,8 +815,8 @@ export async function generateAssistantReply(
     sender: 'assistant',
     text:
       lang === 'en'
-        ? `I'm your SortMyScene Event Assistant (**${enriched.length} live concerts**). Ask me for an **event brief**, **trending concerts**, or **personalized recommendations** by genre, city, budget, or seating style!`
-        : `Chào bạn! Mình là Trợ lý Sự kiện SortMyScene (**${enriched.length} concert** đang mở bán). Bạn có thể hỏi mình **tóm tắt sự kiện**, **concert đang hot**, hoặc **gợi ý theo gu nhạc, thành phố và ngân sách**!`,
+        ? `I'm your COSH301 Concerts Event Assistant (**${enriched.length} live concerts**). Ask me for an **event brief**, **trending concerts**, or **personalized recommendations** by genre, city, budget, or seating style!`
+        : `Chào bạn! Mình là Trợ lý Sự kiện COSH301 (**${enriched.length} concert** đang mở bán). Bạn có thể hỏi mình **tóm tắt sự kiện**, **concert đang hot**, hoặc **gợi ý theo gu nhạc, thành phố và ngân sách**!`,
     suggestions:
       lang === 'en'
         ? ['Brief all events', 'What is trending?', 'Recommend by preference']
