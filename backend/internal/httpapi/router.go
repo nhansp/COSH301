@@ -44,6 +44,12 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	// 2. Authentication Endpoints (gated by otp_login feature flag)
 	mux.HandleFunc("POST /api/auth/otp/request", RequireFeature(fm, config.FlagOtpLogin, otpLimiter.Wrap(authHandler.HandleRequestOTP)))
 	mux.HandleFunc("POST /api/auth/otp/verify", RequireFeature(fm, config.FlagOtpLogin, otpLimiter.Wrap(authHandler.HandleVerifyOTP)))
+	if deps.Config.OTPAppDelivery {
+		otpAppHandler := NewOTPAppHandler(deps.AuthService)
+		appLimiter := NewRateLimiter(60, time.Minute)
+		mux.HandleFunc("POST /api/otp-app/claim", RequireFeature(fm, config.FlagOtpLogin, appLimiter.Wrap(otpAppHandler.HandleClaim)))
+		mux.HandleFunc("POST /api/otp-app/stream", RequireFeature(fm, config.FlagOtpLogin, appLimiter.Wrap(otpAppHandler.HandleStream)))
+	}
 	if deps.Config.DemoMode {
 		mux.HandleFunc("POST /api/auth/demo-login", demoLimiter.Wrap(authHandler.HandleDemoLogin))
 	}

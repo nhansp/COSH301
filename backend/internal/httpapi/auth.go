@@ -55,6 +55,9 @@ func (h *AuthHandler) HandleRequestOTP(w http.ResponseWriter, r *http.Request) {
 	if issue.DemoCode != "" {
 		resp["demoCode"] = issue.DemoCode
 	}
+	if issue.Delivery != "" {
+		resp["delivery"] = issue.Delivery
+	}
 	writeJSON(w, http.StatusOK, resp)
 }
 

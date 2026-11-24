@@ -11,6 +11,9 @@ import (
 )
 
 type Querier interface {
+	// ClaimOTPAppDelivery hands the newest unexpired code for a destination to the
+	// app and deletes it, so each code is delivered at most once.
+	ClaimOTPAppDelivery(ctx context.Context, destination string) (string, error)
 	// ConsumeOTPAttempt counts one verification attempt against the newest usable code
 	// and returns it, so concurrent guesses cannot exceed the attempt limit.
 	ConsumeOTPAttempt(ctx context.Context, arg ConsumeOTPAttemptParams) (OtpVerification, error)
@@ -18,9 +21,14 @@ type Querier interface {
 	CountUserHeldAndBoughtTickets(ctx context.Context, arg CountUserHeldAndBoughtTicketsParams) (int32, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerification, error)
+	CreateOTPAppDelivery(ctx context.Context, arg CreateOTPAppDeliveryParams) error
 	CreateSeatHold(ctx context.Context, arg CreateSeatHoldParams) (SeatHold, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteExpiredOTPAppDeliveries(ctx context.Context) (int64, error)
+	// DeleteOTPAppDeliveries drops codes the app has not picked up that are expired
+	// or were replaced by a newer request for the same destination.
+	DeleteOTPAppDeliveries(ctx context.Context, destination string) error
 	DeleteSession(ctx context.Context, tokenHash string) error
 	DeleteUserSessions(ctx context.Context, userID pgtype.UUID) error
 	EventExists(ctx context.Context, id pgtype.UUID) (bool, error)

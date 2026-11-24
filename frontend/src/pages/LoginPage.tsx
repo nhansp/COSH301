@@ -95,6 +95,10 @@ export const LoginPage: React.FC = () => {
     setOtpSent(true);
     setTimer(60);
     const sentTo = authMethod === 'phone' ? `số ${countryCode} ${phoneNumber.trim()}` : `email ${email.trim()}`;
+    if (res.delivery === 'app') {
+      setSuccessMsg('Mã đã được gửi tới ứng dụng COSH301 trên điện thoại của bạn.');
+      return;
+    }
     setSuccessMsg(res.demoCode ? `Mã OTP đã được gửi đến ${sentTo}. Mã thử nghiệm là ${res.demoCode}.` : `Mã OTP đã được gửi đến ${sentTo}.`);
   };
 

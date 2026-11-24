@@ -11,6 +11,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimOTPAppDelivery = `-- name: ClaimOTPAppDelivery :one
+DELETE FROM otp_app_deliveries
+WHERE otp_id = (
+    SELECT d.otp_id FROM otp_app_deliveries d
+    JOIN otp_verifications o ON o.id = d.otp_id
+    WHERE d.destination = $1
+      AND d.expires_at > now()
+      AND o.verified_at IS NULL
+    ORDER BY o.created_at DESC
+    LIMIT 1
+    FOR UPDATE OF d SKIP LOCKED
+)
+RETURNING code
+`
+
+// ClaimOTPAppDelivery hands the newest unexpired code for a destination to the
+// app and deletes it, so each code is delivered at most once.
+func (q *Queries) ClaimOTPAppDelivery(ctx context.Context, destination string) (string, error) {
+	row := q.db.QueryRow(ctx, claimOTPAppDelivery, destination)
+	var code string
+	err := row.Scan(&code)
+	return code, err
+}
+
 const consumeOTPAttempt = `-- name: ConsumeOTPAttempt :one
 UPDATE otp_verifications
 SET attempt_count = attempt_count + 1
@@ -122,6 +146,52 @@ func (q *Queries) CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerifi
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const createOTPAppDelivery = `-- name: CreateOTPAppDelivery :exec
+INSERT INTO otp_app_deliveries (otp_id, destination, code, expires_at)
+VALUES ($1, $2, $3, $4)
+`
+
+type CreateOTPAppDeliveryParams struct {
+	OtpID       pgtype.UUID        `json:"otp_id"`
+	Destination string             `json:"destination"`
+	Code        string             `json:"code"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) CreateOTPAppDelivery(ctx context.Context, arg CreateOTPAppDeliveryParams) error {
+	_, err := q.db.Exec(ctx, createOTPAppDelivery,
+		arg.OtpID,
+		arg.Destination,
+		arg.Code,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
+const deleteExpiredOTPAppDeliveries = `-- name: DeleteExpiredOTPAppDeliveries :execrows
+DELETE FROM otp_app_deliveries WHERE expires_at <= now()
+`
+
+func (q *Queries) DeleteExpiredOTPAppDeliveries(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredOTPAppDeliveries)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteOTPAppDeliveries = `-- name: DeleteOTPAppDeliveries :exec
+DELETE FROM otp_app_deliveries
+WHERE expires_at <= now() OR destination = $1
+`
+
+// DeleteOTPAppDeliveries drops codes the app has not picked up that are expired
+// or were replaced by a newer request for the same destination.
+func (q *Queries) DeleteOTPAppDeliveries(ctx context.Context, destination string) error {
+	_, err := q.db.Exec(ctx, deleteOTPAppDeliveries, destination)
+	return err
 }
 
 const markOTPVerified = `-- name: MarkOTPVerified :execrows

@@ -15,8 +15,11 @@ type Config struct {
 	CORSAllowedOrigins []string
 	// OTPDemo shows customer login codes on screen instead of sending them.
 	// Staff codes are only ever written to the server log.
-	OTPDemo      bool
-	CookieSecure bool
+	OTPDemo bool
+	// OTPAppDelivery hands phone login codes to the COSH301 OTP Android app
+	// instead of the log or the screen. Email codes are unaffected.
+	OTPAppDelivery bool
+	CookieSecure   bool
 	// DemoMode exposes one-click demo login and demo data reset.
 	// It is off when APP_ENV=production.
 	DemoMode bool
@@ -52,6 +55,7 @@ func Load() *Config {
 		AppEnv:             appEnv,
 		CORSAllowedOrigins: origins,
 		OTPDemo:            os.Getenv("OTP_DEMO") == "true",
+		OTPAppDelivery:     os.Getenv("OTP_APP_DELIVERY") == "true",
 		CookieSecure:       os.Getenv("COOKIE_SECURE") == "true",
 		DemoMode:           appEnv != "production",
 		Features:           NewFeatureManagerFromEnv(),

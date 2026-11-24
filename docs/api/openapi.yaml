@@ -84,6 +84,10 @@ paths:
         Có `@` thì gửi qua email, còn lại là SĐT.
         Mỗi `destination` phải cách lần trước 60 giây và tối đa 5 mã mỗi giờ.
         `demoCode` chỉ có khi `OTP_DEMO=true` và tài khoản không phải nhân sự.
+        Số điện thoại được chuẩn hóa về dạng `+84...`: `0912345678`, `84912345678` và `+84912345678` là cùng một số.
+        Khi `OTP_APP_DELIVERY=true`, mã gửi tới số điện thoại không hiện trên màn hình và không ghi log.
+        Ứng dụng Android COSH301 OTP lấy mã (xem `docs/otp-app.md`) và phản hồi có `delivery: app`.
+        Mã gửi tới email không đổi.
       operationId: requestOtp
       x-feature: [otp_login]
       requestBody:
@@ -115,12 +119,99 @@ paths:
                   demoCode:
                     type: string
                     pattern: '^[0-9]{6}$'
+                  delivery:
+                    type: string
+                    enum: [app]
+                    description: Có khi mã được giao cho ứng dụng Android COSH301 OTP
         '400':
           $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/FeatureDisabled'
         '429':
           description: '`rate_limited` (quá 30 lần/phút từ một IP) hoặc `otp_rate_limited`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/otp-app/claim:
+    post:
+      tags: [auth]
+      summary: Ứng dụng Android lấy mã đăng nhập đang chờ
+      description: |
+        Chỉ được đăng ký khi `OTP_APP_DELIVERY=true`.
+        Trả mã mới nhất còn hạn của số điện thoại, đúng một lần rồi xóa khỏi server.
+        Không có mã thì trả `204`, giống nhau cho mọi số, nên không lộ số đó có tài khoản hay không.
+        Số điện thoại nằm trong body để không vào log của proxy.
+        Giới hạn 60 lần/phút từ một IP.
+      operationId: claimAppOtp
+      x-feature: [otp_login]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpAppPhone'
+      responses:
+        '200':
+          description: Mã đang chờ
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code:
+                    type: string
+                    pattern: '^[0-9]{6}$'
+        '204':
+          description: Không có mã nào đang chờ
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+        '429':
+          description: '`rate_limited`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/otp-app/stream:
+    post:
+      tags: [auth]
+      summary: Luồng SSE báo có mã đang chờ cho một số điện thoại
+      description: |
+        Chỉ được đăng ký khi `OTP_APP_DELIVERY=true`.
+        Luồng chỉ báo hiệu, không mang mã: khi nhận `pending`, ứng dụng gọi `/api/otp-app/claim`.
+        Sự kiện: `connected` khi mở luồng, `pending` khi có mã mới, và dòng `: ping` mỗi 15 giây.
+        Mỗi số có tối đa 4 luồng, toàn server tối đa 500 luồng (`429 too_many_streams`).
+      operationId: streamAppOtp
+      x-feature: [otp_login]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpAppPhone'
+      responses:
+        '200':
+          description: Luồng `text/event-stream`
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+        '429':
+          description: '`rate_limited` hoặc `too_many_streams`'
           content:
             application/json:
               schema:
@@ -743,6 +834,14 @@ components:
             $ref: '#/components/schemas/Error'
 
   schemas:
+    OtpAppPhone:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+          example: '+84912345678'
+          description: Chuẩn hóa như `destination`. Email bị từ chối với `invalid_destination`.
     Error:
       type: object
       required: [error]

@@ -5,8 +5,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  /** Asks the server for a login code; `demoCode` is set when the server shows codes on screen. */
-  requestOtp: (destination: string) => Promise<OtpResult & { demoCode?: string }>;
+  /** Asks the server for a login code; `demoCode` is set when the server shows codes on screen, `delivery` is `app` when the OTP app shows it. */
+  requestOtp: (destination: string) => Promise<OtpResult & { demoCode?: string; delivery?: string }>;
   /** Signs in with a login code. Succeeds only when the server opened a session. */
   verifyOtp: (destination: string, code: string) => Promise<OtpResult>;
   /** One-click demo account; only call it when `/api/features` reports `demoLogin`. */
@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const requestOtp = async (destination: string): Promise<OtpResult & { demoCode?: string }> => {
+  const requestOtp = async (destination: string): Promise<OtpResult & { demoCode?: string; delivery?: string }> => {
     try {
       const res = await fetch('/api/auth/otp/request', {
         method: 'POST',
@@ -110,8 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ destination })
       });
       if (!res.ok) return { ok: false, error: await authErrorOf(res) };
-      const data: { demoCode?: string } = await res.json();
-      return { ok: true, demoCode: data.demoCode };
+      const data: { demoCode?: string; delivery?: string } = await res.json();
+      return { ok: true, demoCode: data.demoCode, delivery: data.delivery };
     } catch {
       return { ok: false, error: OFFLINE_ERROR };
     }
