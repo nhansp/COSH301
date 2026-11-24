@@ -178,21 +178,71 @@
 
 ## PHẦN 6: KỊCH BẢN PHỐI HỢP LIVE DEMO SẢN PHẨM THỰC TẾ (3.0 phút)
 
-* **Thiết lập chuẩn bị**:
-  - Mở 2 cửa sổ trình duyệt song song (ví dụ: Google Chrome bên trái và Safari / Cửa sổ ẩn danh bên phải).
-  - Dùng bản trực tuyến `https://cosh301.nhansp.id.vn`, hoặc chạy cục bộ bằng `docker compose up -d --build` rồi mở `http://127.0.0.1:3001`.
-  - Bản trực tuyến chạy `APP_ENV=production`: không có nút Demo 1-Click, đăng nhập bằng OTP. Bản cục bộ (`APP_ENV=development`) có Demo 1-Click, mỗi lần bấm tạo một tài khoản khán giả mới.
-  - Các cờ `payments`, `ticket_limit` đang tắt, nên bước demo không có thanh toán và không áp giới hạn vé.
+### Chuẩn bị trước giờ demo
 
-| Bước | Hành động thao tác | Lời dẫn thuyết minh | Kết quả hiển thị quan sát |
+* Dùng bản trực tuyến `https://cosh301.nhansp.id.vn`.
+* Bản này chạy `APP_ENV=production` và profile `sprint2`.
+* Không có nút Demo 1-Click. Khán giả đăng nhập bằng email, mã OTP hiện ngay trên màn hình.
+* Mã OTP của Ban Tổ chức (`btc@cosh301.nhansp.id.vn`) chỉ ghi vào log của `api`.
+* Lấy mã đó trên máy ảo: `docker compose logs api | grep "otp: login code"`.
+* Sau mỗi lần gửi mã phải chờ 60 giây mới gửi lại được.
+* Đăng nhập sẵn tài khoản Ban Tổ chức trên một trình duyệt từ tối hôm trước. Phiên đăng nhập có hạn 7 ngày.
+* Các cờ `payments`, `ticket_limit`, `dynamic_pricing` đang tắt. Demo không có thanh toán và không áp giới hạn vé.
+
+### Bố trí màn hình
+
+| Cửa sổ | Nội dung |
+|---|---|
+| Trình duyệt A (trái) | Khán giả A, đã đăng nhập |
+| Trình duyệt B (phải) | Khán giả B, cửa sổ ẩn danh, đã đăng nhập bằng email khác |
+| Terminal (dưới) | Log của `api` trên máy ảo |
+
+Lệnh xem log, bỏ các dòng kiểm tra sức khỏe:
+
+```bash
+docker compose logs -f api | grep -v /api/health
+```
+
+### Các bước
+
+| Bước | Thao tác | Lời dẫn | Kết quả trên màn hình |
 |:---:|---|---|---|
-| **1** | Mở trang chủ trên cả 2 màn hình. | *"Đầu tiên, hệ thống tải danh mục sự kiện hoàn toàn động từ Go backend qua RESTful API `/api/events`, hình ảnh và giá vé tối thiểu được tính trực tiếp từ database."* | Danh sách concert hiển thị mượt mà kèm bộ lọc thể loại. |
-| **2** | Trên Màn hình Trái, bấm **Đăng nhập**, nhập email và mã OTP (bản cục bộ: có thể chọn **Demo 1-Click**). | *"Đăng nhập bằng OTP tạo phiên `sessions` với cookie HttpOnly. Mã OTP hiện trên màn hình khi bật `OTP_DEMO`, vì chưa có kênh gửi SMS hay email."* | Màn hình hiển thị thông tin tài khoản đã đăng nhập. |
-| **3** | Cả 2 màn hình cùng truy cập vào chi tiết concert và mở **Sơ đồ ghế**. | *"Ngay khi mở trang chọn ghế, cả 2 trình duyệt lập tức mở luồng Server-Sent Events (SSE) `/api/events/{id}/stream`. Toàn bộ 4 màu sắc ghế hiển thị trực quan."* | Ghế trống màu xanh lá; ghế đã bán màu xám gạch ngang. |
-| **4** | Trên Màn hình Trái, bấm chọn **ghế A1**. | *"Khi khán giả Trái bấm chọn ghế A1, backend mở transaction khóa ghế 300 giây. Ngay lập tức, lệnh `NOTIFY` đẩy thông điệp qua SSE."* | • Trình duyệt Trái: Ghế A1 chuyển sang trạng thái "mình đang giữ", đồng hồ đếm ngược bắt đầu từ **05:00**.<br/>• Trình duyệt Phải: Ghế A1 tự chuyển sang trạng thái "người khác đang giữ" mà **không cần bấm F5**. |
-| **5** | Trên Màn hình Phải, cố tình bấm đè vào **ghế A1**. | *"Bây giờ khán giả Phải cố tình bấm vào ghế A1 vừa bị giữ. Hệ thống từ chối ngay lập tức, thông báo ghế đang được giữ bởi người khác."* | Thông báo lỗi: `Ghế A1 đang có người giữ. Chọn ghế khác.` Ghế không vào giỏ. |
-| **6** | Trên Màn hình Trái, bấm **Bỏ chọn ghế A1**. | *"Nếu khán giả đổi ý nhả ghế, trạng thái ghế lập tức quay lại `AVAILABLE`."* | Ghế A1 trên cả 2 màn hình chuyển lại trạng thái **còn trống**. |
-| **7** *(tùy chọn)* | Đăng nhập tài khoản `ORGANIZER` và mở trang **Ban Tổ chức (`/organizer`)**. | *"Ban Tổ chức xem sự kiện của mình và đặt giá sàn, giá cơ bản, giá trần cho từng khu. Mỗi lần đổi giá cơ bản ghi một dòng vào `price_changes`."* | Danh sách sự kiện của Ban Tổ chức và form đặt giá khu vực. Mã OTP của nhân sự chỉ ghi vào log của api. |
+| **1** | Mở trang chủ trên cả hai trình duyệt. | *"Danh sách sự kiện lấy từ API `/api/events`, giá thấp nhất tính từ giá khu trong database."* | 6 đêm diễn sắp tới. Có ô tìm theo nghệ sĩ, thành phố và thời gian. |
+| **2** | Trên A, bấm **Đăng nhập**, chọn **Địa chỉ Email**, nhập email, bấm **Gửi mã OTP xác thực**. | *"Chưa có kênh gửi SMS hay email, nên bật `OTP_DEMO` để mã hiện trên màn hình. Mã chỉ dùng được 5 phút, sai 5 lần thì khóa."* | Dòng *"Mã thử nghiệm là …"*. Nhập 6 số, bấm **Xác nhận & Đăng nhập**. Thanh trên có mục **Ghế đang giữ**. |
+| **3** | Cả hai trình duyệt mở cùng một concert, bấm **Chọn vé**. | *"Trang chọn vé mở luồng SSE `/api/events/{id}/stream`. Mỗi thay đổi ghế được đẩy xuống mọi trình duyệt đang xem."* | Sơ đồ 2D theo khu. Cột phải liệt kê hạng vé và số chỗ còn, ví dụ *"Còn 24/24"*. |
+| **4** | Trên cả hai, chọn khu **SVIP**. | *"Mỗi khu có sơ đồ ghế riêng. Màu xanh là còn trống."* | Lưới ghế hàng A, B. Chú thích bốn trạng thái: còn trống, bạn đang giữ, người khác đang giữ, đã bán. |
+| **5** | Trên A, bấm ghế **A1**. | *"Backend khóa ghế trong một transaction, ghi `seat_holds` với hạn 300 giây, rồi `NOTIFY` sau khi commit."* | A: thông báo *"Đã giữ ghế A1"*, đồng hồ **Giữ chỗ còn 05:00**. B: A1 đổi sang màu người khác đang giữ, không cần F5. Terminal: `POST /api/holds`. |
+| **6** | Trên B, bấm vào **A1**. | *"Khán giả B không lấy được ghế A đang giữ."* | B: *"Ghế A1 đang có người giữ. Chọn ghế khác."* |
+| **7** | Trên A, bấm **Xem ghế đã giữ**. | *"Trang này đọc lại các ghế đang giữ từ server qua `GET /api/holds`, không lưu ở trình duyệt."* | Trang **Ghế đang giữ**: A1, khu SVIP, đồng hồ đếm ngược, giá. Dòng *"Thanh toán sẽ mở ở Sprint 4"*. |
+| **8** | Trên A, bấm **Trả ghế**. | *"Trả ghế đưa ghế về `AVAILABLE` với giá khu hiện tại và báo cho mọi trình duyệt."* | A: *"Bạn chưa giữ ghế nào cho sự kiện này"*. B: A1 xanh trở lại. Terminal: `DELETE /api/holds/…`. |
+| **9** | Chuyển sang trình duyệt Ban Tổ chức, bấm **Quản lý sự kiện**, chọn concert vừa demo. | *"Ban Tổ chức đặt giá sàn, giá cơ bản, giá trần cho từng khu (FR-08)."* | Mỗi khu có ba ô **Giá sàn**, **Giá cơ bản**, **Giá trần** và nút **Lưu giá**. |
+| **10** | Ở khu **CAT 3**, nhập giá cơ bản lớn hơn giá trần, bấm **Lưu giá**. | *"Giá cơ bản phải nằm giữa giá sàn và giá trần."* | Báo lỗi *"Cần thỏa mãn: giá sàn ≤ giá cơ bản ≤ giá trần."* |
+| **11** | Nhập giá cơ bản hợp lệ, bấm **Lưu giá**. | *"Đổi giá cơ bản ghi một dòng vào `price_changes`. Ghế đang có người giữ giữ nguyên giá cũ đến khi được trả."* | Báo *"Đã lưu giá"*. |
+| **12** *(tùy chọn)* | Ở terminal, mở database và xem nhật ký giá, rồi thử xóa. | *"Bảng `price_changes` có trigger chặn sửa, xóa và `TRUNCATE`."* | Dòng giá vừa đổi, lý do `MANUAL`. Lệnh `DELETE` bị từ chối. |
+
+Lệnh cho bước 12, chạy trong thư mục dự án trên máy ảo:
+
+```bash
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+```sql
+SELECT old_price, new_price, reason, created_at FROM price_changes ORDER BY created_at DESC LIMIT 3;
+DELETE FROM price_changes;
+```
+
+### Phần dự phòng
+
+* Mất mạng hoặc máy ảo lỗi: chạy cục bộ bằng `docker compose up -d --build`, mở `http://127.0.0.1:3001`.
+* Bản cục bộ (`APP_ENV=development`) có nút Demo 1-Click, mỗi lần bấm tạo một tài khoản khán giả mới.
+* Nếu cô hỏi về chống bán trùng, chạy test tương tranh trên bản cục bộ:
+
+```bash
+cd backend
+TEST_DATABASE_URL=postgres://… go test -v -run TestHoldSeat_ConcurrentHoldersGetOneSeat ./internal/service/
+```
+
+* Test cho 50 goroutines cùng giữ một ghế, chỉ đúng một lượt thành công.
 
 ---
 
