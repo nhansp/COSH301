@@ -56,6 +56,9 @@ func main() {
 	// Start background workers
 	realtimeHub.StartListener(ctx)
 	holdReaper.Start(ctx)
+	if cfg.OTPAppDelivery {
+		authService.StartAppDeliveryReaper(ctx)
+	}
 
 	router := httpapi.NewRouter(httpapi.RouterDependencies{
 		Config:       cfg,

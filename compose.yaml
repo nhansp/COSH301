@@ -27,6 +27,7 @@ services:
       FEATURE_PROFILE: ${FEATURE_PROFILE:-sprint2}
       APP_ENV: ${APP_ENV:-development}
       OTP_DEMO: ${OTP_DEMO:-false}
+      OTP_APP_DELIVERY: ${OTP_APP_DELIVERY:-false}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
     depends_on:
       db:

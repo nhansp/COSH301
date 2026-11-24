@@ -43,15 +43,18 @@ const (
 var (
 	emailPattern = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 	phonePattern = regexp.MustCompile(`^\+?[0-9]{9,15}$`)
+	// Vietnamese numbers written without "+": 0912..., 0084912... or 84912...
+	nationalPhonePattern = regexp.MustCompile(`^(?:0084|84|0)([0-9]{8,10})$`)
 )
 
 type AuthService struct {
 	queries *store.Queries
 	cfg     *config.Config
+	appHub  *otpAppHub
 }
 
 func NewAuthService(queries *store.Queries, cfg *config.Config) *AuthService {
-	return &AuthService{queries: queries, cfg: cfg}
+	return &AuthService{queries: queries, cfg: cfg, appHub: newOTPAppHub()}
 }
 
 // HashString computes a sha256 hex digest.
@@ -70,7 +73,8 @@ func GenerateToken() (string, error) {
 }
 
 // NormalizeDestination validates an email or phone number and returns its
-// canonical form and channel.
+// canonical form and channel. Phone numbers are canonical as +84... so the
+// website, the OTP app and the users table all spell a number the same way.
 func NormalizeDestination(destination string) (string, string, error) {
 	d := strings.TrimSpace(destination)
 	if strings.Contains(d, "@") {
@@ -81,6 +85,9 @@ func NormalizeDestination(destination string) (string, string, error) {
 		return d, "EMAIL", nil
 	}
 	d = strings.NewReplacer(" ", "", "-", "", ".", "").Replace(d)
+	if m := nationalPhonePattern.FindStringSubmatch(d); m != nil {
+		d = "+84" + m[1]
+	}
 	if !phonePattern.MatchString(d) {
 		return "", "", ErrInvalidDestination
 	}
@@ -95,11 +102,16 @@ func (s *AuthService) findUser(ctx context.Context, dest, channel string) (store
 	return s.queries.GetUserByPhone(ctx, v)
 }
 
+// DeliveryApp marks a code that the COSH301 OTP app will show on the phone.
+const DeliveryApp = "app"
+
 // OTPIssue is the result of a login code request. DemoCode is set only when
-// the code may be shown to the requester.
+// the code may be shown to the requester; Delivery names the channel that
+// carries the code when it is not shown or logged.
 type OTPIssue struct {
 	Destination string
 	DemoCode    string
+	Delivery    string
 }
 
 // RequestOTP issues a 6-digit login code, limited per destination.
@@ -128,13 +140,14 @@ func (s *AuthService) RequestOTP(ctx context.Context, destination string) (*OTPI
 	}
 	code := fmt.Sprintf("%06d", n.Int64())
 
-	if _, err := s.queries.CreateOTP(ctx, store.CreateOTPParams{
+	otp, err := s.queries.CreateOTP(ctx, store.CreateOTPParams{
 		Destination: dest,
 		Channel:     channel,
 		Purpose:     otpPurposeLogin,
 		CodeHash:    HashString(code),
 		TtlSeconds:  otpTTLSeconds,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("store otp: %w", err)
 	}
 
@@ -146,9 +159,15 @@ func (s *AuthService) RequestOTP(ctx context.Context, destination string) (*OTPI
 	}
 
 	issue := &OTPIssue{Destination: dest}
-	if s.cfg.OTPDemo && !isStaff {
+	switch {
+	case s.cfg.OTPAppDelivery && channel == "SMS":
+		if err := s.deliverToApp(ctx, otp, code); err != nil {
+			return nil, err
+		}
+		issue.Delivery = DeliveryApp
+	case s.cfg.OTPDemo && !isStaff:
 		issue.DemoCode = code
-	} else {
+	default:
 		// No SMS or email provider is configured yet; the operator relays the code.
 		log.Printf("otp: login code for %s (%s): %s", dest, channel, code)
 	}

@@ -521,6 +521,13 @@ type OrderItem struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type OtpAppDelivery struct {
+	OtpID       pgtype.UUID        `json:"otp_id"`
+	Destination string             `json:"destination"`
+	Code        string             `json:"code"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+}
+
 type OtpVerification struct {
 	ID           pgtype.UUID        `json:"id"`
 	Destination  string             `json:"destination"`
