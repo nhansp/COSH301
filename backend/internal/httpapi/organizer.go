@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"eventticketing/internal/service"
 	"eventticketing/internal/store"
 )
@@ -62,8 +64,59 @@ func (h *OrganizerHandler) HandleUpdateZonePricing(w http.ResponseWriter, r *htt
 	writeJSON(w, http.StatusOK, updated)
 }
 
+// HandleGetEvent handles GET /api/organizer/events/{id}.
+func (h *OrganizerHandler) HandleGetEvent(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	eventID, ok := h.authorizedEvent(w, r, sess)
+	if !ok {
+		return
+	}
+	event, err := h.organizer.GetEvent(r.Context(), eventID)
+	if err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, event)
+}
+
+// HandleUpdateEvent handles PUT /api/organizer/events/{id}.
+func (h *OrganizerHandler) HandleUpdateEvent(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	eventID, ok := h.authorizedEvent(w, r, sess)
+	if !ok {
+		return
+	}
+	var in service.EventInfo
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_payload")
+		return
+	}
+	event, err := h.organizer.UpdateEvent(r.Context(), eventID, sess.UserID, in)
+	if err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, event)
+}
+
+func (h *OrganizerHandler) authorizedEvent(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) (pgtype.UUID, bool) {
+	eventID, err := h.events.ResolveEventID(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, service.ErrEventNotFound.Error())
+		return eventID, false
+	}
+	if err := h.organizer.AuthorizeEvent(r.Context(), eventID, sess.UserID, sess.Role == store.UserRoleADMIN); err != nil {
+		h.writeErr(w, r, err)
+		return eventID, false
+	}
+	return eventID, true
+}
+
 func (h *OrganizerHandler) writeErr(w http.ResponseWriter, r *http.Request, err error) {
+	var field *service.FieldError
 	switch {
+	case errors.As(err, &field):
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_event_field", "field": field.Field})
+	case errors.Is(err, service.ErrVenueShared):
+		writeError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, service.ErrEventNotFound), errors.Is(err, service.ErrZoneNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, service.ErrNotEventOrganizer):

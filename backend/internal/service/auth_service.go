@@ -48,10 +48,18 @@ var (
 type AuthService struct {
 	queries *store.Queries
 	cfg     *config.Config
+	// demoStaff holds the normalized destinations of cfg.OTPDemoStaff.
+	demoStaff map[string]bool
 }
 
 func NewAuthService(queries *store.Queries, cfg *config.Config) *AuthService {
-	return &AuthService{queries: queries, cfg: cfg}
+	demoStaff := make(map[string]bool, len(cfg.OTPDemoStaff))
+	for _, d := range cfg.OTPDemoStaff {
+		if dest, _, err := NormalizeDestination(d); err == nil {
+			demoStaff[dest] = true
+		}
+	}
+	return &AuthService{queries: queries, cfg: cfg, demoStaff: demoStaff}
 }
 
 // HashString computes a sha256 hex digest.
@@ -146,7 +154,7 @@ func (s *AuthService) RequestOTP(ctx context.Context, destination string) (*OTPI
 	}
 
 	issue := &OTPIssue{Destination: dest}
-	if s.cfg.OTPDemo && !isStaff {
+	if s.cfg.OTPDemo && (!isStaff || s.demoStaff[dest]) {
 		issue.DemoCode = code
 	} else {
 		// No SMS or email provider is configured yet; the operator relays the code.

@@ -44,6 +44,11 @@ func (h *StreamHandler) HandleEventStream(w http.ResponseWriter, r *http.Request
 	}
 	eventID := store.UUIDToString(uid)
 
+	serveSSE(w, r, flusher, h.hub, eventID, eventID)
+}
+
+// serveSSE streams topic's messages to the client until it disconnects.
+func serveSSE(w http.ResponseWriter, r *http.Request, flusher http.Flusher, hub *service.RealtimeHub, topic, eventID string) {
 	// SSE Headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -56,8 +61,8 @@ func (h *StreamHandler) HandleEventStream(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ch := h.hub.Subscribe(eventID)
-	defer h.hub.Unsubscribe(eventID, ch)
+	ch := hub.Subscribe(topic)
+	defer hub.Unsubscribe(topic, ch)
 
 	// Send initial connection event
 	fmt.Fprintf(w, "event: connected\ndata: {\"status\":\"subscribed\",\"eventId\":\"%s\"}\n\n", eventID)

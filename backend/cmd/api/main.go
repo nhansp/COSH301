@@ -12,6 +12,7 @@ import (
 
 	"eventticketing/internal/config"
 	"eventticketing/internal/httpapi"
+	"eventticketing/internal/pricing"
 	"eventticketing/internal/service"
 	"eventticketing/internal/store"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -52,10 +53,16 @@ func main() {
 	organizerService := service.NewOrganizerService(dbPool, queries)
 	realtimeHub := service.NewRealtimeHub(dbPool)
 	holdReaper := service.NewHoldReaper(seatService, 5*time.Second)
+	recommendationService := service.NewRecommendationService(queries)
+	pricingEngine := service.NewDynamicPricingEngine(dbPool, queries, pricing.Default(), recommendationService,
+		cfg.Features.IsEnabled(config.FlagPayments), cfg.PricingInterval)
 
 	// Start background workers
 	realtimeHub.StartListener(ctx)
 	holdReaper.Start(ctx)
+	if cfg.Features.IsEnabled(config.FlagDynamicPricing) {
+		pricingEngine.Start(ctx)
+	}
 
 	router := httpapi.NewRouter(httpapi.RouterDependencies{
 		Config:       cfg,
@@ -67,6 +74,8 @@ func main() {
 		RealtimeHub:  realtimeHub,
 		Organizer:    organizerService,
 		Tickets:      service.NewTicketService(dbPool, queries),
+		Pricing:      pricingEngine,
+		Recommend:    recommendationService,
 	})
 
 	server := &http.Server{

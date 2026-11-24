@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,6 +12,18 @@ import (
 )
 
 type ClientChannel chan []byte
+
+// TopicFor routes a message: pricing messages go to the organizer's pricing
+// topic, everything else to the event's public seat stream.
+func TopicFor(msg SeatUpdateMessage) string {
+	if strings.HasPrefix(msg.Type, "pricing_") {
+		return PricingTopic(msg.EventID)
+	}
+	return msg.EventID
+}
+
+// PricingTopic is the organizer-only topic of an event.
+func PricingTopic(eventID string) string { return "pricing:" + eventID }
 
 type RealtimeHub struct {
 	dbPool    *pgxpool.Pool
@@ -109,7 +122,7 @@ func (h *RealtimeHub) listen(ctx context.Context) error {
 		}
 		var msg SeatUpdateMessage
 		if err := json.Unmarshal([]byte(n.Payload), &msg); err == nil && msg.EventID != "" {
-			h.Broadcast(msg.EventID, []byte(n.Payload))
+			h.Broadcast(TopicFor(msg), []byte(n.Payload))
 		}
 	}
 }

@@ -15,6 +15,7 @@ type Querier interface {
 	// and returns it, so concurrent guesses cannot exceed the attempt limit.
 	ConsumeOTPAttempt(ctx context.Context, arg ConsumeOTPAttemptParams) (OtpVerification, error)
 	CountRecentOTPs(ctx context.Context, arg CountRecentOTPsParams) (CountRecentOTPsRow, error)
+	CountUnreadPricingAlerts(ctx context.Context, eventID pgtype.UUID) (int64, error)
 	CountUserHeldAndBoughtTickets(ctx context.Context, arg CountUserHeldAndBoughtTicketsParams) (int32, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerification, error)
@@ -25,46 +26,98 @@ type Querier interface {
 	DeleteUserSessions(ctx context.Context, userID pgtype.UUID) error
 	EventExists(ctx context.Context, id pgtype.UUID) (bool, error)
 	EventSeatExists(ctx context.Context, arg EventSeatExistsParams) (bool, error)
+	ExpireEventPendingSuggestions(ctx context.Context, eventID pgtype.UUID) error
+	ExpirePendingSuggestion(ctx context.Context, arg ExpirePendingSuggestionParams) error
 	ExpireStaleSeatHolds(ctx context.Context) ([]ExpireStaleSeatHoldsRow, error)
 	// FindOwnedEventSeats resolves a seat reference (UUID or label) among the seats
 	// of an event that the user currently holds or has a ticket for.
 	FindOwnedEventSeats(ctx context.Context, arg FindOwnedEventSeatsParams) ([]FindOwnedEventSeatsRow, error)
 	GetEventByID(ctx context.Context, id pgtype.UUID) (GetEventByIDRow, error)
 	GetEventBySlug(ctx context.Context, slug string) (GetEventBySlugRow, error)
+	// Interest the recommendation data shows for one event, and the platform-wide
+	// view-to-hold rate the pricing engine compares it with.
+	GetEventInterest(ctx context.Context, eventID pgtype.UUID) (GetEventInterestRow, error)
 	GetEventOrganizer(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
+	// Sales open at sales_starts_at (or when the event was created) and close at
+	// sales_ends_at (or when the show starts).
+	GetEventPricingContext(ctx context.Context, id pgtype.UUID) (GetEventPricingContextRow, error)
 	GetEventSaleState(ctx context.Context, id pgtype.UUID) (GetEventSaleStateRow, error)
 	GetEventSeatMap(ctx context.Context, eventID pgtype.UUID) ([]GetEventSeatMapRow, error)
 	GetEventZoneForUpdate(ctx context.Context, arg GetEventZoneForUpdateParams) (EventZone, error)
+	// One event with its venue; venue_events counts the events sharing that venue.
+	GetOrganizerEvent(ctx context.Context, id pgtype.UUID) (GetOrganizerEventRow, error)
+	GetPendingSuggestion(ctx context.Context, arg GetPendingSuggestionParams) (PriceSuggestion, error)
+	GetPriceSuggestion(ctx context.Context, id pgtype.UUID) (PriceSuggestion, error)
+	GetPriceSuggestionForUpdate(ctx context.Context, id pgtype.UUID) (PriceSuggestion, error)
+	GetPricingAlertEvent(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (GetSessionByTokenHashRow, error)
 	GetUserByEmail(ctx context.Context, email pgtype.Text) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByPhone(ctx context.Context, phone pgtype.Text) (User, error)
+	// Median price of the seats a user has held or bought.
+	GetUserTypicalPrice(ctx context.Context, userID pgtype.UUID) (GetUserTypicalPriceRow, error)
+	IncludeAllZones(ctx context.Context, eventID pgtype.UUID) error
 	InsertPriceChange(ctx context.Context, arg InsertPriceChangeParams) error
+	// Skips the alert when the same kind was raised for the zone within dedupe_minutes.
+	InsertPricingAlert(ctx context.Context, arg InsertPricingAlertParams) (PricingAlert, error)
 	ListActiveHoldsForUser(ctx context.Context, arg ListActiveHoldsForUserParams) ([]ListActiveHoldsForUserRow, error)
 	ListAuditLogsByEvent(ctx context.Context, arg ListAuditLogsByEventParams) ([]AuditLog, error)
 	ListAuditLogsByUser(ctx context.Context, arg ListAuditLogsByUserParams) ([]AuditLog, error)
+	ListCandidateZones(ctx context.Context) ([]ListCandidateZonesRow, error)
+	// Events the pricing job analyzes: dynamic pricing on, on sale, sales still open.
+	ListDynamicPricingEvents(ctx context.Context) ([]pgtype.UUID, error)
+	ListEventZoneInventory(ctx context.Context, eventID pgtype.UUID) ([]ListEventZoneInventoryRow, error)
 	ListEventZonesWithPrices(ctx context.Context, eventID pgtype.UUID) ([]ListEventZonesWithPricesRow, error)
+	// Holds, tickets and views of an event per hour over the last 48 hours.
+	ListHourlyDemand(ctx context.Context, eventID pgtype.UUID) ([]ListHourlyDemandRow, error)
 	ListMyActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ListMyActiveHoldsRow, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]ListOrganizerEventsRow, error)
+	ListPendingPriceSuggestions(ctx context.Context, eventID pgtype.UUID) ([]ListPendingPriceSuggestionsRow, error)
+	ListPriceHistory(ctx context.Context, arg ListPriceHistoryParams) ([]ListPriceHistoryRow, error)
+	ListPricingAlerts(ctx context.Context, arg ListPricingAlertsParams) ([]ListPricingAlertsRow, error)
 	ListPublishedEvents(ctx context.Context) ([]ListPublishedEventsRow, error)
+	// Events on sale with their interest over the last 7 days.
+	ListRecommendationCandidates(ctx context.Context) ([]ListRecommendationCandidatesRow, error)
 	ListStaffAuditLogs(ctx context.Context, arg ListStaffAuditLogsParams) ([]ListStaffAuditLogsRow, error)
 	// Cancellations recorded before the user's latest demo reset are hidden.
 	ListUserCancelledTickets(ctx context.Context, actorUserID pgtype.UUID) ([]ListUserCancelledTicketsRow, error)
+	ListUserPurchasedEvents(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error)
+	// A user's interactions over 180 days, weighted view 1, hold 2, ticket 3,
+	// and decayed with a 30-day half-life (43.28 = 30 / ln 2).
+	ListUserTaste(ctx context.Context, userID pgtype.UUID) ([]ListUserTasteRow, error)
+	// Inventory, demand counts and the last price move of every zone of an event.
+	// list_price is the zone's price before its first logged change.
+	ListZoneDemand(ctx context.Context, eventID pgtype.UUID) ([]ListZoneDemandRow, error)
+	LockEvent(ctx context.Context, id pgtype.UUID) (Event, error)
+	LockEventZones(ctx context.Context, eventID pgtype.UUID) ([]LockEventZonesRow, error)
 	LockUserEventAdvisory(ctx context.Context, arg LockUserEventAdvisoryParams) error
+	MarkEventPricingAlertsRead(ctx context.Context, eventID pgtype.UUID) error
 	MarkOTPVerified(ctx context.Context, id pgtype.UUID) (int64, error)
+	MarkPricingAlertRead(ctx context.Context, id pgtype.UUID) error
 	NotifyChannel(ctx context.Context, arg NotifyChannelParams) error
+	// One view per user and event per 30 minutes, so reloads do not inflate interest.
+	RecordEventView(ctx context.Context, arg RecordEventViewParams) error
 	ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) (SeatHold, error)
 	ReleaseUserActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ReleaseUserActiveHoldsRow, error)
 	RepriceAvailableZoneSeats(ctx context.Context, arg RepriceAvailableZoneSeatsParams) (int64, error)
 	ResetCancelledSeat(ctx context.Context, arg ResetCancelledSeatParams) error
 	// A seat that returns to sale takes the zone's current base price.
 	ResetSeatToAvailable(ctx context.Context, arg ResetSeatToAvailableParams) error
+	ReviewPriceSuggestion(ctx context.Context, arg ReviewPriceSuggestionParams) error
 	SetEmailVerified(ctx context.Context, id pgtype.UUID) error
+	SetEventZoneBasePrice(ctx context.Context, arg SetEventZoneBasePriceParams) error
 	SetPhoneVerified(ctx context.Context, id pgtype.UUID) error
+	SetZoneIncluded(ctx context.Context, arg SetZoneIncludedParams) error
 	TryLockSeat(ctx context.Context, arg TryLockSeatParams) (EventSeat, error)
 	TryStealExpiredSeatHold(ctx context.Context, arg TryStealExpiredSeatHoldParams) (EventSeat, error)
+	UpdateEventInfo(ctx context.Context, arg UpdateEventInfoParams) error
+	// Saving the bounds is the organizer's approval of them for automatic pricing.
 	UpdateEventZonePricing(ctx context.Context, arg UpdateEventZonePricingParams) (EventZone, error)
 	UpdateUserLastLogin(ctx context.Context, id pgtype.UUID) error
+	UpdateVenueInfo(ctx context.Context, arg UpdateVenueInfoParams) error
+	UpsertPendingPriceSuggestion(ctx context.Context, arg UpsertPendingPriceSuggestionParams) (PriceSuggestion, error)
+	UpsertPricingSettings(ctx context.Context, arg UpsertPricingSettingsParams) (EventPricingSetting, error)
+	UpsertZoneDemandState(ctx context.Context, arg UpsertZoneDemandStateParams) error
 	VoidUserSeatTicket(ctx context.Context, arg VoidUserSeatTicketParams) (int64, error)
 }
 

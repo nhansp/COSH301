@@ -27,6 +27,8 @@ services:
       FEATURE_PROFILE: ${FEATURE_PROFILE:-sprint2}
       APP_ENV: ${APP_ENV:-development}
       OTP_DEMO: ${OTP_DEMO:-false}
+      # Staff accounts (comma-separated) whose demo login codes are shown on screen too.
+      OTP_DEMO_STAFF: ${OTP_DEMO_STAFF:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
     depends_on:
       db:

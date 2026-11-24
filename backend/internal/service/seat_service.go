@@ -31,10 +31,11 @@ const (
 const SeatNotificationChannel = "event_seats_channel"
 
 type SeatUpdateMessage struct {
-	Type      string    `json:"type"` // "seat_held", "seat_released", "seat_expired"
+	Type      string    `json:"type"` // "seat_held", "seat_released", "seat_expired", "zone_repriced"
 	EventID   string    `json:"eventId"`
-	SeatID    string    `json:"seatId"`
-	Status    string    `json:"status"` // "AVAILABLE", "HELD", "SOLD"
+	SeatID    string    `json:"seatId,omitempty"`
+	ZoneID    string    `json:"zoneId,omitempty"`
+	Status    string    `json:"status,omitempty"` // "AVAILABLE", "HELD", "SOLD"
 	Timestamp time.Time `json:"timestamp"`
 }
 

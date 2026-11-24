@@ -23,7 +23,7 @@ func (q *Queries) GetEventOrganizer(ctx context.Context, id pgtype.UUID) (pgtype
 }
 
 const getEventZoneForUpdate = `-- name: GetEventZoneForUpdate :one
-SELECT id, event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled, created_at, updated_at FROM event_zones
+SELECT id, event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled, created_at, updated_at, bounds_approved_at, bounds_approved_by FROM event_zones
 WHERE event_id = $1 AND zone_id = $2
 FOR UPDATE
 `
@@ -46,13 +46,81 @@ func (q *Queries) GetEventZoneForUpdate(ctx context.Context, arg GetEventZoneFor
 		&i.IsDynamicPricingEnabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BoundsApprovedAt,
+		&i.BoundsApprovedBy,
+	)
+	return i, err
+}
+
+const getOrganizerEvent = `-- name: GetOrganizerEvent :one
+SELECT e.id, e.organizer_id, e.venue_id, e.name, e.slug, e.description, e.genre, e.image_url, e.city, e.starts_at, e.ends_at, e.sales_starts_at, e.sales_ends_at, e.status, e.max_tickets_per_user, e.waiting_room_enabled, e.waiting_room_capacity, e.created_at, e.updated_at, e.image_credit, v.name AS venue_name, v.address AS venue_address,
+       (SELECT count(*) FROM events o WHERE o.venue_id = e.venue_id)::bigint AS venue_events
+FROM events e
+JOIN venues v ON v.id = e.venue_id
+WHERE e.id = $1
+`
+
+type GetOrganizerEventRow struct {
+	ID                  pgtype.UUID        `json:"id"`
+	OrganizerID         pgtype.UUID        `json:"organizer_id"`
+	VenueID             pgtype.UUID        `json:"venue_id"`
+	Name                string             `json:"name"`
+	Slug                string             `json:"slug"`
+	Description         pgtype.Text        `json:"description"`
+	Genre               pgtype.Text        `json:"genre"`
+	ImageUrl            pgtype.Text        `json:"image_url"`
+	City                pgtype.Text        `json:"city"`
+	StartsAt            pgtype.Timestamptz `json:"starts_at"`
+	EndsAt              pgtype.Timestamptz `json:"ends_at"`
+	SalesStartsAt       pgtype.Timestamptz `json:"sales_starts_at"`
+	SalesEndsAt         pgtype.Timestamptz `json:"sales_ends_at"`
+	Status              EventStatus        `json:"status"`
+	MaxTicketsPerUser   int32              `json:"max_tickets_per_user"`
+	WaitingRoomEnabled  bool               `json:"waiting_room_enabled"`
+	WaitingRoomCapacity int32              `json:"waiting_room_capacity"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	ImageCredit         pgtype.Text        `json:"image_credit"`
+	VenueName           string             `json:"venue_name"`
+	VenueAddress        pgtype.Text        `json:"venue_address"`
+	VenueEvents         int64              `json:"venue_events"`
+}
+
+// One event with its venue; venue_events counts the events sharing that venue.
+func (q *Queries) GetOrganizerEvent(ctx context.Context, id pgtype.UUID) (GetOrganizerEventRow, error) {
+	row := q.db.QueryRow(ctx, getOrganizerEvent, id)
+	var i GetOrganizerEventRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizerID,
+		&i.VenueID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.Genre,
+		&i.ImageUrl,
+		&i.City,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.SalesStartsAt,
+		&i.SalesEndsAt,
+		&i.Status,
+		&i.MaxTicketsPerUser,
+		&i.WaitingRoomEnabled,
+		&i.WaitingRoomCapacity,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ImageCredit,
+		&i.VenueName,
+		&i.VenueAddress,
+		&i.VenueEvents,
 	)
 	return i, err
 }
 
 const insertPriceChange = `-- name: InsertPriceChange :exec
-INSERT INTO price_changes (event_id, zone_id, old_price, new_price, changed_by, reason)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO price_changes (event_id, zone_id, old_price, new_price, changed_by, reason, details)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertPriceChangeParams struct {
@@ -62,6 +130,7 @@ type InsertPriceChangeParams struct {
 	NewPrice  pgtype.Numeric `json:"new_price"`
 	ChangedBy pgtype.UUID    `json:"changed_by"`
 	Reason    string         `json:"reason"`
+	Details   pgtype.Text    `json:"details"`
 }
 
 func (q *Queries) InsertPriceChange(ctx context.Context, arg InsertPriceChangeParams) error {
@@ -72,14 +141,97 @@ func (q *Queries) InsertPriceChange(ctx context.Context, arg InsertPriceChangePa
 		arg.NewPrice,
 		arg.ChangedBy,
 		arg.Reason,
+		arg.Details,
 	)
 	return err
 }
 
+const listEventZoneInventory = `-- name: ListEventZoneInventory :many
+SELECT ez.zone_id, vz.code AS zone_code, vz.name AS zone_name, vz.floor,
+       ez.base_price, ez.floor_price, ez.ceiling_price, ez.is_dynamic_pricing_enabled,
+       inv.capacity::bigint AS capacity,
+       inv.available::bigint AS available,
+       inv.held::bigint AS held,
+       inv.sold::bigint AS sold
+FROM event_zones ez
+JOIN venue_zones vz ON vz.id = ez.zone_id
+CROSS JOIN LATERAL (
+    SELECT count(*) AS capacity,
+           count(*) FILTER (WHERE es.status = 'AVAILABLE') AS available,
+           count(*) FILTER (WHERE es.status = 'HELD') AS held,
+           count(*) FILTER (WHERE es.status = 'SOLD') AS sold
+    FROM event_seats es JOIN seats s ON s.id = es.seat_id
+    WHERE es.event_id = ez.event_id AND s.zone_id = ez.zone_id
+) inv
+WHERE ez.event_id = $1
+ORDER BY ez.base_price DESC
+`
+
+type ListEventZoneInventoryRow struct {
+	ZoneID                  pgtype.UUID    `json:"zone_id"`
+	ZoneCode                string         `json:"zone_code"`
+	ZoneName                string         `json:"zone_name"`
+	Floor                   pgtype.Text    `json:"floor"`
+	BasePrice               pgtype.Numeric `json:"base_price"`
+	FloorPrice              pgtype.Numeric `json:"floor_price"`
+	CeilingPrice            pgtype.Numeric `json:"ceiling_price"`
+	IsDynamicPricingEnabled bool           `json:"is_dynamic_pricing_enabled"`
+	Capacity                int64          `json:"capacity"`
+	Available               int64          `json:"available"`
+	Held                    int64          `json:"held"`
+	Sold                    int64          `json:"sold"`
+}
+
+func (q *Queries) ListEventZoneInventory(ctx context.Context, eventID pgtype.UUID) ([]ListEventZoneInventoryRow, error) {
+	rows, err := q.db.Query(ctx, listEventZoneInventory, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEventZoneInventoryRow
+	for rows.Next() {
+		var i ListEventZoneInventoryRow
+		if err := rows.Scan(
+			&i.ZoneID,
+			&i.ZoneCode,
+			&i.ZoneName,
+			&i.Floor,
+			&i.BasePrice,
+			&i.FloorPrice,
+			&i.CeilingPrice,
+			&i.IsDynamicPricingEnabled,
+			&i.Capacity,
+			&i.Available,
+			&i.Held,
+			&i.Sold,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOrganizerEvents = `-- name: ListOrganizerEvents :many
-SELECT e.id, e.name, e.slug, e.status, e.starts_at, e.image_url, v.name AS venue_name
+SELECT e.id, e.name, e.slug, e.status, e.starts_at, e.ends_at, e.image_url, e.genre, e.city,
+       v.name AS venue_name, v.address AS venue_address,
+       (SELECT count(*) FROM pricing_alerts a WHERE a.event_id = e.id AND a.read_at IS NULL)::bigint AS unread_alerts,
+       inv.capacity::bigint AS capacity,
+       inv.available::bigint AS available,
+       inv.held::bigint AS held,
+       inv.sold::bigint AS sold
 FROM events e
 JOIN venues v ON e.venue_id = v.id
+CROSS JOIN LATERAL (
+    SELECT count(*) AS capacity,
+           count(*) FILTER (WHERE es.status = 'AVAILABLE') AS available,
+           count(*) FILTER (WHERE es.status = 'HELD') AS held,
+           count(*) FILTER (WHERE es.status = 'SOLD') AS sold
+    FROM event_seats es WHERE es.event_id = e.id
+) inv
 WHERE $1::bool OR e.organizer_id = $2
 ORDER BY e.starts_at
 `
@@ -90,13 +242,22 @@ type ListOrganizerEventsParams struct {
 }
 
 type ListOrganizerEventsRow struct {
-	ID        pgtype.UUID        `json:"id"`
-	Name      string             `json:"name"`
-	Slug      string             `json:"slug"`
-	Status    EventStatus        `json:"status"`
-	StartsAt  pgtype.Timestamptz `json:"starts_at"`
-	ImageUrl  pgtype.Text        `json:"image_url"`
-	VenueName string             `json:"venue_name"`
+	ID           pgtype.UUID        `json:"id"`
+	Name         string             `json:"name"`
+	Slug         string             `json:"slug"`
+	Status       EventStatus        `json:"status"`
+	StartsAt     pgtype.Timestamptz `json:"starts_at"`
+	EndsAt       pgtype.Timestamptz `json:"ends_at"`
+	ImageUrl     pgtype.Text        `json:"image_url"`
+	Genre        pgtype.Text        `json:"genre"`
+	City         pgtype.Text        `json:"city"`
+	VenueName    string             `json:"venue_name"`
+	VenueAddress pgtype.Text        `json:"venue_address"`
+	UnreadAlerts int64              `json:"unread_alerts"`
+	Capacity     int64              `json:"capacity"`
+	Available    int64              `json:"available"`
+	Held         int64              `json:"held"`
+	Sold         int64              `json:"sold"`
 }
 
 func (q *Queries) ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]ListOrganizerEventsRow, error) {
@@ -114,8 +275,17 @@ func (q *Queries) ListOrganizerEvents(ctx context.Context, arg ListOrganizerEven
 			&i.Slug,
 			&i.Status,
 			&i.StartsAt,
+			&i.EndsAt,
 			&i.ImageUrl,
+			&i.Genre,
+			&i.City,
 			&i.VenueName,
+			&i.VenueAddress,
+			&i.UnreadAlerts,
+			&i.Capacity,
+			&i.Available,
+			&i.Held,
+			&i.Sold,
 		); err != nil {
 			return nil, err
 		}
@@ -125,6 +295,38 @@ func (q *Queries) ListOrganizerEvents(ctx context.Context, arg ListOrganizerEven
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockEvent = `-- name: LockEvent :one
+SELECT id, organizer_id, venue_id, name, slug, description, genre, image_url, city, starts_at, ends_at, sales_starts_at, sales_ends_at, status, max_tickets_per_user, waiting_room_enabled, waiting_room_capacity, created_at, updated_at, image_credit FROM events WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockEvent(ctx context.Context, id pgtype.UUID) (Event, error) {
+	row := q.db.QueryRow(ctx, lockEvent, id)
+	var i Event
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizerID,
+		&i.VenueID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.Genre,
+		&i.ImageUrl,
+		&i.City,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.SalesStartsAt,
+		&i.SalesEndsAt,
+		&i.Status,
+		&i.MaxTicketsPerUser,
+		&i.WaitingRoomEnabled,
+		&i.WaitingRoomCapacity,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ImageCredit,
+	)
+	return i, err
 }
 
 const repriceAvailableZoneSeats = `-- name: RepriceAvailableZoneSeats :execrows
@@ -151,21 +353,83 @@ func (q *Queries) RepriceAvailableZoneSeats(ctx context.Context, arg RepriceAvai
 	return result.RowsAffected(), nil
 }
 
+const setEventZoneBasePrice = `-- name: SetEventZoneBasePrice :exec
+UPDATE event_zones SET base_price = $3, updated_at = now()
+WHERE event_id = $1 AND zone_id = $2
+`
+
+type SetEventZoneBasePriceParams struct {
+	EventID   pgtype.UUID    `json:"event_id"`
+	ZoneID    pgtype.UUID    `json:"zone_id"`
+	BasePrice pgtype.Numeric `json:"base_price"`
+}
+
+func (q *Queries) SetEventZoneBasePrice(ctx context.Context, arg SetEventZoneBasePriceParams) error {
+	_, err := q.db.Exec(ctx, setEventZoneBasePrice, arg.EventID, arg.ZoneID, arg.BasePrice)
+	return err
+}
+
+const updateEventInfo = `-- name: UpdateEventInfo :exec
+UPDATE events
+SET name = $2, description = $3, genre = $4, image_url = $5, image_credit = $6, city = $7,
+    starts_at = $8, ends_at = $9, sales_starts_at = $10, sales_ends_at = $11,
+    status = $12, max_tickets_per_user = $13, updated_at = now()
+WHERE id = $1
+`
+
+type UpdateEventInfoParams struct {
+	ID                pgtype.UUID        `json:"id"`
+	Name              string             `json:"name"`
+	Description       pgtype.Text        `json:"description"`
+	Genre             pgtype.Text        `json:"genre"`
+	ImageUrl          pgtype.Text        `json:"image_url"`
+	ImageCredit       pgtype.Text        `json:"image_credit"`
+	City              pgtype.Text        `json:"city"`
+	StartsAt          pgtype.Timestamptz `json:"starts_at"`
+	EndsAt            pgtype.Timestamptz `json:"ends_at"`
+	SalesStartsAt     pgtype.Timestamptz `json:"sales_starts_at"`
+	SalesEndsAt       pgtype.Timestamptz `json:"sales_ends_at"`
+	Status            EventStatus        `json:"status"`
+	MaxTicketsPerUser int32              `json:"max_tickets_per_user"`
+}
+
+func (q *Queries) UpdateEventInfo(ctx context.Context, arg UpdateEventInfoParams) error {
+	_, err := q.db.Exec(ctx, updateEventInfo,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Genre,
+		arg.ImageUrl,
+		arg.ImageCredit,
+		arg.City,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.SalesStartsAt,
+		arg.SalesEndsAt,
+		arg.Status,
+		arg.MaxTicketsPerUser,
+	)
+	return err
+}
+
 const updateEventZonePricing = `-- name: UpdateEventZonePricing :one
 UPDATE event_zones
-SET base_price = $3, floor_price = $4, ceiling_price = $5, updated_at = now()
+SET base_price = $3, floor_price = $4, ceiling_price = $5,
+    bounds_approved_at = now(), bounds_approved_by = $6, updated_at = now()
 WHERE event_id = $1 AND zone_id = $2
-RETURNING id, event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled, created_at, updated_at
+RETURNING id, event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled, created_at, updated_at, bounds_approved_at, bounds_approved_by
 `
 
 type UpdateEventZonePricingParams struct {
-	EventID      pgtype.UUID    `json:"event_id"`
-	ZoneID       pgtype.UUID    `json:"zone_id"`
-	BasePrice    pgtype.Numeric `json:"base_price"`
-	FloorPrice   pgtype.Numeric `json:"floor_price"`
-	CeilingPrice pgtype.Numeric `json:"ceiling_price"`
+	EventID          pgtype.UUID    `json:"event_id"`
+	ZoneID           pgtype.UUID    `json:"zone_id"`
+	BasePrice        pgtype.Numeric `json:"base_price"`
+	FloorPrice       pgtype.Numeric `json:"floor_price"`
+	CeilingPrice     pgtype.Numeric `json:"ceiling_price"`
+	BoundsApprovedBy pgtype.UUID    `json:"bounds_approved_by"`
 }
 
+// Saving the bounds is the organizer's approval of them for automatic pricing.
 func (q *Queries) UpdateEventZonePricing(ctx context.Context, arg UpdateEventZonePricingParams) (EventZone, error) {
 	row := q.db.QueryRow(ctx, updateEventZonePricing,
 		arg.EventID,
@@ -173,6 +437,7 @@ func (q *Queries) UpdateEventZonePricing(ctx context.Context, arg UpdateEventZon
 		arg.BasePrice,
 		arg.FloorPrice,
 		arg.CeilingPrice,
+		arg.BoundsApprovedBy,
 	)
 	var i EventZone
 	err := row.Scan(
@@ -185,6 +450,23 @@ func (q *Queries) UpdateEventZonePricing(ctx context.Context, arg UpdateEventZon
 		&i.IsDynamicPricingEnabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BoundsApprovedAt,
+		&i.BoundsApprovedBy,
 	)
 	return i, err
+}
+
+const updateVenueInfo = `-- name: UpdateVenueInfo :exec
+UPDATE venues SET name = $2, address = $3 WHERE id = $1
+`
+
+type UpdateVenueInfoParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Name    string      `json:"name"`
+	Address pgtype.Text `json:"address"`
+}
+
+func (q *Queries) UpdateVenueInfo(ctx context.Context, arg UpdateVenueInfoParams) error {
+	_, err := q.db.Exec(ctx, updateVenueInfo, arg.ID, arg.Name, arg.Address)
+	return err
 }

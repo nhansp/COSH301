@@ -153,7 +153,7 @@ func (q *Queries) GetEventBySlug(ctx context.Context, slug string) (GetEventBySl
 }
 
 const listEventZonesWithPrices = `-- name: ListEventZonesWithPrices :many
-SELECT ez.id, ez.event_id, ez.zone_id, ez.base_price, ez.floor_price, ez.ceiling_price, ez.is_dynamic_pricing_enabled, ez.created_at, ez.updated_at, vz.code, vz.name AS zone_name, vz.floor, vz.capacity
+SELECT ez.id, ez.event_id, ez.zone_id, ez.base_price, ez.floor_price, ez.ceiling_price, ez.is_dynamic_pricing_enabled, ez.created_at, ez.updated_at, ez.bounds_approved_at, ez.bounds_approved_by, vz.code, vz.name AS zone_name, vz.floor, vz.capacity
 FROM event_zones ez
 JOIN venue_zones vz ON ez.zone_id = vz.id
 WHERE ez.event_id = $1
@@ -170,6 +170,8 @@ type ListEventZonesWithPricesRow struct {
 	IsDynamicPricingEnabled bool               `json:"is_dynamic_pricing_enabled"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
+	BoundsApprovedAt        pgtype.Timestamptz `json:"bounds_approved_at"`
+	BoundsApprovedBy        pgtype.UUID        `json:"bounds_approved_by"`
 	Code                    string             `json:"code"`
 	ZoneName                string             `json:"zone_name"`
 	Floor                   pgtype.Text        `json:"floor"`
@@ -195,6 +197,8 @@ func (q *Queries) ListEventZonesWithPrices(ctx context.Context, eventID pgtype.U
 			&i.IsDynamicPricingEnabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.BoundsApprovedAt,
+			&i.BoundsApprovedBy,
 			&i.Code,
 			&i.ZoneName,
 			&i.Floor,

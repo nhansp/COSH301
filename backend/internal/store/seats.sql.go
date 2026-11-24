@@ -101,6 +101,7 @@ UPDATE event_seats
 SET status = 'AVAILABLE', current_price = (
         SELECT ez.base_price FROM event_zones ez JOIN seats z ON z.zone_id = ez.zone_id
         WHERE ez.event_id = event_seats.event_id AND z.id = event_seats.seat_id
+        FOR SHARE OF ez
     ),
     version = event_seats.version + 1, updated_at = now()
 FROM expired
@@ -404,6 +405,7 @@ UPDATE event_seats
 SET status = 'AVAILABLE', current_price = (
         SELECT ez.base_price FROM event_zones ez JOIN seats z ON z.zone_id = ez.zone_id
         WHERE ez.event_id = event_seats.event_id AND z.id = event_seats.seat_id
+        FOR SHARE OF ez
     ),
     version = version + 1, updated_at = now()
 WHERE event_seats.event_id = $1 AND event_seats.seat_id = $2 AND event_seats.status = 'HELD'
@@ -458,6 +460,7 @@ UPDATE event_seats
 SET status = 'HELD', current_price = (
         SELECT ez.base_price FROM event_zones ez JOIN seats z ON z.zone_id = ez.zone_id
         WHERE ez.event_id = event_seats.event_id AND z.id = event_seats.seat_id
+        FOR SHARE OF ez
     ),
     version = event_seats.version + 1, updated_at = now()
 WHERE event_seats.event_id = $1 AND event_seats.seat_id = $2 AND event_seats.status = 'HELD' AND EXISTS (SELECT 1 FROM expired_hold)

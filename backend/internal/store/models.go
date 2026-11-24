@@ -463,6 +463,16 @@ type Event struct {
 	ImageCredit         pgtype.Text        `json:"image_credit"`
 }
 
+type EventPricingSetting struct {
+	EventID         pgtype.UUID        `json:"event_id"`
+	Enabled         bool               `json:"enabled"`
+	AutoAdjust      bool               `json:"auto_adjust"`
+	MaxStepPct      int32              `json:"max_step_pct"`
+	CooldownMinutes int32              `json:"cooldown_minutes"`
+	UpdatedBy       pgtype.UUID        `json:"updated_by"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
 type EventSeat struct {
 	ID           pgtype.UUID        `json:"id"`
 	EventID      pgtype.UUID        `json:"event_id"`
@@ -471,6 +481,13 @@ type EventSeat struct {
 	CurrentPrice pgtype.Numeric     `json:"current_price"`
 	Version      int64              `json:"version"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type EventView struct {
+	ID       int64              `json:"id"`
+	EventID  pgtype.UUID        `json:"event_id"`
+	UserID   pgtype.UUID        `json:"user_id"`
+	ViewedAt pgtype.Timestamptz `json:"viewed_at"`
 }
 
 type EventZone struct {
@@ -483,6 +500,8 @@ type EventZone struct {
 	IsDynamicPricingEnabled bool               `json:"is_dynamic_pricing_enabled"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
+	BoundsApprovedAt        pgtype.Timestamptz `json:"bounds_approved_at"`
+	BoundsApprovedBy        pgtype.UUID        `json:"bounds_approved_by"`
 }
 
 type GateDevice struct {
@@ -555,6 +574,7 @@ type PriceChange struct {
 	ChangedBy pgtype.UUID        `json:"changed_by"`
 	Reason    string             `json:"reason"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Details   pgtype.Text        `json:"details"`
 }
 
 type PriceSuggestion struct {
@@ -569,6 +589,17 @@ type PriceSuggestion struct {
 	ReviewedBy     pgtype.UUID        `json:"reviewed_by"`
 	ReviewedAt     pgtype.Timestamptz `json:"reviewed_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type PricingAlert struct {
+	ID        pgtype.UUID        `json:"id"`
+	EventID   pgtype.UUID        `json:"event_id"`
+	ZoneID    pgtype.UUID        `json:"zone_id"`
+	Kind      string             `json:"kind"`
+	Message   string             `json:"message"`
+	Data      []byte             `json:"data"`
+	ReadAt    pgtype.Timestamptz `json:"read_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Promotion struct {
@@ -695,4 +726,11 @@ type VenueZone struct {
 	Floor     pgtype.Text        `json:"floor"`
 	Capacity  int32              `json:"capacity"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type ZoneDemandState struct {
+	EventID     pgtype.UUID        `json:"event_id"`
+	ZoneID      pgtype.UUID        `json:"zone_id"`
+	DemandIndex float64            `json:"demand_index"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }

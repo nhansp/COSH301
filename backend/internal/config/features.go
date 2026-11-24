@@ -27,6 +27,7 @@ const (
 	FlagReportsExport    = "reports_export"
 	FlagDynamicPricing   = "dynamic_pricing"
 	FlagPromoSuggestions = "promo_suggestions"
+	FlagRecommendations  = "recommendations"
 )
 
 var allFlags = []string{
@@ -49,6 +50,7 @@ var allFlags = []string{
 	FlagReportsExport,
 	FlagDynamicPricing,
 	FlagPromoSuggestions,
+	FlagRecommendations,
 }
 
 var sprint2Flags = map[string]bool{

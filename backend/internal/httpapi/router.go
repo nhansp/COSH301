@@ -20,6 +20,8 @@ type RouterDependencies struct {
 	RealtimeHub  *service.RealtimeHub
 	Organizer    *service.OrganizerService
 	Tickets      *service.TicketService
+	Pricing      *service.DynamicPricingEngine
+	Recommend    *service.RecommendationService
 }
 
 func NewRouter(deps RouterDependencies) http.Handler {
@@ -35,6 +37,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	seatHandler := NewSeatHandler(deps.SeatService, deps.AuthService, deps.EventService)
 	streamHandler := NewStreamHandler(deps.RealtimeHub, deps.EventService)
 	ticketHandler := NewTicketHandler(deps.Tickets, deps.EventService)
+	pricingHandler := NewPricingHandler(deps.Organizer, deps.EventService, deps.Pricing, deps.RealtimeHub)
+	recHandler := NewRecommendationHandler(deps.Recommend, deps.EventService, deps.AuthService)
 	anyRole := []store.UserRole{store.UserRoleCUSTOMER, store.UserRoleORGANIZER, store.UserRoleADMIN}
 
 	// 1. System Endpoints
@@ -67,8 +71,35 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	// 6. Organizer console (FR-08)
 	mux.HandleFunc("GET /api/organizer/events", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireRole(authHandler, organizerRoles, organizerHandler.HandleListEvents)))
+	mux.HandleFunc("GET /api/organizer/events/{id}", RequireFeature(fm, config.FlagOrganizerConsole,
+		RequireRole(authHandler, organizerRoles, organizerHandler.HandleGetEvent)))
+	mux.HandleFunc("PUT /api/organizer/events/{id}", RequireFeature(fm, config.FlagOrganizerConsole,
+		RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateEvent)))
 	mux.HandleFunc("PUT /api/organizer/events/{id}/zones/{zoneId}/pricing", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireFeature(fm, config.FlagZonePricing, RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateZonePricing))))
+
+	// 6b. Dynamic pricing (FR-22): the organizer's pricing dashboard.
+	pricingRoute := func(pattern string, handler func(http.ResponseWriter, *http.Request, *store.GetSessionByTokenHashRow)) {
+		mux.HandleFunc(pattern, RequireFeature(fm, config.FlagOrganizerConsole,
+			RequireFeature(fm, config.FlagDynamicPricing, RequireRole(authHandler, organizerRoles, handler))))
+	}
+	pricingRoute("GET /api/organizer/events/{id}/pricing", pricingHandler.HandleOverview)
+	pricingRoute("PUT /api/organizer/events/{id}/pricing/settings", pricingHandler.HandleUpdateSettings)
+	pricingRoute("POST /api/organizer/events/{id}/pricing/analyze", pricingHandler.HandleAnalyze)
+	pricingRoute("GET /api/organizer/events/{id}/pricing/history", pricingHandler.HandleHistory)
+	pricingRoute("GET /api/organizer/events/{id}/pricing/alerts", pricingHandler.HandleAlerts)
+	pricingRoute("POST /api/organizer/events/{id}/pricing/alerts/read", pricingHandler.HandleReadAllAlerts)
+	pricingRoute("POST /api/organizer/pricing/alerts/{id}/read", pricingHandler.HandleReadAlert)
+	pricingRoute("GET /api/organizer/events/{id}/pricing/stream", pricingHandler.HandleStream)
+	pricingRoute("GET /api/organizer/events/{id}/pricing/suggestions", pricingHandler.HandleListSuggestions)
+	pricingRoute("PUT /api/organizer/events/{id}/zones/{zoneId}/dynamic-pricing", pricingHandler.HandleSetZoneIncluded)
+	pricingRoute("POST /api/organizer/suggestions/{id}/approve", pricingHandler.HandleApproveSuggestion)
+	pricingRoute("POST /api/organizer/suggestions/{id}/reject", pricingHandler.HandleRejectSuggestion)
+
+	// 6c. Recommendations: personal picks, and the views they learn from.
+	mux.HandleFunc("GET /api/recommendations/events", RequireFeature(fm, config.FlagRecommendations, recHandler.HandleEvents))
+	mux.HandleFunc("POST /api/events/{id}/views", RequireFeature(fm, config.FlagRecommendations,
+		RequireRole(authHandler, anyRole, recHandler.HandleView)))
 
 	// 7. Tickets exist only once payment is on; audit logs belong to the organizer console.
 	mux.HandleFunc("POST /api/tickets/cancel", RequireFeature(fm, config.FlagPayments,
