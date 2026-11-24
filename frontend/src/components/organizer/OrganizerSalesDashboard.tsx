@@ -26,7 +26,6 @@ export const PortfolioSalesBanner: React.FC<PortfolioOverviewProps> = ({
   onSelectEvent
 }) => {
   const fillPct = Math.round(overview.fillRate * 100);
-  const maxPotential = Math.max(1, ...overview.events.map(e => e.potentialRevenue));
 
   return (
     <section aria-labelledby="sales-portfolio-heading" className="mb-8 space-y-4">
@@ -73,15 +72,11 @@ export const PortfolioSalesBanner: React.FC<PortfolioOverviewProps> = ({
             <div className="flex items-center gap-3 text-xs text-kumo-subtle">
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-kumo-success" />
-                Thực thu
+                Đã lấp đầy
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-seat-held" />
-                Đang giữ
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-violet/35" />
-                Tiềm năng còn lại
+                <span className="size-2 rounded-full bg-kumo-fill ring ring-kumo-line" />
+                Chưa lấp đầy
               </span>
             </div>
           </div>
@@ -89,10 +84,8 @@ export const PortfolioSalesBanner: React.FC<PortfolioOverviewProps> = ({
           <ul className="space-y-2.5">
             {overview.events.map(ev => {
               const active = ev.eventId === selectedEventId;
-              const barTotalPct = Math.max(8, (ev.potentialRevenue / maxPotential) * 100);
-              const soldShare = ev.potentialRevenue > 0 ? (ev.realizedRevenue / ev.potentialRevenue) * 100 : 0;
-              const heldShare = ev.potentialRevenue > 0 ? (ev.heldPipelineRevenue / ev.potentialRevenue) * 100 : 0;
-              const evFillPct = Math.round(ev.fillRate * 100);
+              const filledWidthPct = Math.min(100, Math.max(0, ev.fillRate * 100));
+              const evFillPct = Math.round(filledWidthPct);
 
               return (
                 <li key={ev.eventId}>
@@ -110,14 +103,13 @@ export const PortfolioSalesBanner: React.FC<PortfolioOverviewProps> = ({
                         <strong className="text-kumo-strong">{formatPriceShort(ev.potentialRevenue)}</strong>
                       </span>
                     </div>
-                    <div className="mt-1.5 h-2.5 w-full rounded-full bg-kumo-recessed">
-                      <div
-                        className="flex h-full overflow-hidden rounded-full bg-violet/30"
-                        style={{ width: `${barTotalPct}%` }}
-                      >
-                        {soldShare > 0 && <div className="bg-kumo-success" style={{ width: `${soldShare}%` }} />}
-                        {heldShare > 0 && <div className="bg-seat-held" style={{ width: `${heldShare}%` }} />}
-                      </div>
+                    <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-kumo-fill">
+                      {filledWidthPct > 0 && (
+                        <div
+                          className="h-full rounded-full bg-kumo-success transition-[width] duration-300"
+                          style={{ width: `${filledWidthPct}%` }}
+                        />
+                      )}
                     </div>
                   </button>
                 </li>
