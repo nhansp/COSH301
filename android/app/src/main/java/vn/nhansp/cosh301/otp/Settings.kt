@@ -32,3 +32,15 @@ object ServiceStatus {
         _text.value = value
     }
 }
+
+/** The newest login code and when it arrived, so the screen can show it next to the notification. */
+object LatestCode {
+    data class Code(val value: String, val receivedAt: Long)
+
+    private val _code = MutableStateFlow<Code?>(null)
+    val code: StateFlow<Code?> = _code
+
+    fun set(value: String) {
+        _code.value = Code(value, System.currentTimeMillis())
+    }
+}

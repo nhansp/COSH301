@@ -27,7 +27,7 @@ private const val CHANNEL_SERVICE = "listening"
 private const val CHANNEL_CODE = "codes"
 private const val ID_SERVICE = 1
 private const val ID_CODE = 2
-private const val CODE_TTL_MS = 5 * 60 * 1000L
+const val CODE_TTL_MS = 5 * 60 * 1000L
 private const val MIN_BACKOFF_MS = 2_000L
 private const val MAX_BACKOFF_MS = 30_000L
 
@@ -101,6 +101,7 @@ class OtpService : Service() {
     }
 
     private fun showCode(code: String) {
+        LatestCode.set(code)
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
