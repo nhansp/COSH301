@@ -1,20 +1,20 @@
-=== id=pricing-model layout=default speaker=dung time=50 kicker="Định giá động"
+=== id=pricing-model layout=default speaker=dung time=55 kicker="Định giá động"
 ## Định giá động: dữ liệu đầu vào và công thức
 |||
 ### Dữ liệu đầu vào (mỗi khu)
-- Tốc độ bán trong 15 phút gần nhất, so với tốc độ mục tiêu.
-- Tỉ lệ lấp đầy: số ghế đã bán trên tổng số ghế.
-- Giá hiện tại, giá sàn và giá trần do Ban Tổ chức đặt.
+- Tốc độ bán v: số ghế được giữ hoặc bán trong 15 phút gần nhất, so với tốc độ mục tiêu v*.
+- Số người trong phòng chờ Q.
+- Tỉ lệ ghế đang được giữ r.
 |||
 ### Cách tính (5 phút một lần)
-<div class="callout"><code>C = (v / v<sub>mục tiêu</sub>) × (1 + 0,5 × R)</code></div>
+<div class="callout"><code>α = 0,5·v/v* + 0,3·(1 + Q/500) + 0,2·(1 + r)</code><br><code>δ = 0,25·(α − 1)</code>, giới hạn ±20%</div>
 
-- Giá đề xuất thay đổi tối đa ±5% mỗi lần, làm tròn đến 10.000 đồng.
-- Luôn nằm trong khoảng giá sàn và giá trần.
+- Giá đề xuất bằng giá hiện tại nhân (1 + δ), làm tròn đến 10.000 đồng, nằm trong khoảng giá sàn – giá trần.
+- Lệch dưới 5% thì bỏ qua.
 - **Chỉ là đề xuất, Ban Tổ chức duyệt mới áp dụng (W-01).**
 NOTES:
-C là hệ số áp lực cầu: bán nhanh hơn mục tiêu và khu càng đầy thì C càng lớn, giá đề xuất tăng; bán chậm thì giảm. Ghế đang được giữ không đổi giá cho đến khi được trả lại.
-Lý do có người duyệt: người mua không biết trước giá có thể tăng, nên nhóm chọn cách có người duyệt, có biên độ và có nhật ký giá.
+α là chỉ số áp lực cầu. α lớn hơn 1 nghĩa là bán nhanh hơn kế hoạch, giá đề xuất tăng; nhỏ hơn 1 thì giảm. Ví dụ trong tài liệu: Fanzone giá 1.200.000 đồng, α = 1,73, δ = +18,25%, đề xuất 1.420.000 đồng.
+Ghế đang được giữ không đổi giá cho đến khi được trả lại. Tỉ lệ lấp đầy hiển thị cho Ban Tổ chức tham khảo, không đưa vào công thức.
 
 === id=pricing-ui layout=default speaker=dung time=45 kicker="Định giá động"
 ## Định giá động trên giao diện

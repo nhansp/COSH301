@@ -90,8 +90,8 @@ Không cần đọc thuộc lòng, chỉ cần nói đủ ý.
 
 ### Phần 5. Định giá, thanh toán, trợ lý ảo
 
-**Slide 17 – Định giá động: dữ liệu đầu vào và công thức** · Nguyễn Anh Dũng · 50 giây
-> Định giá động dựa trên ba dữ liệu của từng khu: tốc độ bán trong 15 phút gần nhất so với mục tiêu, tỉ lệ lấp đầy, và khoảng giá sàn – giá trần. Từ đó tính hệ số áp lực cầu C. Bán nhanh và khu càng đầy thì giá đề xuất tăng, bán chậm thì giảm. Mỗi lần thay đổi tối đa 5% và luôn nằm trong khoảng sàn – trần. Đây chỉ là đề xuất, Ban Tổ chức duyệt thì giá mới áp dụng.
+**Slide 17 – Định giá động: dữ liệu đầu vào và công thức** · Nguyễn Anh Dũng · 55 giây
+> Định giá động dựa trên ba dữ liệu của từng khu: tốc độ bán trong 15 phút gần nhất so với tốc độ mục tiêu, số người trong phòng chờ, và tỉ lệ ghế đang được giữ. Từ đó tính chỉ số áp lực cầu α. Nếu α lớn hơn 1, tức là bán nhanh hơn kế hoạch, giá đề xuất tăng; nhỏ hơn 1 thì giảm. Mỗi lần điều chỉnh tối đa 20%, làm tròn đến 10.000 đồng và luôn nằm trong khoảng sàn – trần; lệch dưới 5% thì bỏ qua. Đây chỉ là đề xuất, Ban Tổ chức duyệt thì giá mới áp dụng.
 
 **Slide 18 – Định giá động trên giao diện** · Nguyễn Anh Dũng · 45 giây
 > Ban Tổ chức thấy dữ liệu đầu vào của từng khu, giá hiện tại so với giá đề xuất và lịch sử giá, rồi bấm duyệt hoặc từ chối. Sau khi duyệt, giá trên sơ đồ ghế của khán giả đổi ngay và khu đó có nhãn báo tăng hoặc giảm. Phần demo sẽ cho thấy toàn bộ chuỗi này với dữ liệu thật.
@@ -152,7 +152,7 @@ Nếu mạng ổn định, có thể demo trực tiếp thay cho video.
 > Câu quét chỉ đọc các lượt giữ còn hiệu lực đã quá hạn, và có chỉ mục riêng cho đúng các lượt này nên rất nhẹ. Nếu ghế vừa hết hạn mà chưa được quét, người khác vẫn giữ được ngay: trong cùng một giao dịch, lượt cũ bị hủy và lượt mới được tạo.
 
 **Câu 3. Định giá động dễ gây tranh cãi, vì sao nhóm vẫn làm?** – Nguyễn Anh Dũng
-> Nhóm làm định giá động theo hướng chỉ đề xuất. Hệ thống không tự đổi giá; Ban Tổ chức xem dữ liệu đầu vào và giá đề xuất rồi mới duyệt. Giá luôn nằm trong khoảng sàn – trần, mỗi lần thay đổi tối đa 5%, và mọi thay đổi được ghi vào nhật ký không sửa được. Nhóm chưa có thực nghiệm về phản ứng của người mua nên không đưa số liệu về mặt này.
+> Nhóm làm định giá động theo hướng chỉ đề xuất. Hệ thống không tự đổi giá; Ban Tổ chức xem dữ liệu đầu vào và giá đề xuất rồi mới duyệt. Giá luôn nằm trong khoảng sàn – trần, mỗi lần thay đổi tối đa 20%, lệch dưới 5% thì bỏ qua, và mọi thay đổi được ghi vào nhật ký không sửa được. Nhóm chưa có thực nghiệm về phản ứng của người mua nên không đưa số liệu về mặt này.
 
 **Câu 4. Sơ đồ ghế dùng SSE hay WebSocket, vì sao?** – Trần Trung Nhân
 > Nhóm dùng SSE vì sơ đồ ghế chỉ cần máy chủ gửi thông báo xuống trình duyệt, không cần chiều ngược lại. SSE chạy trên HTTP thông thường, tự kết nối lại khi mất mạng và đi qua nginx, Cloudflare dễ dàng.
