@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2, LayoutGrid, BarChart3, RefreshCw, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2, BarChart3, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
@@ -401,24 +401,6 @@ export const OrganizerPage: React.FC = () => {
                         <span>Cấu hình giá khu vực</span>
                       </button>
                     </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openAssistant({ eventId: selected.id, mode: 'sales_analysis' })}
-                      className="btn btn-secondary btn-sm h-9 text-xs"
-                    >
-                      <BarChart3 className="size-3.5 text-violet-ink" />
-                      <span>Trợ lý doanh số</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openAssistant({ eventId: selected.id, mode: 'stage_graph', stageTab: 'map' })}
-                      className="btn btn-secondary btn-sm h-9 text-xs"
-                    >
-                      <LayoutGrid className="size-3.5 text-violet-ink" />
-                      <span>Biểu đồ sân khấu</span>
-                    </button>
                   </div>
                 </div>
 
