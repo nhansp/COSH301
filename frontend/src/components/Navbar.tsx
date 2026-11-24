@@ -60,7 +60,8 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
   const nav = [
     { to: '/', label: 'Lịch diễn', show: true, count: 0 },
     { to: '/my-tickets', label: 'Ghế đang giữ', show: isAuthenticated && isEnabled('seat_hold'), count: 0 },
-    { to: '/organizer', label: 'Quản lý sự kiện', show: showOrganizerLink, count: 0 }
+    { to: '/organizer', label: 'Quản lý sự kiện', show: showOrganizerLink, count: 0 },
+    { to: '/khao-sat', label: 'Khảo sát', show: isEnabled('user_testing'), count: 0 }
   ].filter(item => item.show);
 
   return (

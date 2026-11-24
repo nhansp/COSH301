@@ -9,7 +9,8 @@ export type FeatureFlag =
   | 'ticket_limit'
   | 'payments'
   | 'chatbot'
-  | 'dynamic_pricing';
+  | 'dynamic_pricing'
+  | 'user_testing';
 
 interface FeatureContextType {
   isLoading: boolean;
