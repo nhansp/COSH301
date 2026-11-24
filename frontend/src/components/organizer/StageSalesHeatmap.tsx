@@ -22,16 +22,17 @@ import {
 } from '../../services/venue';
 import { SeatItem } from '../../types';
 
-export type HeatmapMetric = 'revenue' | 'fill' | 'price';
+export type HeatmapMetric = 'fill' | 'revenue' | 'price';
 
 type Box = { x: number; y: number; w: number; h: number };
 
 const HEAT_STOPS: [number, [number, number, number]][] = [
-  [0.0, [30, 49, 84]],    // #1e3154 cool slate-indigo
-  [0.25, [31, 157, 139]], // #1f9d8b teal-emerald
-  [0.5, [232, 179, 57]],  // #e8b339 amber gold
-  [0.75, [249, 115, 22]], // #f97316 vivid orange
-  [1.0, [239, 68, 68]]    // #ef4444 blazing coral-red
+  [0.0, [30, 49, 84]],    // #1e3154 cold slate (0 filled)
+  [0.08, [29, 122, 138]], // #1d7a8a ocean teal (early sales)
+  [0.25, [34, 176, 125]], // #22b07d emerald (25% filled)
+  [0.5, [232, 179, 57]],  // #e8b339 amber gold (50% filled)
+  [0.75, [249, 115, 22]], // #f97316 vivid orange (75% filled)
+  [1.0, [239, 68, 68]]    // #ef4444 blazing red (100% filled)
 ];
 
 function heatColor(raw: number): string {
@@ -149,7 +150,7 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
   seats,
   onInspectPricing
 }) => {
-  const [metric, setMetric] = useState<HeatmapMetric>('revenue');
+  const [metric, setMetric] = useState<HeatmapMetric>('fill');
   const [showSeats, setShowSeats] = useState(true);
   const [activeZoneId, setActiveZoneId] = useState<string | null>(null);
   const stageGradId = useId();
@@ -167,49 +168,46 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
 
   const scaleStats = useMemo(() => {
     const activeRevs = summary.zones.map(z => z.realizedRevenue + z.heldPipelineRevenue);
-    const potentialRevs = summary.zones.map(z => z.potentialRevenue);
+    const capacities = summary.zones.map(z => z.capacity);
     const prices = summary.zones.map(z => z.basePrice);
     return {
+      maxCapacity: Math.max(1, ...capacities),
       maxActiveRev: Math.max(1, ...activeRevs),
-      minPotentialRev: potentialRevs.length ? Math.min(...potentialRevs) : 0,
-      maxPotentialRev: Math.max(1, ...potentialRevs),
       minPrice: prices.length ? Math.min(...prices) : 0,
       maxPrice: Math.max(1, ...prices)
     };
   }, [summary.zones]);
 
   const zoneIntensity = (z: ZoneSalesSummary): number => {
-    if (metric === 'fill') return z.fillRate;
+    if (metric === 'fill') {
+      const filled = z.sold + z.held;
+      if (filled <= 0 || z.capacity <= 0) return 0;
+      return Math.min(1, filled / z.capacity);
+    }
     if (metric === 'price') {
       const span = scaleStats.maxPrice - scaleStats.minPrice;
       return span > 0 ? (z.basePrice - scaleStats.minPrice) / span : 0.7;
     }
-    if (hasLiveSales) {
-      return (z.realizedRevenue + z.heldPipelineRevenue) / scaleStats.maxActiveRev;
-    }
-    const span = scaleStats.maxPotentialRev - scaleStats.minPotentialRev;
-    return span > 0
-      ? 0.15 + ((z.potentialRevenue - scaleStats.minPotentialRev) / span) * 0.85
-      : 0.65;
+    const activeRev = z.realizedRevenue + z.heldPipelineRevenue;
+    if (!hasLiveSales || activeRev <= 0) return 0;
+    return Math.min(1, activeRev / scaleStats.maxActiveRev);
   };
 
   const zoneBadgeText = (z: ZoneSalesSummary): string => {
-    if (metric === 'fill') return `${Math.round(z.fillRate * 100)}%`;
+    if (metric === 'fill') return `${z.sold + z.held}/${z.capacity}`;
     if (metric === 'price') return formatPriceShort(z.basePrice);
     const activeRev = z.realizedRevenue + z.heldPipelineRevenue;
-    return formatPriceShort(hasLiveSales ? activeRev : z.potentialRevenue);
+    return activeRev > 0 ? formatPriceShort(activeRev) : '0₫';
   };
 
   const defaultZone = useMemo(() => {
     if (summary.zones.length === 0) return undefined;
     return [...summary.zones].sort((a, b) => {
-      if (hasLiveSales) {
-        const diff = b.realizedRevenue + b.heldPipelineRevenue - (a.realizedRevenue + a.heldPipelineRevenue);
-        if (diff !== 0) return diff;
-      }
+      const filledDiff = b.sold + b.held - (a.sold + a.held);
+      if (filledDiff !== 0) return filledDiff;
       return b.potentialRevenue - a.potentialRevenue;
     })[0];
-  }, [summary.zones, hasLiveSales]);
+  }, [summary.zones]);
 
   const inspectedZone = (activeZoneId ? zoneMap.get(activeZoneId) : undefined) ?? defaultZone;
   const inspectedGeo = inspectedZone
@@ -230,7 +228,11 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
 
   const scaleLabels =
     metric === 'fill'
-      ? { min: '0% trống', mid: '50% lấp đầy', max: '100% cháy vé' }
+      ? {
+          min: '0 vé (0%)',
+          mid: 'Mật độ theo số vé đã lấp đầy',
+          max: `${scaleStats.maxCapacity} vé (100%)`
+        }
       : metric === 'price'
         ? {
             min: formatPriceShort(scaleStats.minPrice),
@@ -244,9 +246,9 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
               max: formatPriceShort(scaleStats.maxActiveRev)
             }
           : {
-              min: formatPriceShort(scaleStats.minPotentialRev),
-              mid: 'Tỉ trọng doanh thu kỳ vọng',
-              max: formatPriceShort(scaleStats.maxPotentialRev)
+              min: '0₫',
+              mid: 'Chưa phát sinh thực thu',
+              max: '100% thực thu'
             };
 
   return (
@@ -263,12 +265,12 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
             </h3>
           </div>
           <p className="mt-0.5 text-xs text-kumo-subtle">
-            {metric === 'revenue'
-              ? hasLiveSales
-                ? 'Cường độ nhiệt theo tổng thực thu + giá trị giữ chỗ trực tiếp từng khu.'
-                : 'Chưa có vé bán — đang hiển thị mật độ doanh thu mục tiêu theo vị trí sân khấu.'
-              : metric === 'fill'
-                ? 'Cường độ nhiệt theo tỉ lệ lấp đầy (đã bán + đang giữ) trên tổng công suất khu.'
+            {metric === 'fill'
+              ? `Màu nhiệt tăng dần theo số vé đã lấp đầy (đã bán + đang giữ) trên từng khu — hiện đã lấp ${summary.soldCount + summary.heldCount}/${summary.totalCapacity} vé.`
+              : metric === 'revenue'
+                ? hasLiveSales
+                  ? 'Cường độ nhiệt theo tổng thực thu + giá trị giữ chỗ trực tiếp từng khu.'
+                  : 'Chưa phát sinh vé bán — các khu sẽ đổi màu ngay khi có giao dịch.'
                 : 'Phân tầng đơn giá niêm yết tỏa ra từ sân khấu chính.'}
           </p>
         </div>
@@ -281,8 +283,8 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
           >
             {(
               [
-                ['revenue', 'Doanh thu'],
-                ['fill', 'Lấp đầy'],
+                ['fill', 'Vé đã lấp đầy'],
+                ['revenue', 'Thực thu'],
                 ['price', 'Đơn giá']
               ] as const
             ).map(([key, label]) => {
@@ -391,14 +393,15 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
               </text>
             </g>
 
-            {/* Thermal glow halos beneath warm/hot zones */}
-            <g filter={`url(#${glowFilterId})`} opacity={0.45} style={{ pointerEvents: 'none' }}>
+            {/* Thermal glow halos proportional to intensity (zero glow on empty zones) */}
+            <g filter={`url(#${glowFilterId})`} style={{ pointerEvents: 'none' }}>
               {layout.zones.map(geo => {
                 const z = zoneMap.get(geo.zoneId);
                 if (!z) return null;
                 const intensity = zoneIntensity(z);
-                if (intensity < 0.42) return null;
+                if (intensity <= 0) return null;
                 const fill = heatColor(intensity);
+                const glowOpacity = Math.min(0.6, 0.22 + intensity * 0.42);
                 return geo.kind === 'pit' ? (
                   <rect
                     key={`glow-${geo.zoneId}`}
@@ -408,9 +411,15 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
                     height={geo.depth}
                     rx={0.8}
                     fill={fill}
+                    fillOpacity={glowOpacity}
                   />
                 ) : (
-                  <path key={`glow-${geo.zoneId}`} d={sectorPath(geo)} fill={fill} />
+                  <path
+                    key={`glow-${geo.zoneId}`}
+                    d={sectorPath(geo)}
+                    fill={fill}
+                    fillOpacity={glowOpacity}
+                  />
                 );
               })}
             </g>
@@ -567,7 +576,7 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
                 className="h-2 flex-1 rounded-full"
                 style={{
                   background:
-                    'linear-gradient(90deg, #1e3154 0%, #1f9d8b 25%, #e8b339 50%, #f97316 75%, #ef4444 100%)'
+                    'linear-gradient(90deg, #1e3154 0%, #1d7a8a 10%, #22b07d 25%, #e8b339 50%, #f97316 75%, #ef4444 100%)'
                 }}
               />
               <span className="shrink-0 font-medium text-stage-ink">{scaleLabels.max}</span>
