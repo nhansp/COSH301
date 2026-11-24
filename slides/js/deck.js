@@ -237,7 +237,7 @@
         '<div class="demo-side"><div class="rail">' + rail + '</div><div class="step">' + (i + 1) + "<small> / " + n + "</small></div>" +
         '<div class="cap">' + esc(c.caption || "") + "</div>" +
         '<div class="keys"><kbd>R</kbd> phát lại · <kbd>P</kbd> tạm dừng · <kbd>→</kbd> bước tiếp</div></div></div>';
-      return { attrs: { id: "demo-" + c.id, layout: "demo-step", tone: "stage", speaker: c.speaker || "nhan", time: String(Math.round(dur) + 5), title: "Demo " + (i + 1) + ": " + c.title },
+      return { attrs: { id: "demo-" + c.id, layout: "demo-step", tone: "stage", speaker: c.speaker || "nhan", time: String(Math.round(dur) + 2), title: "Demo " + (i + 1) + ": " + c.title },
         html, notes: c.notes || c.caption || "", section: "Demo trực tiếp" };
     });
   }
