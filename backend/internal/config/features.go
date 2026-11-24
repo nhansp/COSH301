@@ -27,6 +27,7 @@ const (
 	FlagReportsExport    = "reports_export"
 	FlagDynamicPricing   = "dynamic_pricing"
 	FlagPromoSuggestions = "promo_suggestions"
+	FlagChatbot          = "chatbot"
 )
 
 var allFlags = []string{
@@ -49,6 +50,7 @@ var allFlags = []string{
 	FlagReportsExport,
 	FlagDynamicPricing,
 	FlagPromoSuggestions,
+	FlagChatbot,
 }
 
 var sprint2Flags = map[string]bool{
@@ -57,6 +59,7 @@ var sprint2Flags = map[string]bool{
 	FlagSeatHold:         true,
 	FlagZonePricing:      true,
 	FlagOrganizerConsole: true,
+	FlagChatbot:          true,
 }
 
 var sprint3Flags = map[string]bool{
@@ -69,6 +72,7 @@ var sprint3Flags = map[string]bool{
 	FlagBotCheck:         true,
 	FlagTicketLimit:      true,
 	FlagRotatingQR:       true,
+	FlagChatbot:          true,
 }
 
 var sprint4Flags = map[string]bool{
@@ -84,6 +88,7 @@ var sprint4Flags = map[string]bool{
 	FlagPayments:         true,
 	FlagTicketEmail:      true,
 	FlagReconciliation:   true,
+	FlagChatbot:          true,
 }
 
 // FeatureManager manages runtime feature flags based on profile and environment overrides.

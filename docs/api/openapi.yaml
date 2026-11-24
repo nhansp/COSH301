@@ -25,6 +25,7 @@ tags:
   - name: organizer
   - name: tickets
   - name: payments
+  - name: assistant
 
 paths:
   /api/health:
@@ -816,6 +817,50 @@ paths:
         '404':
           $ref: '#/components/responses/FeatureDisabled'
 
+  /api/assistant/chat:
+    post:
+      tags: [assistant]
+      summary: Hỏi trợ lý (FR-24)
+      description: |
+        Trả lời câu hỏi về lịch diễn, giá vé, ghế còn trống, cách đặt vé, ghế đang giữ, vé đã mua và doanh số.
+        Không cần đăng nhập. Vai trò lấy từ phiên trên server, không đọc từ body.
+        Người chưa đăng nhập chỉ nhận thông tin công khai.
+        `my_holds` và `my_tickets` chỉ trả dữ liệu của người gọi.
+        `organizer_sales` chỉ dành cho `ORGANIZER` (sự kiện của mình) và `ADMIN` (mọi sự kiện).
+        Mô hình ngôn ngữ chỉ phân loại câu hỏi. Số liệu và câu trả lời luôn do server dựng từ PostgreSQL.
+        Khi mô hình tắt, quá 8 giây hoặc trả sai định dạng, server phân loại bằng từ khóa và `mode` là `fallback`.
+        Giới hạn 20 yêu cầu mỗi phút cho mỗi tài khoản (hoặc mỗi địa chỉ nếu chưa đăng nhập), 60 yêu cầu mỗi phút cho mỗi địa chỉ.
+        Luồng đầy đủ nằm ở `docs/assistant.md`.
+      operationId: assistantChat
+      x-feature: [chatbot]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssistantRequest'
+      responses:
+        '200':
+          description: Câu trả lời
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssistantReply'
+        '400':
+          description: '`invalid_payload` (JSON sai hoặc body quá 4 KB) hoặc `empty_message`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+        '429':
+          description: '`rate_limited`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /api/payments/vnpay/create:
     post:
       tags: [payments]
@@ -1489,3 +1534,49 @@ components:
         newData:
           type: object
           additionalProperties: true
+
+    AssistantRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          maxLength: 300
+          description: Câu hỏi, cắt ở 300 ký tự
+          example: Concert Mỹ Tâm còn vé khu nào?
+        context:
+          type: object
+          properties:
+            event:
+              type: string
+              description: UUID hoặc slug của sự kiện trang đang mở, dùng khi câu hỏi không nêu tên sự kiện
+    AssistantReply:
+      type: object
+      required: [reply, intent, mode, links, suggestions]
+      properties:
+        reply:
+          type: string
+          description: Văn bản thuần, xuống dòng bằng `\n`
+        intent:
+          type: string
+          enum: [list_events, event_info, prices, availability, how_to_book, my_holds, my_tickets, organizer_sales, greeting, unknown]
+        mode:
+          type: string
+          enum: [llm, fallback]
+          description: '`llm` khi mô hình đọc được câu hỏi, `fallback` khi dùng từ khóa'
+        links:
+          type: array
+          items:
+            type: object
+            required: [label, url]
+            properties:
+              label:
+                type: string
+              url:
+                type: string
+                description: Đường dẫn trong ứng dụng, ví dụ `/events/{id}/tickets`
+        suggestions:
+          type: array
+          items:
+            type: string
+          description: Câu hỏi gợi ý tiếp theo

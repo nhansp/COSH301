@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { FeatureProvider } from './context/FeatureContext';
 import { EventProvider } from './context/EventContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AssistantWidget } from './components/assistant/AssistantWidget';
 import { HomePage } from './pages/HomePage';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { LoginPage } from './pages/LoginPage';
@@ -61,6 +62,7 @@ export default function App() {
               {/* Fallback Route */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            <AssistantWidget />
           </EventProvider>
         </AuthProvider>
         </FeatureProvider>

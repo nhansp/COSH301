@@ -4,7 +4,7 @@ Tài liệu gốc cho code ở `backend/` và `frontend/`.
 Mọi sơ đồ (Use Case, DFD, ERD, Class, Sequence, Kiến trúc) đều lấy từ tài liệu này hoặc sinh từ code.
 Vì vậy các sơ đồ luôn khớp nhau.
 
-Mã yêu cầu giữ nguyên theo tài liệu SA (System design): FR-01 … FR-23, NFR-01 … NFR-13, W-01 … W-05.
+Mã yêu cầu giữ nguyên theo tài liệu SA (System design): FR-01 … FR-24, NFR-01 … NFR-13, W-01 … W-05.
 
 ## 1. Phạm vi và cờ tính năng
 
@@ -37,6 +37,7 @@ Khi cờ tắt:
 | `reports_export` | FR-21 | 5 | Xuất báo cáo CSV/XLSX |
 | `dynamic_pricing` | FR-22, W-01 | 5 | Đề xuất giá, BTC duyệt |
 | `promo_suggestions` | FR-23 | 5 | Gợi ý khuyến mãi |
+| `chatbot` | FR-24 | 2 | Trợ lý chatbot hỗ trợ đặt vé và Ban Tổ chức |
 
 FR-02 (danh sách sự kiện) luôn bật.
 Nhật ký giá luôn ghi, cờ `price_log` chỉ ẩn/hiện trang xem.

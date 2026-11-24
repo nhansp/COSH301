@@ -28,7 +28,16 @@ type Config struct {
 	// PublicURL is the address customers reach the site at, without a trailing slash.
 	PublicURL string
 	VNPay     VNPayConfig
+	LLM       LLMConfig
 	Features  *FeatureManager
+}
+
+// LLMConfig points the assistant (FR-24) at an OpenAI-compatible server.
+// With an empty BaseURL the assistant answers from keywords alone.
+type LLMConfig struct {
+	BaseURL string
+	Model   string
+	APIKey  string
 }
 
 // VNPayConfig holds the merchant credentials and URLs for the VNPay payment gateway.
@@ -106,7 +115,12 @@ func Load() *Config {
 		DemoMode:           appEnv != "production",
 		PublicURL:          publicURL,
 		VNPay:              vnpay,
-		Features:           NewFeatureManagerFromEnv(),
+		LLM: LLMConfig{
+			BaseURL: strings.TrimSpace(os.Getenv("LLM_BASE_URL")),
+			Model:   envOr("LLM_MODEL", "cosh301-assistant"),
+			APIKey:  strings.TrimSpace(os.Getenv("LLM_API_KEY")),
+		},
+		Features: NewFeatureManagerFromEnv(),
 	}
 }
 
