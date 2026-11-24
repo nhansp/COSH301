@@ -20,9 +20,10 @@ Chưa kiểm thử với người dùng thật, không có điểm SUS. Kế ho�
 ## Còn thiếu gì
 |||
 ### Hạn chế
-- OTP qua ứng dụng Android, mức demo: số điện thoại chưa phải bằng chứng sở hữu.
-- Chưa có SMS thật, chưa có Turnstile. Đã giới hạn OTP theo IP và theo số.
-- Thanh toán đang tích hợp sandbox. Vé, soát vé, dashboard chưa làm.
+- OTP qua ứng dụng ở mức demo: chưa chứng minh sở hữu số điện thoại.
+- Chưa có SMS thật và Turnstile. Đã giới hạn OTP theo IP và theo số.
+- Thanh toán ở sandbox: chưa tự hoàn tiền, chưa có vé email và QR.
+- Chưa có soát vé và dashboard.
 - Một máy ảo, chưa kiểm thử với người dùng.
 |||
 ### Bài học

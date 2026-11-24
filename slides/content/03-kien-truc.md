@@ -15,7 +15,7 @@
 |||
 - Thứ tự khởi động: `db`, `api`, `frontend`, `tunnel`.
 - api chạy bằng user không phải root, có healthcheck.
-- Bản trực tuyến: `APP_ENV=production`, profile `sprint2`.
+- Bản trực tuyến: `APP_ENV=production`, thanh toán ở sandbox.
 NOTES:
 Script slide 7. Cập nhật bằng cách lấy mã mới từ nhánh rewrite rồi chạy lại docker compose up -d --build.
 Production tắt demo-login và reset-demo. Một máy ảo duy nhất, không dự phòng: đây là hạn chế đã nêu.

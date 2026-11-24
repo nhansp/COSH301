@@ -1,6 +1,6 @@
 === id=usecases layout=default speaker=ducanh time=40 kicker="Use case"
-## 17 use case, 5 vai trò
-::: grid g5
+## 13 use case, 3 vai trò
+::: grid g3
 ::: card tight
 ### Khán giả
 `UC-01` đăng nhập OTP
@@ -22,21 +22,11 @@
 ::: card tight
 ### CEO
 `UC-13` dashboard doanh thu
-`UC-14` xuất báo cáo
-:::
-::: card tight
-### Nhân viên cổng
-`UC-15` soát vé
-`UC-16` soát vé offline
-:::
-::: card tight
-### Quản trị
-`UC-17` phân quyền
 :::
 :::
-Hệ thống ngoài: cổng thanh toán, SMTP, SMS Gateway, Cloudflare Turnstile.
+Hệ thống ngoài: cổng thanh toán VNPay, SMTP, SMS Gateway, Cloudflare Turnstile.
 NOTES:
-Script slide 9. Mọi vai trò đăng nhập bằng OTP (UC-01). Tài khoản mới luôn là CUSTOMER.
+Script slide 9. Mọi vai trò đăng nhập bằng OTP (UC-01). Tài khoản mới luôn là CUSTOMER. Danh sách UC-01 đến UC-13 lấy theo docs/use-cases.md, đối chiếu lại với báo cáo.
 
 === id=dfd layout=default speaker=phuc time=25 kicker="Luồng dữ liệu"
 ## DFD mức 0: chín tiến trình
@@ -57,7 +47,7 @@ Script slide 9. Mọi vai trò đăng nhập bằng OTP (UC-01). Tài khoản m�
 <span class="no">4.0</span>
 ### Sơ đồ ghế và giữ chỗ
 :::
-::: card tight
+::: card tight lift
 <span class="no">5.0</span>
 ### Đơn hàng, thanh toán, vé
 :::
@@ -78,7 +68,7 @@ Script slide 9. Mọi vai trò đăng nhập bằng OTP (UC-01). Tài khoản m�
 ### Phân quyền
 :::
 :::
-Tô tím: đã có code ở Sprint 2. Có 17 kho dữ liệu, mỗi kho là một hoặc vài bảng PostgreSQL.
+Tô tím: đã có code. Có 17 kho dữ liệu, mỗi kho là một hoặc vài bảng PostgreSQL.
 NOTES:
 Script slide 10. DFD có ba mức: ngữ cảnh, mức 0 (9 tiến trình, 17 kho) và mức 1 của tiến trình 1.0, 4.0, 5.0.
 Realtime dùng LISTEN/NOTIFY của PostgreSQL, không có kho riêng. Nguồn: docs/dfd.md.
@@ -94,16 +84,16 @@ Realtime dùng LISTEN/NOTIFY của PostgreSQL, không có kho riêng. Nguồn: d
 <div class="grp"><h3>Giá, khuyến mãi, thống kê · 5</h3><code>price_changes</code><code>price_suggestions</code><code>promotions</code><code>promotion_usages</code><code>sales_snapshots</code></div>
 </div>
 
-Đơn hàng, vé và soát vé đã có schema, chưa có code ghi.
+Thanh toán sandbox ghi `orders`, `payments`, `tickets`. Soát vé đã có schema, chưa có code ghi.
 NOTES:
-Script slide 11. Thiết kế ban đầu 23 bảng; bảng otp_app_deliveries (migration 00005) thêm cho ứng dụng OTP nên database có 24 bảng. ERD Sprint 1 trên MySQL có 26 bảng.
+Script slide 11. Thiết kế gồm 23 bảng; otp_app_deliveries (migration 00005) thêm cho ứng dụng OTP nên production có 24 bảng. Migration 00006 của VNPay chỉ thêm cột. ERD Sprint 1 trên MySQL có 26 bảng.
 Khóa chính là UUID, tiền là NUMERIC(14,0).
 
 === id=hold layout=default speaker=huy time=30 kicker="Giữ ghế 5 phút"
 ## Giữ ghế, rồi mọi trình duyệt thấy ngay
 <div class="states">
 <div class="st av">AVAILABLE</div><div class="ar">bấm ghế</div>
-<div class="st he">HELD</div><div class="ar">thanh toán<br>Sprint 4</div>
+<div class="st he">HELD</div><div class="ar">thanh toán<br>VNPay sandbox</div>
 <div class="st so">SOLD</div>
 </div>
 <div class="flow">

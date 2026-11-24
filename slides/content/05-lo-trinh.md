@@ -1,18 +1,20 @@
-=== id=payment layout=default speaker=phuc time=35 kicker="Lộ trình · Sprint 4" badge="road:Sprint 4"
+=== id=payment layout=default speaker=phuc time=40 kicker="Thanh toán · Sprint 4" badge="ok:Đã chạy sandbox"
 ## Thanh toán: VNPay sandbox
 <div class="flow">
 <div class="node"><b>Giữ ghế</b>5 phút<small>đã chạy</small></div><div class="arrow">→</div>
-<div class="node"><b>Tạo đơn</b><code>orders</code></div><div class="arrow">→</div>
-<div class="node"><b>VNPay sandbox</b>đang tích hợp<small>thẻ test, không có tiền thật</small></div><div class="arrow">→</div>
-<div class="node hot"><b>IPN về api</b>kiểm tra chữ ký<small>mỗi giao dịch xử lý một lần</small></div><div class="arrow">→</div>
-<div class="node"><b>Phát vé</b><code>tickets</code></div>
+<div class="node"><b>Checkout</b>giá tính ở server<small>cộng phí 3%</small></div><div class="arrow">→</div>
+<div class="node"><b>URL VNPay</b>ký HMAC-SHA512<small>phiên bản 2.1.0</small></div><div class="arrow">→</div>
+<div class="node hot"><b>IPN về api</b>kiểm tra chữ ký<small>xử lý đúng một lần</small></div><div class="arrow">→</div>
+<div class="node"><b>Ghế SOLD</b>phát vé<small>một giao dịch</small></div>
 </div>
 
-- Tiền về sau khi lượt giữ hết hạn: ghế còn trống thì phát vé, ghế đã bán thì hoàn tiền.
-- Trước đó, Sprint 3: phòng chờ ảo, Turnstile, giới hạn vé, QR đổi mỗi 30 giây.
+- Thanh toán muộn, khi lượt giữ đã hết hạn: đánh dấu `refund_required`. Chưa hoàn tiền tự động.
+- "Vé của tôi" liệt kê vé đã phát. Không có tiền thật, dùng thẻ test của sandbox.
+- Sprint 3 còn lại: phòng chờ ảo, Turnstile, giới hạn vé, QR 30 giây, trợ lý chatbot AI (FR-24, đang hoàn thiện).
 NOTES:
-Script slide 15. Sprint 3 có phòng chờ ảo: số người mua cùng lúc tối đa bằng waiting_room_capacity, mỗi lượt vào có hạn 10 phút; hiện mới có bảng queue_entries.
-Thanh toán: nhánh tích hợp VNPay sandbox đang làm, chưa gộp vào rewrite. Mỗi IPN kiểm tra chữ ký; unique index uq_payment_provider_txn bảo đảm một giao dịch chỉ xử lý một lần.
+Script slide 15. Thanh toán đã chạy trên bản trực tuyến ở chế độ sandbox (Sprint 4 làm sớm). Chữ ký HMAC-SHA512 theo VNPay 2.1.0. IPN GET /api/payments/vnpay/ipn được xác thực và idempotent; ghế chuyển SOLD và vé được phát trong cùng một giao dịch.
+Chưa có vé qua email, chưa có QR xoay vòng, chưa hoàn tiền tự động.
+Sprint 3 có phòng chờ ảo: số người mua cùng lúc tối đa bằng waiting_room_capacity, mỗi lượt vào có hạn 10 phút; hiện mới có bảng queue_entries.
 
 === id=gate layout=default speaker=ducanh time=50 kicker="Lộ trình · Sprint 5" badge="road:Sprint 3 đến 5"
 ## Vé QR xoay vòng và soát vé offline

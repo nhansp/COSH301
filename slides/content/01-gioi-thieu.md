@@ -59,8 +59,8 @@ QR chụp màn hình bị chia sẻ. Sân vận động mất sóng thì máy qu
 :::
 ::: card lift
 <span class="no">Đã chạy</span>
-### Sprint 2
-Chống bán trùng và giữ ghế realtime. Phần còn lại ở mức thiết kế.
+### Bản trực tuyến
+Chống bán trùng, giữ ghế realtime, thanh toán sandbox. Phần còn lại ở mức thiết kế.
 :::
 :::
 NOTES:
