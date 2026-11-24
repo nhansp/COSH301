@@ -31,7 +31,27 @@ interface DraftZone extends CreateEventZonePayload {
   uid: string;
 }
 
-const GENRE_OPTIONS = ['V-pop', 'K-pop', 'Indie', 'EDM', 'Rock', 'Acoustic', 'Hip-hop', 'Classical'];
+const GENRE_OPTIONS = [
+  'V-pop',
+  'K-pop',
+  'US-UK Pop',
+  'Indie',
+  'EDM',
+  'Rock',
+  'Acoustic',
+  'Hip-hop / Rap',
+  'R&B / Soul',
+  'Ballad',
+  'Jazz / Blues',
+  'Classical / Giao hưởng',
+  'Nhạc Trịnh / Bolero',
+  'Festival / Đa thể loại',
+  'Musical / Kịch nghệ',
+  'Stand-up Comedy',
+  'Fan Meeting',
+  'Live Session'
+];
+const CUSTOM_GENRE_VALUE = '__custom__';
 const CITY_OPTIONS = ['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Đà Lạt', 'Hải Phòng', 'Cần Thơ'];
 const ZONE_SWATCHES = ['#f2c982', '#f4a782', '#e38c95', '#c37aac', '#9470b9', '#5a6bb5', '#34d399', '#38bdf8'];
 
@@ -517,6 +537,7 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
   const [section, setSection] = useState<'details' | 'stage' | 'zones'>('details');
   const [name, setName] = useState('');
   const [genre, setGenre] = useState('V-pop');
+  const [customGenre, setCustomGenre] = useState('');
   const [city, setCity] = useState('TP. Hồ Chí Minh');
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
@@ -551,7 +572,7 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
     setAttachedFile(null);
     setImageError(null);
   };
-  const [maxTicketsPerUser, setMaxTicketsPerUser] = useState(4);
+  const [maxTicketsInput, setMaxTicketsInput] = useState('4');
   const [status, setStatus] = useState<'ON_SALE' | 'DRAFT'>('ON_SALE');
 
   const [layoutConfig, setLayoutConfig] = useState<StageLayoutConfig>(initialTemplate.layoutConfig);
@@ -708,6 +729,18 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
       setSection('details');
       return;
     }
+    const parsedMaxTickets = Number.parseInt(maxTicketsInput.trim(), 10);
+    if (!Number.isInteger(parsedMaxTickets) || parsedMaxTickets < 1 || parsedMaxTickets > 1500) {
+      setError('Vé tối đa / khách phải là số nguyên từ 1 đến 1.500.');
+      setSection('details');
+      return;
+    }
+    const resolvedGenre = genre === CUSTOM_GENRE_VALUE ? customGenre.trim() : genre.trim();
+    if (!resolvedGenre) {
+      setError('Vui lòng chọn hoặc nhập thể loại sự kiện.');
+      setSection('details');
+      return;
+    }
     if (totalCapacity > 1500) {
       setError('Tổng sức chứa tối đa là 1.500 chỗ cho mỗi sự kiện.');
       setSection('zones');
@@ -738,7 +771,7 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
     const res = await apiCreateOrganizerEvent({
       name: name.trim(),
       description: description.trim() || `Sự kiện âm nhạc ${name.trim()} tại ${venueName.trim()}, ${city.trim()}.`,
-      genre: genre.trim() || 'Concert',
+      genre: resolvedGenre,
       city: city.trim(),
       venueName: venueName.trim(),
       venueAddress: venueAddress.trim(),
@@ -746,7 +779,7 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
       startsAt: toLocalISOOffset(startsAt),
       endsAt: toLocalISOOffset(endsAt),
       status,
-      maxTicketsPerUser,
+      maxTicketsPerUser: parsedMaxTickets,
       layoutConfig: effectiveLayoutConfig,
       zones: zones.map(z => ({
         code: z.code.trim().toUpperCase(),
@@ -939,31 +972,43 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
                   />
                 </label>
 
-                <label className="block">
-                  <span className="text-xs font-semibold text-kumo-default">Thể loại</span>
-                  <input
-                    type="text"
-                    list="sms-genre-options"
-                    value={genre}
-                    onChange={e => setGenre(e.target.value)}
-                    className="field mt-1"
-                  />
-                  <datalist id="sms-genre-options">
-                    {GENRE_OPTIONS.map(g => (
-                      <option key={g} value={g} />
-                    ))}
-                  </datalist>
-                </label>
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="text-xs font-semibold text-kumo-default">Thể loại</span>
+                    <select
+                      value={genre}
+                      onChange={e => setGenre(e.target.value)}
+                      className="field mt-1"
+                    >
+                      {GENRE_OPTIONS.map(g => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                      <option value={CUSTOM_GENRE_VALUE}>Thể loại khác (tự nhập)...</option>
+                    </select>
+                  </label>
+                  {genre === CUSTOM_GENRE_VALUE && (
+                    <input
+                      type="text"
+                      value={customGenre}
+                      onChange={e => setCustomGenre(e.target.value)}
+                      placeholder="Nhập thể loại sự kiện..."
+                      className="field text-xs"
+                    />
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <label className="block">
                     <span className="text-xs font-semibold text-kumo-default">Vé tối đa / khách</span>
                     <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={maxTicketsPerUser}
-                      onChange={e => setMaxTicketsPerUser(Math.max(1, Math.min(20, Number(e.target.value) || 4)))}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={maxTicketsInput}
+                      onChange={e => setMaxTicketsInput(e.target.value.replace(/[^\d]/g, ''))}
+                      placeholder="VD: 4, 10, 50..."
                       className="field mt-1 tabular-nums"
                     />
                   </label>

@@ -124,4 +124,11 @@ func TestValidateCreateOrganizerEvent(t *testing.T) {
 	if _, err := service.ValidateCreateOrganizerEvent(svgImg); !errors.Is(err, service.ErrInvalidEventPayload) {
 		t.Fatalf("expected SVG data URL to be rejected with ErrInvalidEventPayload, got %v", err)
 	}
+
+	customLimit := validReq
+	customLimit.MaxTicketsPerUser = 50
+	gotLimit, err := service.ValidateCreateOrganizerEvent(customLimit)
+	if err != nil || gotLimit.MaxTicketsPerUser != 50 {
+		t.Fatalf("expected MaxTicketsPerUser=50 to be preserved, got %+v err=%v", gotLimit, err)
+	}
 }

@@ -343,11 +343,11 @@ func ValidateCreateOrganizerEvent(req CreateOrganizerEventRequest) (*validatedCr
 	}
 
 	maxTickets := req.MaxTicketsPerUser
-	if maxTickets <= 0 {
+	if maxTickets == 0 {
 		maxTickets = 4
 	}
-	if maxTickets > 20 {
-		maxTickets = 20
+	if maxTickets < 0 || maxTickets > 1500 {
+		return nil, ErrInvalidEventPayload
 	}
 
 	if len(req.Zones) == 0 || len(req.Zones) > 16 {
