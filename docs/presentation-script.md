@@ -27,11 +27,28 @@
 
 ---
 
+## PHÂN CÔNG TRÌNH BÀY
+
+Mỗi người nói khoảng 2,5 – 3 phút.
+Người nói phần nào thì trả lời câu hỏi phản biện của phần đó.
+
+| Người trình bày | Slide và phần demo | Thời lượng | Câu hỏi phản biện phụ trách |
+|---|---|---|---|
+| Vũ Đức Huy | Slide 1, 11, 12 – 13, 20; demo: nhật ký giá không xóa được | ~3,0 phút | Câu 1, Câu 2 |
+| Lê Đức Anh | Slide 2 – 3, 9, 16 | ~2,4 phút | — |
+| Đinh Tiến Thành | Slide 4 – 6 | ~2,5 phút | — |
+| Trần Trung Nhân | Slide 7 – 8; demo: khách hàng A/B, đăng nhập OTP qua ứng dụng | ~3,3 phút | Câu 4, Câu 5 |
+| Nguyễn Đức Phúc | Slide 10, 15, 18 – 19 | ~1,9 phút | — |
+| Nguyễn Anh Dũng | Slide 14, 17; demo: Ban Tổ chức đổi giá, tranh ghế 100 người, k6 | ~3,0 phút | Câu 3 |
+
+---
+
 ## CHI TIẾT LỜI THOẠI VÀ CHỈ DẪN TRÌNH BÀY
 
 ### PHẦN 1: MỞ ĐẦU & ĐẶT VẤN ĐỀ (1.5 phút)
 
 #### `[Slide 1: Trang bìa]`
+* **Người trình bày**: Vũ Đức Huy
 * **Cử chỉ**: Đứng thẳng, mắt nhìn bao quát cả lớp và hướng về Giảng viên, nở nụ cười tự tin.
 * **Lời thoại**:
   > *"Kính thưa cô Phạm Thị Kim Dung cùng toàn thể các bạn sinh viên,*
@@ -41,11 +58,13 @@
   > *Dự án được nhóm em tiếp cận không chỉ dừng lại ở phạm vi một bài tập môn học, mà là một bài toán kỹ nghệ phần mềm hoàn chỉnh nhằm giải quyết triệt để những lỗ hổng nhức nhối nhất của các nền tảng bán vé hiện nay."*
 
 #### `[Slide 2: Nhóm thực hiện & Phân công tiến độ]`
+* **Người trình bày**: Lê Đức Anh
 * **Cử chỉ**: Chỉ tay nhẹ về phía slide, giới thiệu ngắn gọn tinh thần phối hợp của nhóm.
 * **Lời thoại**:
   > *"Nhóm nghiên cứu gồm 6 thành viên. Sprint 2 gồm **14 đầu việc (T01 đến T14)**, ước lượng **206 giờ công**, từ thiết kế kiến trúc, mô hình hóa UML, DFD, ERD đến mã nguồn backend và frontend. Riêng kiểm thử với người dùng mới có kế hoạch, chưa thực hiện."*
 
 #### `[Slide 3: Bài toán: 5 thách thức của bán vé online]`
+* **Người trình bày**: Lê Đức Anh
 * **Cử chỉ**: Đếm từng ngón tay hoặc nhấn giọng dứt khoát ở 5 từ khóa cốt lõi.
 * **Lời thoại**:
   > *"Thưa cô, thị trường âm nhạc và sự kiện Việt Nam đang bùng nổ, nhưng mỗi đợt mở bán vé lớn (flash-sale) luôn đi kèm **5 thách thức sống còn**:*
@@ -63,6 +82,7 @@
 ### PHẦN 2: MỤC TIÊU, ĐẶC TẢ YÊU CẦU & CAM KẾT SLA (2.5 phút)
 
 #### `[Slide 4: Mục tiêu và phạm vi]`
+* **Người trình bày**: Đinh Tiến Thành
 * **Cử chỉ**: Hướng về phần Won't-Have để tạo sự chú ý về tư duy phản biện.
 * **Lời thoại**:
   > *"Mục tiêu cốt lõi của đồ án là chuẩn hóa toàn bộ yêu cầu, mô hình hóa phân tầng theo chuẩn BCE, xây dựng CSDL PostgreSQL 18 bảo đảm ACID tuyệt đối không bán trùng ghế, đồng bộ realtime qua Server-Sent Events (SSE) và thiết kế Định giá động có người duyệt (FR-22).*
@@ -72,12 +92,14 @@
   > *Ở nhóm **Won't-Have**, yêu cầu **W-01** quy định hệ thống không bao giờ tự đổi giá. Định giá động (FR-22) chỉ sinh đề xuất, và giá chỉ đổi khi Ban Tổ chức duyệt, để bảo vệ người mua và uy tín của Ban Tổ chức."*
 
 #### `[Slide 5: Đặc tả yêu cầu & Phân loại MoSCoW]`
+* **Người trình bày**: Đinh Tiến Thành
 * **Lời thoại**:
   > *"Hệ thống được bóc tách khoa học thành **23 Yêu cầu Chức năng (FR)**, **13 Yêu cầu Phi chức năng (NFR)**, **7 User Stories** theo cú pháp Given-When-Then và **17 Use Cases** tổng thể.*
   > 
   > *Theo `docs/spec.md`, ở mốc Sprint 2 có **6 yêu cầu đã xong** (FR-02 đến FR-07), **4 yêu cầu đang làm** (FR-01, FR-08, FR-11, FR-20) và **13 yêu cầu chưa làm**. Hệ thống có 19 cờ tính năng, profile `sprint2` bật 5 cờ."*
 
 #### `[Slide 6: Cam kết chất lượng định lượng (SLA)]`
+* **Người trình bày**: Đinh Tiến Thành
 * **Lời thoại**:
   > *"Mọi yêu cầu phi chức năng đều có chỉ số mục tiêu định lượng. Đây là mục tiêu thiết kế, hiện mới NFR-03 và NFR-10 đã xong:*
   > * *Mục tiêu chịu tải **≥ 50.000 người dùng đồng thời** với $p95 \le 2$ giây (NFR-01). Nhóm chưa chạy kiểm thử tải k6.*
@@ -91,6 +113,7 @@
 ### PHẦN 3: KIẾN TRÚC HỆ THỐNG & MÔ HÌNH HÓA PHÂN TẦNG (3.0 phút)
 
 #### `[Slide 7: Kiến trúc triển khai hệ thống]`
+* **Người trình bày**: Trần Trung Nhân
 * **Lời thoại**:
   > *"Về kiến trúc triển khai, hệ thống đóng gói bằng Docker Compose (`compose.yaml`) gồm 4 dịch vụ và chạy trên một máy ảo GCP:*
   > * *`tunnel` (cloudflared): công bố hệ thống ra Internet qua **Cloudflare Tunnel** tại `cosh301.nhansp.id.vn`.*
@@ -100,6 +123,7 @@
   > * *Trong api có **RealtimeHub** phát sự kiện qua SSE và worker **HoldReaper** nhả ghế hết hạn, quét 5 giây một lần."*
 
 #### `[Slide 8: Mô hình BCE & Triết lý Single Source of Truth]`
+* **Người trình bày**: Trần Trung Nhân
 * **Cử chỉ**: Giọng điệu hào hứng, tự tin giải thích quyết định kiến trúc quan trọng.
 * **Lời thoại**:
   > *"Điểm nhấn kỹ nghệ quan trọng nhất trong kiến trúc backend là việc áp dụng mô hình phân tầng **BCE (Boundary – Control – Entity)**:*
@@ -110,6 +134,7 @@
   > ***Tại sao nhóm em loại bỏ hoàn toàn Redis?** Trong các hệ thống bán vé, việc dùng Redis làm cache phân tán rất dễ gây ra thảm họa lệch pha dữ liệu (cache inconsistency) hoặc sụp đổ bộ đệm (cache stampede). Bằng cách khai thác triệt để sức mạnh của PostgreSQL 18 — từ khóa hàng nguyên tử, advisory lock, partial unique index đến pub/sub `LISTEN/NOTIFY` nội tại — hệ thống đạt được tính nhất quán ACID tuyệt đối với kiến trúc vô cùng tinh gọn."*
 
 #### `[Slide 9, 10, 11: Mô hình hóa Use Case, DFD & ERD]`
+* **Người trình bày**: Use Case: Lê Đức Anh · DFD: Nguyễn Đức Phúc · ERD: Vũ Đức Huy
 * **Lời thoại**:
   > *"Hệ thống mô hình hóa tường minh qua:*
   > * *Sơ đồ **17 Use Case**: 7 của Khán giả, 5 của Ban Tổ chức (UC-08 đến UC-12, trong đó UC-10 là duyệt đề xuất giá), 2 của CEO, 2 của Nhân viên cổng và 1 của Quản trị. UC-01 đăng nhập dùng chung.*
@@ -121,6 +146,7 @@
 ### PHẦN 4: QUY TRÌNH NGHIỆP VỤ & ĐIỂM NHẤN HỌC THUẬT (3.0 phút)
 
 #### `[Slide 12 & 13: Giữ ghế 5 phút & Chống bán trùng tuyệt đối]`
+* **Người trình bày**: Vũ Đức Huy
 * **Lời thoại**:
   > *"Quy trình giữ ghế và chống bán trùng là trái tim của Sprint 2:*
   > * *Khi khách hàng chọn ghế, một transaction mở ra, cập nhật trạng thái `HELD` và cấp hạn giữ đúng 300 giây. Ngay khi giao dịch commit, câu lệnh `NOTIFY` gửi thông điệp qua SSE để mọi trình duyệt khác tự động đổi sang màu vàng (đang có người giữ) dưới 3 giây.*
@@ -130,6 +156,7 @@
   >   3. *Khi cờ `ticket_limit` bật, dùng **Advisory Lock** khóa phạm vi `(user_id, event_id)` để các yêu cầu song song của một người không vượt giới hạn vé. Cờ này đang tắt ở profile `sprint2`."*
 
 #### `[Slide 14: Định giá động (FR-22) và phản biện]`
+* **Người trình bày**: Nguyễn Anh Dũng
 * **Cử chỉ**: Giọng nói chững chạc, nêu rõ phần nào là thiết kế, phần nào đã chạy.
 * **Lời thoại**:
   > *"Kính thưa cô, ở phân hệ giá, nhóm em phân biệt rõ phần đã chạy và phần mới ở mức thiết kế.*
@@ -143,6 +170,7 @@
   > *Ví dụ tính tay trong `docs/dynamic-pricing.md`: khu Fanzone có giá 1.200.000 đồng, tốc độ bán gấp đôi mục tiêu, 250 người chờ và 40% ghế đang giữ. Chỉ số áp lực là 1,73, giá đề xuất tăng 18,3% lên 1.420.000 đồng."*
 
 #### `[Slide 15 & 16: Các phân hệ nâng cao (Sprint 3 đến 5, mới ở mức thiết kế)]`
+* **Người trình bày**: Slide 15: Nguyễn Đức Phúc · Slide 16: Lê Đức Anh
 * **Lời thoại**:
   > *"Các phân hệ sau mới có thiết kế, chưa có code, và cờ tương ứng đang tắt:*
   > * *Cơ chế **Hàng chờ ảo (Virtual Waiting Room)**: số người mua cùng lúc tối đa bằng `waiting_room_capacity`, mỗi lượt vào có hạn 10 phút. Hiện mới có bảng `queue_entries`.*
@@ -154,6 +182,7 @@
 ### PHẦN 5: NGHIỆM THU THỰC NGHIỆM & KẾT LUẬN (2.0 phút)
 
 #### `[Slide 17: Kiểm thử đã có và chưa có]`
+* **Người trình bày**: Nguyễn Anh Dũng
 * **Lời thoại**:
   > *"Về kiểm thử, em xin nói rõ phần đã có và phần chưa có:*
   > 1. *Đã có: test tương tranh `TestHoldSeat_ConcurrentHoldersGetOneSeat`. Test cho **50 goroutines cùng giữ một ghế** trên PostgreSQL thật, mong đợi đúng 1 lượt giữ thành công, các lượt còn lại bị từ chối, và `seat_holds` chỉ có một dòng `ACTIVE`. Test chạy ở tầng service và cần biến `TEST_DATABASE_URL`.*
@@ -161,12 +190,14 @@
   > 3. *Chưa có: kiểm thử tải k6 cho NFR-01, và kiểm thử với người dùng thật. Kế hoạch, kịch bản và form khảo sát SUS đã viết trong `docs/testing.md`, các bảng kết quả để trống."*
 
 #### `[Slide 18 & 19: Hạn chế, Hướng phát triển & Bài học kinh nghiệm]`
+* **Người trình bày**: Nguyễn Đức Phúc
 * **Lời thoại**:
   > *"Qua Sprint 2, bài học lớn nhất mà nhóm đúc kết được là triết lý **KISS (Keep It Simple, Stupid)**: Việc khai thác đúng cách năng lực của PostgreSQL 18 và kiến trúc phân tầng BCE giúp giữ ghế an toàn giao dịch mà không cần tầng cache riêng.*
   > 
   > *Hạn chế hiện tại: mã OTP chưa gửi qua SMS hay email, chưa kiểm tra Turnstile, thanh toán và phát vé chưa làm, hệ thống chạy trên một máy ảo. Hướng phát triển là hoàn thành Sprint 3 đến 5 theo bảng cờ tính năng."*
 
 #### `[Slide 20: Lời cảm ơn]`
+* **Người trình bày**: Vũ Đức Huy
 * **Lời thoại**:
   > *"Trên đây là toàn bộ báo cáo tiến độ và thiết kế kiến trúc hệ thống EventTicketing cho đến mốc Sprint 2 của nhóm.*
   > 
