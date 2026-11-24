@@ -16,7 +16,7 @@ Không cần đọc thuộc lòng, chỉ cần nói đủ ý.
 |---|---|---|---|
 | Vũ Đức Huy | 1, 13 – 16, 20, 26 | Trợ lý ảo, nhật ký giá | Câu 1, 2, 7 |
 | Lê Đức Anh | 2, 3, 11, 21 | — | — |
-| Đinh Tiến Thành | 4, 5, 6, 24 | — | — |
+| Đinh Tiến Thành | 4, 5, 6, 24 | Khảo sát người dùng | — |
 | Trần Trung Nhân | 7 – 10 | Khách hàng, ứng dụng OTP, thanh toán | Câu 4, 5, 6, 8 |
 | Nguyễn Đức Phúc | 12, 19, 22, 25 | — | — |
 | Nguyễn Anh Dũng | 17, 18, 23 | Ban Tổ chức, kiểm thử tải, định giá động | Câu 3 |
@@ -132,14 +132,16 @@ Nếu mạng ổn định, có thể demo trực tiếp thay cho video.
 
 | Bước | Nội dung | Người thuyết minh |
 |---|---|---|
-| Khách hàng | Hai khách đăng nhập và cùng mở một khu. Khách A giữ ghế, màn hình khách B đổi màu ngay. B bấm cùng ghế thì bị từ chối. A trả ghế. | Trần Trung Nhân |
-| Ứng dụng OTP | Mở ứng dụng COSH301 OTP trên điện thoại, đăng nhập web bằng số điện thoại, mã hiện trong thông báo. | Trần Trung Nhân |
-| Thanh toán | Từ ghế đang giữ sang trang VNPay (môi trường thử). Vé đã mua hiện trong "Vé của tôi". | Trần Trung Nhân |
-| Ban Tổ chức | Đặt giá sai bị chặn, đặt giá đúng thì lưu và ghi nhật ký. | Nguyễn Anh Dũng |
-| Kiểm thử tải và định giá động | k6 tạo tải thật. Ban Tổ chức chạy lại phân tích, giá đề xuất tăng, duyệt giá, khán giả thấy giá mới. | Nguyễn Anh Dũng |
+| Khách hàng | Hai khách đăng nhập và cùng mở khu SVIP. Khách A giữ ghế, màn hình khách B đổi màu ngay. B bấm cùng ghế thì bị từ chối. A trả ghế, B thấy ghế trống lại. | Trần Trung Nhân |
+| Trợ lý ảo | Khách B hỏi khu nào của concert Mỹ Tâm còn vé và cách đặt vé. Số liệu lấy từ cơ sở dữ liệu. | Vũ Đức Huy |
+| Ứng dụng OTP | Mở ứng dụng COSH301 OTP từ màn hình chính, đăng nhập web bằng số điện thoại, mã hiện trong thông báo. | Trần Trung Nhân |
+| Thanh toán | Khách C xem vé đã mua qua VNPay. Khách B giữ ghế và chuyển sang trang VNPay (môi trường thử). | Trần Trung Nhân |
+| Ban Tổ chức | Đặt giá sai bị chặn, đặt giá đúng thì lưu; khách B thấy giá mới ngay. | Nguyễn Anh Dũng |
+| Kiểm thử tải | k6 tạo tải thật lên khu VieVIP trong 45 giây; dữ liệu đầu vào của khu thay đổi theo. | Nguyễn Anh Dũng |
+| Định giá động | Ban Tổ chức chạy lại phân tích, giá đề xuất tăng 20%, duyệt; khách B nhận thông báo và nhãn "Giá vừa tăng". | Nguyễn Anh Dũng |
 | Tranh một ghế | 100 tài khoản cùng giữ một ghế, đúng 1 tài khoản thành công. | Nguyễn Anh Dũng |
-| Trợ lý ảo | Khán giả hỏi lịch diễn và khu còn chỗ. | Vũ Đức Huy |
 | Nhật ký giá | Xem nhật ký giá, lệnh xóa bị từ chối. | Vũ Đức Huy |
+| Khảo sát | Phiếu khảo sát SUS ngay trong ứng dụng. | Đinh Tiến Thành |
 
 ---
 
