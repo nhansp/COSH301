@@ -4,6 +4,7 @@ import { SeatItem } from '../../types';
 import { ZoneSummary } from '../../services/venue';
 import { formatPrice } from '../../services/eventService';
 import { SeatGrid, SeatLegend } from './SeatGrid';
+import { PriceTrendBadge } from '../pricing/PriceTrendBadge';
 
 interface ZoneListProps {
   zones: ZoneSummary[];
@@ -151,6 +152,7 @@ export const ZoneList: React.FC<ZoneListProps> = ({ zones, activeZoneId, heldByZ
                       {formatPrice(zone.priceFrom)}
                     </span>
                     <span className="text-xs text-kumo-subtle">mỗi vé</span>
+                    {!soldOut && <PriceTrendBadge trend={zone.trend} className="mt-1" />}
                   </span>
                   <span className="pointer-events-none absolute inset-0 rounded-xl peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-kumo-focus" />
                 </label>
@@ -198,6 +200,7 @@ export const ZoneDetail: React.FC<ZoneDetailProps> = ({
               {formatPrice(zone.priceFrom)}
             </div>
             <div className="text-sm text-kumo-subtle">mỗi vé</div>
+            <PriceTrendBadge trend={zone.trend} className="mt-1" />
           </div>
           <div className="flex items-center gap-2" role="group" aria-label={`Số vé đứng ở ${zone.name}`}>
             <button

@@ -1,7 +1,17 @@
 export type ZoneKind = 'seated' | 'standing';
 
+/** A zone's latest price change, shown to buyers while it is recent. */
+export interface PriceTrend {
+  oldPrice: number;
+  newPrice: number;
+  /** When the price changed, in epoch milliseconds. */
+  at: number;
+}
+
 export interface TicketTier {
   id: string;
+  /** Set when the zone's price changed recently. */
+  trend?: PriceTrend;
   /** Zone code from the API, e.g. VIP or GA1. */
   code?: string;
   name: string;
