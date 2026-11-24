@@ -62,6 +62,23 @@ export interface Hold {
   expiresAt: string;
 }
 
+/** A ticket issued after a successful payment, as reported by GET /api/tickets. */
+export interface Ticket {
+  id: string;
+  ticketCode: string;
+  status: 'ISSUED' | 'ACTIVE' | 'USED' | 'REVOKED';
+  issuedAt: string;
+  orderCode: string;
+  eventId: string;
+  eventSlug: string;
+  eventName: string;
+  startsAt: string;
+  venueName: string;
+  seatLabel: string;
+  zoneName: string;
+  price: number;
+}
+
 export type SeatStatus = 'available' | 'sold' | 'held' | 'selected';
 
 export interface SeatItem {

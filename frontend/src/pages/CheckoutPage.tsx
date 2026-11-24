@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
@@ -9,9 +9,18 @@ import { HoldList } from '../components/HoldList';
 import { eventDate } from '../components/events/EventCard';
 import { useFeatures } from '../context/FeatureContext';
 import { useHolds } from '../hooks/useHolds';
-import { formatPrice } from '../services/eventService';
+import { formatPrice, SERVICE_FEE_PERCENT, withServiceFee } from '../services/eventService';
+import { apiCreateVNPayPayment, CheckoutError } from '../services/paymentService';
 
-// No payment endpoint exists yet: this page only shows what the server is holding for the user.
+const PAY_ERRORS: Record<CheckoutError, string> = {
+  no_active_holds: 'Ghế giữ đã hết hạn. Chọn lại ghế trên sơ đồ để tiếp tục.',
+  holds_expiring: 'Thời gian giữ ghế còn quá ngắn để thanh toán. Chọn lại ghế để có thêm thời gian.',
+  event_not_on_sale: 'Sự kiện này hiện không mở bán.',
+  unauthorized: 'Phiên đăng nhập đã hết. Đăng nhập lại rồi thanh toán.',
+  unavailable: 'Chưa mở được cổng thanh toán. Thử lại sau giây lát.',
+};
+
+// The server prices the order from its own holds; the totals shown here use the same rule.
 export const CheckoutPage: React.FC = () => {
   const { eventId = '' } = useParams<{ eventId: string }>();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
@@ -20,7 +29,22 @@ export const CheckoutPage: React.FC = () => {
 
   const eventHolds = holds.filter(h => h.eventId === eventId || h.eventSlug === eventId);
   const first = eventHolds[0];
-  const total = eventHolds.reduce((sum, h) => sum + h.price, 0);
+  const { subtotal, fee, total } = withServiceFee(eventHolds.reduce((sum, h) => sum + h.price, 0));
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+
+  const pay = async () => {
+    setPayError(null);
+    setPaying(true);
+    const result = await apiCreateVNPayPayment(first?.eventId ?? eventId);
+    if (result.kind === 'ok') {
+      window.location.assign(result.checkout.paymentUrl);
+      return; // leaving the page: keep the button disabled
+    }
+    setPaying(false);
+    setPayError(PAY_ERRORS[result.error]);
+    if (result.error === 'no_active_holds' || result.error === 'holds_expiring') refresh();
+  };
   const seatsUrl = `/events/${first?.eventId ?? eventId}/tickets`;
 
   let body: React.ReactNode;
@@ -67,17 +91,45 @@ export const CheckoutPage: React.FC = () => {
             </p>
           )}
           <HoldList holds={eventHolds} now={now} releasingId={releasingId} onRelease={release} />
-          <div className="flex items-baseline justify-between gap-4 border-t border-kumo-contrast pt-4">
+          <dl className="space-y-1 border-t border-kumo-hairline pt-4 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-kumo-subtle">Tạm tính</dt>
+              <dd className="tabular-nums text-kumo-default">{formatPrice(subtotal)}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-kumo-subtle">Phí dịch vụ ({SERVICE_FEE_PERCENT}%)</dt>
+              <dd className="tabular-nums text-kumo-default">{formatPrice(fee)}</dd>
+            </div>
+          </dl>
+          <div className="mt-3 flex items-baseline justify-between gap-4 border-t border-kumo-contrast pt-4">
             <span className="font-medium text-kumo-strong">Tổng cộng</span>
             <span className="type-figure text-3xl text-kumo-strong">{formatPrice(total)}</span>
           </div>
         </section>
 
-        <p className="rounded-card bg-kumo-recessed p-5 text-kumo-default">
-          {isEnabled('payments')
-            ? 'Thanh toán chưa sẵn sàng ở bản này. Ghế được giữ trong 5 phút.'
-            : 'Thanh toán sẽ mở ở Sprint 4. Ghế được giữ trong 5 phút.'}
-        </p>
+        {isEnabled('payments') ? (
+          <section aria-labelledby="pay-title" className="rounded-card bg-kumo-recessed p-5 sm:p-7">
+            <h2 id="pay-title" className="type-display text-title">
+              Thanh toán
+            </h2>
+            <p className="mt-2 text-kumo-default">
+              Bạn sẽ chuyển sang cổng VNPay (môi trường thử nghiệm). Ghế được giữ trong 5 phút, hết giờ ghế tự trả lại.
+            </p>
+            {payError && (
+              <p role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-kumo-danger-tint p-3 text-sm text-kumo-danger">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                {payError}
+              </p>
+            )}
+            <button type="button" onClick={pay} disabled={paying} className="btn btn-primary mt-5 h-12 w-full sm:w-auto">
+              {paying ? 'Đang chuyển sang VNPay…' : `Thanh toán ${formatPrice(total)} qua VNPay`}
+            </button>
+          </section>
+        ) : (
+          <p className="rounded-card bg-kumo-recessed p-5 text-kumo-default">
+            Thanh toán chưa mở ở bản này. Ghế được giữ trong 5 phút.
+          </p>
+        )}
         <Link to={seatsUrl} className="btn btn-secondary">
           Chọn thêm hoặc đổi ghế
         </Link>

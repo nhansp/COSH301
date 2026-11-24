@@ -44,11 +44,19 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
   });
 }
 
-/** Booking fee the checkout adds on top of the tickets (a frontend rule until orders exist server-side). */
-export const SERVICE_FEE_RATE = 0.03;
+/** Booking fee added on top of the tickets. The server charges the same rate (backend ServiceFeePercent). */
+export const SERVICE_FEE_PERCENT = 3;
+export const SERVICE_FEE_RATE = SERVICE_FEE_PERCENT / 100;
 
+/** Whole-VND fee, rounded half up in integers exactly like the server. */
 export function serviceFeeOf(subtotal: number): number {
-  return subtotal > 0 ? Math.round(subtotal * SERVICE_FEE_RATE) : 0;
+  return Math.floor((subtotal * SERVICE_FEE_PERCENT + 50) / 100);
+}
+
+/** Subtotal, fee and total of a ticket subtotal, as the payment will charge them. */
+export function withServiceFee(subtotal: number): { subtotal: number; fee: number; total: number } {
+  const fee = serviceFeeOf(subtotal);
+  return { subtotal, fee, total: subtotal + fee };
 }
 
 /** Compact price for dense places such as the schedule and 3D labels: "9,8 tr". */

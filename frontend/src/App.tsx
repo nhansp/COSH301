@@ -11,6 +11,7 @@ import { LoginPage } from './pages/LoginPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { MyTicketsPage } from './pages/MyTicketsPage';
 import { OrganizerPage } from './pages/OrganizerPage';
+import { PaymentReturnPage } from './pages/PaymentReturnPage';
 import { TicketSelectionPage } from './pages/TicketSelectionPage';
 
 export default function App() {
@@ -27,6 +28,8 @@ export default function App() {
               <Route path="/events/:id" element={<EventDetailPage />} />
               <Route path="/events/:id/tickets" element={<TicketSelectionPage />} />
               <Route path="/login" element={<LoginPage />} />
+              {/* VNPay sends the browser here; the page only shows what the server recorded. */}
+              <Route path="/payment/vnpay/return" element={<PaymentReturnPage />} />
   
               {/* Protected Routes requiring Authentication */}
               <Route
