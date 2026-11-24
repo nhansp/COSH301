@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { CircleCheck } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { PageShell } from '../components/layout/PageShell';
 import { EmptyState } from '../components/ui/EmptyState';
+import { eventDate } from '../components/events/EventCard';
 import { formatPrice } from '../services/eventService';
-import { apiVerifyVNPayReturn, failureMessage, PaymentOutcome } from '../services/paymentService';
+import { apiFetchMyTickets, apiVerifyVNPayReturn, failureMessage, PaymentOutcome } from '../services/paymentService';
+import { Ticket } from '../types';
 
 type View = { state: 'loading' } | { state: 'error' } | { state: 'invalid' } | { state: 'unknown' } | { state: 'outcome'; outcome: PaymentOutcome };
 
@@ -103,19 +106,7 @@ const Outcome: React.FC<{ outcome: PaymentOutcome }> = ({ outcome }) => {
 
   switch (outcome.status) {
     case 'paid':
-      return (
-        <EmptyState
-          role="status"
-          title="Thanh toán thành công"
-          body={
-            <>
-              {summary}
-              <span className="mt-1 block">Đã phát hành {outcome.ticketCount} vé. Vé nằm ở mục Vé của tôi.</span>
-            </>
-          }
-          action={<Link to="/my-tickets" className="btn btn-primary">Xem vé của tôi</Link>}
-        />
-      );
+      return <Paid outcome={outcome} />;
     case 'processing':
       return (
         <EmptyState
@@ -161,4 +152,71 @@ const Outcome: React.FC<{ outcome: PaymentOutcome }> = ({ outcome }) => {
         />
       );
   }
+};
+
+const Paid: React.FC<{ outcome: PaymentOutcome }> = ({ outcome }) => {
+  const [tickets, setTickets] = useState<Ticket[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetchMyTickets().then(all => {
+      if (!cancelled) setTickets(all ? all.filter(t => t.orderCode === outcome.orderCode) : []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [outcome.orderCode]);
+
+  const event = tickets?.[0];
+  const when = event ? eventDate(event.startsAt) : null;
+
+  return (
+    <div role="status" className="border-y border-kumo-hairline py-10">
+      <div className="flex items-center gap-4">
+        <span className="grid size-14 shrink-0 place-items-center rounded-full bg-kumo-success-tint text-kumo-success">
+          <CircleCheck aria-hidden="true" className="size-8" strokeWidth={2.25} />
+        </span>
+        <div>
+          <p className="type-display text-title">Thanh toán thành công</p>
+          <p className="text-kumo-subtle tabular-nums">
+            Đơn {outcome.orderCode} · {formatPrice(outcome.amount)} đã gồm phí dịch vụ
+          </p>
+        </div>
+      </div>
+
+      {tickets === null ? (
+        <div aria-busy="true" className="skeleton mt-8 h-40 w-full rounded-card" />
+      ) : event && when ? (
+        <article className="mt-8 rounded-card bg-kumo-base p-5 ring ring-kumo-line sm:p-7">
+          <h2 className="type-display text-xl sm:text-2xl">{event.eventName}</h2>
+          <p className="mt-1 text-kumo-subtle">
+            {when.full}, {when.time} · {event.venueName}
+          </p>
+          <ul className="mt-2 divide-y divide-kumo-hairline">
+            {tickets.map(ticket => (
+              <li key={ticket.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 py-4">
+                <div className="min-w-0 flex-1">
+                  <p className="type-figure text-2xl text-kumo-strong">{ticket.seatLabel}</p>
+                  <p className="text-sm text-kumo-subtle">{ticket.zoneName}</p>
+                </div>
+                <p className="text-sm text-kumo-subtle">Mã vé {ticket.ticketCode}</p>
+                <span className="type-figure w-32 text-right text-lg text-kumo-strong">{formatPrice(ticket.price)}</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ) : (
+        <p className="mt-6 text-kumo-subtle">Đã phát hành {outcome.ticketCount} vé. Vé nằm ở mục Vé của tôi.</p>
+      )}
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link to="/my-tickets" className="btn btn-primary">
+          Xem vé của tôi
+        </Link>
+        <Link to="/" className="btn btn-secondary">
+          Về trang chủ
+        </Link>
+      </div>
+    </div>
+  );
 };
