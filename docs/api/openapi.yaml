@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: EventTicketing API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Đặc tả các endpoint đã có trong `backend/internal/httpapi/router.go`.
     Endpoint mới được thêm vào file này cùng lúc với code.
@@ -24,6 +24,7 @@ tags:
   - name: seats
   - name: organizer
   - name: tickets
+  - name: payments
 
 paths:
   /api/health:
@@ -788,6 +789,170 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/tickets:
+    get:
+      tags: [tickets]
+      summary: Vé đã phát hành của người gọi
+      description: |
+        Chỉ gồm vé chưa `VOID`, sắp theo giờ diễn.
+        Vé chỉ được phát hành khi IPN của VNPay báo thanh toán thành công.
+        `price` là giá ghế, chưa gồm phí dịch vụ.
+      operationId: listMyTickets
+      x-feature: [payments]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      responses:
+        '200':
+          description: Danh sách vé
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MyTicket'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/payments/vnpay/create:
+    post:
+      tags: [payments]
+      summary: Tạo đơn từ các ghế đang giữ và lấy URL thanh toán VNPay
+      description: |
+        Server tự tính tiền từ `event_seats.current_price` của các lượt giữ còn hạn, cộng phí dịch vụ 3%.
+        Đơn `PENDING` cũ của người gọi cho sự kiện này được dùng lại nếu đúng bộ lượt giữ hiện tại, nếu không thì bị hủy.
+        Mỗi lần gọi tạo một lần thanh toán mới (`vnp_TxnRef` mới).
+        Đơn hết hạn cùng lúc với lượt giữ sớm nhất. Cần còn ít nhất 60 giây.
+        Luồng đầy đủ nằm ở `docs/payments.md`.
+      operationId: createVNPayPayment
+      x-feature: [payments]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventId]
+              properties:
+                eventId:
+                  type: string
+                  description: UUID hoặc slug của sự kiện
+      responses:
+        '201':
+          description: Đơn và URL VNPay đã ký. Frontend chuyển trình duyệt sang `paymentUrl`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checkout'
+        '400':
+          description: '`invalid_payload`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: '`event_not_found`, hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: |
+            `no_active_holds`: không có lượt giữ còn hạn.
+            `holds_expiring`: lượt giữ còn dưới 60 giây.
+            `event_not_on_sale`: sự kiện không mở bán.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/payments/vnpay/ipn:
+    get:
+      tags: [payments]
+      summary: IPN của VNPay (server gọi server)
+      description: |
+        Chỉ VNPay gọi, không dùng phiên đăng nhập. Chữ ký `vnp_SecureHash` (HMAC-SHA512) là cách xác thực.
+        Đây là nơi duy nhất đổi đơn sang `PAID`, bán ghế và phát hành vé. Gọi lặp lại an toàn.
+        Luôn trả HTTP 200, VNPay chỉ đọc `RspCode`.
+        Ngoài các tham số dưới đây, VNPay còn gửi `vnp_BankTranNo`, `vnp_CardType`, `vnp_PayDate`, và nằm trong phần được ký.
+      operationId: vnpayIpn
+      x-feature: [payments]
+      parameters:
+        - $ref: '#/components/parameters/VnpAmount'
+        - $ref: '#/components/parameters/VnpTmnCode'
+        - $ref: '#/components/parameters/VnpTxnRef'
+        - name: vnp_ResponseCode
+          in: query
+          required: true
+          schema:
+            type: string
+          description: '`00` là thành công'
+        - name: vnp_TransactionStatus
+          in: query
+          required: true
+          schema:
+            type: string
+          description: '`00` là thành công'
+        - name: vnp_TransactionNo
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Mã giao dịch của VNPay, lưu vào `payments.provider_txn_id`
+        - $ref: '#/components/parameters/VnpSecureHash'
+      responses:
+        '200':
+          description: |
+            `00` Confirm Success. `01` Order not found. `02` Order already confirmed.
+            `04` Invalid amount. `97` Invalid signature. `99` Unknown error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VNPayIpnResponse'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/payments/vnpay/return:
+    get:
+      tags: [payments]
+      summary: Kiểm tra chữ ký của return URL và đọc trạng thái thanh toán
+      description: |
+        Trang `/payment/vnpay/return` của frontend gửi nguyên query string VNPay đã chuyển về.
+        Endpoint chỉ đọc, không đổi trạng thái. Không cần phiên đăng nhập, chữ ký là cách xác thực.
+      operationId: vnpayReturn
+      x-feature: [payments]
+      parameters:
+        - $ref: '#/components/parameters/VnpAmount'
+        - $ref: '#/components/parameters/VnpTmnCode'
+        - $ref: '#/components/parameters/VnpTxnRef'
+        - $ref: '#/components/parameters/VnpSecureHash'
+      responses:
+        '200':
+          description: Trạng thái ghi nhận từ IPN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentOutcome'
+        '400':
+          description: '`invalid_signature`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`payment_not_found`, hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     sessionCookie:
@@ -799,6 +964,33 @@ components:
       scheme: bearer
 
   parameters:
+    VnpAmount:
+      name: vnp_Amount
+      in: query
+      required: true
+      schema:
+        type: string
+      description: Số tiền VND nhân 100
+    VnpTmnCode:
+      name: vnp_TmnCode
+      in: query
+      required: true
+      schema:
+        type: string
+    VnpTxnRef:
+      name: vnp_TxnRef
+      in: query
+      required: true
+      schema:
+        type: string
+      description: '`payments.payment_code`, khác nhau cho mỗi lần thanh toán'
+    VnpSecureHash:
+      name: vnp_SecureHash
+      in: query
+      required: true
+      schema:
+        type: string
+      description: HMAC-SHA512 (hex) của các tham số `vnp_*` đã sắp xếp và mã hóa URL
     EventRef:
       name: id
       in: path
@@ -842,6 +1034,114 @@ components:
           type: string
           example: '+84912345678'
           description: Chuẩn hóa như `destination`. Email bị từ chối với `invalid_destination`.
+
+    Checkout:
+      type: object
+      required: [orderId, orderCode, subtotal, serviceFee, total, expiresAt, paymentUrl]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        orderCode:
+          type: string
+          example: ETYQTZXY3F
+        subtotal:
+          type: integer
+          format: int64
+          description: Tổng giá ghế, VND
+        serviceFee:
+          type: integer
+          format: int64
+          description: Phí dịch vụ 3% của `subtotal`, làm tròn đến đồng
+        total:
+          type: integer
+          format: int64
+          description: '`subtotal + serviceFee`, số tiền khách trả (VND)'
+        expiresAt:
+          type: string
+          format: date-time
+          description: Bằng giờ hết hạn của lượt giữ sớm nhất, cũng là `vnp_ExpireDate`
+        paymentUrl:
+          type: string
+          format: uri
+          description: URL `vpcpay.html` đã ký
+
+    VNPayIpnResponse:
+      type: object
+      required: [RspCode, Message]
+      properties:
+        RspCode:
+          type: string
+          enum: ['00', '01', '02', '04', '97', '99']
+        Message:
+          type: string
+          example: Confirm Success
+
+    PaymentOutcome:
+      type: object
+      required: [status, orderCode, eventId, amount, ticketCount, responseCode]
+      properties:
+        status:
+          type: string
+          enum: [paid, processing, failed, refund_pending]
+          description: |
+            `paid`: IPN đã xác nhận, vé đã phát hành.
+            `processing`: VNPay báo thành công nhưng IPN chưa tới.
+            `failed`: thất bại hoặc khách hủy.
+            `refund_pending`: tiền đã vào nhưng không phát hành được vé, cần hoàn tiền.
+        orderCode:
+          type: string
+        eventId:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+          format: int64
+          description: VND
+        ticketCount:
+          type: integer
+        responseCode:
+          type: string
+          description: '`vnp_ResponseCode` trong return URL. `00` là thành công'
+
+    MyTicket:
+      type: object
+      required: [id, ticketCode, status, issuedAt, orderCode, eventId, eventSlug, eventName, startsAt, venueName, seatLabel, zoneName, price]
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticketCode:
+          type: string
+        status:
+          type: string
+          enum: [ISSUED, ACTIVE, USED, REVOKED]
+        issuedAt:
+          type: string
+          format: date-time
+        orderCode:
+          type: string
+        eventId:
+          type: string
+          format: uuid
+        eventSlug:
+          type: string
+        eventName:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        venueName:
+          type: string
+        seatLabel:
+          type: string
+        zoneName:
+          type: string
+        price:
+          type: integer
+          format: int64
+          description: Giá ghế, chưa gồm phí dịch vụ (VND)
+
     Error:
       type: object
       required: [error]
