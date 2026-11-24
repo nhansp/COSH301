@@ -106,6 +106,8 @@ export const AssistantWidget: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevRoleRef = useRef<boolean>(isOrganizer);
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  messagesRef.current = messages;
 
   // Refresh greeting when user signs in/out or changes between Customer and Organizer.
   useEffect(() => {
@@ -164,13 +166,22 @@ export const AssistantWidget: React.FC = () => {
       setInput('');
       setIsThinking(true);
 
+      const history = messagesRef.current
+        .filter(m => !m.id.startsWith('welcome-'))
+        .slice(-6)
+        .map(m => ({
+          role: m.sender,
+          content: m.text
+        }));
+
       try {
         const reply = await generateAssistantReply(
           trimmed || userLabel,
           {
             events,
             role: user?.role,
-            currentEventId: currentEvent?.id ?? currentEventId
+            currentEventId: currentEvent?.id ?? currentEventId,
+            history
           },
           override
         );
@@ -341,6 +352,12 @@ export const AssistantWidget: React.FC = () => {
                     }`}
                   >
                     <p>{renderFormattedText(msg.text)}</p>
+                    {!isUser && msg.llmModel && (
+                      <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-violet/15 px-2 py-0.5 text-[10px] font-medium text-violet-ink">
+                        <Sparkles className="size-2.5" />
+                        <span>{msg.llmModel}</span>
+                      </p>
+                    )}
 
                     {msg.payload?.kind === 'brief' && (
                       <EventBriefCard
@@ -431,7 +448,7 @@ export const AssistantWidget: React.FC = () => {
             {isThinking && (
               <div className="flex items-center gap-2 text-xs text-kumo-subtle">
                 <span className="size-2 animate-pulse rounded-full bg-violet" />
-                <span>Đang tổng hợp dữ liệu trực tiếp từ cơ sở dữ liệu...</span>
+                <span>Qwen2.5 đang phân tích dữ liệu trực tiếp...</span>
               </div>
             )}
           </div>

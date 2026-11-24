@@ -31,17 +31,24 @@ func NewAssistantService(cfg *config.Config, events *EventService, organizer *Or
 	}
 }
 
+type AssistantHistoryTurn struct {
+	Role    string `json:"role"` // "user" or "assistant"
+	Content string `json:"content"`
+}
+
 type AssistantChatRequest struct {
-	Message        string `json:"message"`
-	CurrentEventID string `json:"currentEventId,omitempty"`
-	TargetEventID  string `json:"targetEventId,omitempty"`
-	Intent         string `json:"intent,omitempty"`
-	Lang           string `json:"lang,omitempty"`
+	Message        string                 `json:"message"`
+	CurrentEventID string                 `json:"currentEventId,omitempty"`
+	TargetEventID  string                 `json:"targetEventId,omitempty"`
+	Intent         string                 `json:"intent,omitempty"`
+	Lang           string                 `json:"lang,omitempty"`
+	History        []AssistantHistoryTurn `json:"history,omitempty"`
 }
 
 type AssistantChatResponse struct {
 	Text        string `json:"text"`
 	LLMProvider string `json:"llmProvider"`
+	LLMModel    string `json:"llmModel,omitempty"`
 	UsedLLM     bool   `json:"usedLlm"`
 }
 
@@ -72,54 +79,100 @@ func (s *AssistantService) provider() string {
 	}
 }
 
+func (s *AssistantService) modelName(prov string) string {
+	if s.cfg == nil {
+		return ""
+	}
+	switch prov {
+	case "ollama":
+		return s.cfg.OllamaModel
+	case "gemini":
+		return s.cfg.GeminiModel
+	default:
+		return ""
+	}
+}
+
+func sanitizeHistory(raw []AssistantHistoryTurn) []AssistantHistoryTurn {
+	if len(raw) == 0 {
+		return nil
+	}
+	const maxTurns = 6
+	const maxChars = 600
+	start := 0
+	if len(raw) > maxTurns {
+		start = len(raw) - maxTurns
+	}
+	out := make([]AssistantHistoryTurn, 0, len(raw)-start)
+	for _, turn := range raw[start:] {
+		role := strings.ToLower(strings.TrimSpace(turn.Role))
+		if role != "user" && role != "assistant" {
+			continue
+		}
+		content := strings.TrimSpace(turn.Content)
+		if content == "" {
+			continue
+		}
+		runes := []rune(content)
+		if len(runes) > maxChars {
+			content = string(runes[:maxChars])
+		}
+		out = append(out, AssistantHistoryTurn{Role: role, Content: content})
+	}
+	return out
+}
+
 // Chat returns optional LLM-generated prose strictly grounded in live PostgreSQL data.
 // When no LLM is configured or the upstream provider is unreachable, UsedLLM is false
 // so the caller seamlessly falls back to deterministic copy.
 func (s *AssistantService) Chat(ctx context.Context, caller AssistantCaller, req AssistantChatRequest) (*AssistantChatResponse, error) {
 	prov := s.provider()
+	model := s.modelName(prov)
 	if prov == "none" {
 		return &AssistantChatResponse{LLMProvider: "none", UsedLLM: false}, nil
 	}
 
 	contextJSON, err := s.buildGroundedContext(ctx, caller, req)
 	if err != nil {
-		return &AssistantChatResponse{LLMProvider: prov, UsedLLM: false}, nil
+		return &AssistantChatResponse{LLMProvider: prov, LLMModel: model, UsedLLM: false}, nil
 	}
 
 	roleLabel := "Customer"
 	if caller.IsOrganizer() {
 		roleLabel = "Organizer"
 	}
-	langInstruction := "Reply in Vietnamese."
+	langInstruction := "Reply in natural Vietnamese."
 	if strings.EqualFold(req.Lang, "en") {
-		langInstruction = "Reply in English."
+		langInstruction = "Reply in natural English."
 	}
 
 	systemPrompt := fmt.Sprintf(
 		"You are the SortMyScene EventTicketing assistant speaking to a %s. %s "+
-			"Use ONLY the live PostgreSQL JSON data below. Never invent events, prices, seat counts, or revenue figures. "+
+			"Use ONLY the live PostgreSQL JSON data below. Never invent events, zones, prices, seat counts, or revenue figures. "+
 			"All prices and revenue are strictly in Vietnamese Dong (VND / ₫), NEVER USD or $. "+
-			"Keep your reply concise (2 to 4 sentences) because interactive UI cards and stage charts display the detailed breakdown right beneath your message.\n\n"+
+			"Keep your reply helpful and concise (2 to 4 sentences) because interactive UI cards and stage charts display detailed breakdowns below your message.\n\n"+
 			"LIVE DATABASE CONTEXT:\n%s",
 		roleLabel,
 		langInstruction,
 		contextJSON,
 	)
 
+	history := sanitizeHistory(req.History)
 	var text string
 	switch prov {
 	case "ollama":
-		text, err = s.callOllama(ctx, systemPrompt, req.Message)
+		text, err = s.callOllama(ctx, systemPrompt, history, req.Message)
 	case "gemini":
-		text, err = s.callGemini(ctx, systemPrompt, req.Message)
+		text, err = s.callGemini(ctx, systemPrompt, history, req.Message)
 	}
 	if err != nil || strings.TrimSpace(text) == "" {
-		return &AssistantChatResponse{LLMProvider: prov, UsedLLM: false}, nil
+		return &AssistantChatResponse{LLMProvider: prov, LLMModel: model, UsedLLM: false}, nil
 	}
 
 	return &AssistantChatResponse{
 		Text:        strings.TrimSpace(text),
 		LLMProvider: prov,
+		LLMModel:    model,
 		UsedLLM:     true,
 	}, nil
 }
@@ -160,18 +213,78 @@ func (s *AssistantService) buildGroundedContext(ctx context.Context, caller Assi
 			}
 			payload["events"] = list
 		}
+
+		// Attach focused event zone pricing when user asks about or is viewing a specific event.
+		targetRef := req.TargetEventID
+		if targetRef == "" {
+			targetRef = req.CurrentEventID
+		}
+		if targetRef != "" {
+			if detail, err := s.events.GetEventDetail(ctx, targetRef); err == nil && detail != nil {
+				type compactZone struct {
+					Name         string `json:"name"`
+					BasePriceVND int64  `json:"basePriceVnd"`
+					Capacity     int32  `json:"capacity"`
+				}
+				zones := make([]compactZone, 0, len(detail.Zones))
+				for _, z := range detail.Zones {
+					zones = append(zones, compactZone{
+						Name:         z.ZoneName,
+						BasePriceVND: z.BasePrice,
+						Capacity:     z.Capacity,
+					})
+				}
+				payload["focusedEvent"] = map[string]any{
+					"title": detail.Name,
+					"venue": detail.VenueName,
+					"city":  detail.City,
+					"zones": zones,
+				}
+			}
+		}
 	}
 
-	// Only attach organizer sales telemetry when the server-verified caller is an organizer/admin
-	// authorized for the requested event.
+	// Only attach organizer sales telemetry when the server-verified caller is an organizer/admin.
 	if caller.IsOrganizer() && s.organizer != nil && s.events != nil {
+		isAdmin := caller.Role == store.UserRoleADMIN
+		if overview, err := s.organizer.GetSalesOverview(ctx, caller.UserID, isAdmin); err == nil && overview != nil {
+			type compactOverviewEvent struct {
+				EventName          string  `json:"eventName"`
+				SoldCount          int     `json:"soldCount"`
+				HeldCount          int     `json:"heldCount"`
+				TotalCapacity      int     `json:"totalCapacity"`
+				FillRatePct        int     `json:"fillRatePct"`
+				RealizedRevenueVND int64   `json:"realizedRevenueVnd"`
+				PotentialRevVND    int64   `json:"potentialRevenueVnd"`
+			}
+			evStats := make([]compactOverviewEvent, 0, len(overview.Events))
+			for _, ev := range overview.Events {
+				evStats = append(evStats, compactOverviewEvent{
+					EventName:          ev.EventName,
+					SoldCount:          ev.SoldCount,
+					HeldCount:          ev.HeldCount,
+					TotalCapacity:      ev.TotalCapacity,
+					FillRatePct:        int(ev.FillRate*100 + 0.5),
+					RealizedRevenueVND: ev.RealizedRevenue,
+					PotentialRevVND:    ev.PotentialRevenue,
+				})
+			}
+			payload["organizerPortfolio"] = map[string]any{
+				"eventCount":         overview.EventCount,
+				"totalSold":          overview.SoldCount,
+				"totalHeld":          overview.HeldCount,
+				"totalCapacity":      overview.TotalCapacity,
+				"realizedRevenueVnd": overview.RealizedRevenue,
+				"events":             evStats,
+			}
+		}
+
 		targetRef := req.TargetEventID
 		if targetRef == "" {
 			targetRef = req.CurrentEventID
 		}
 		if targetRef != "" {
 			if eventID, err := s.events.ResolveEventID(ctx, targetRef); err == nil {
-				isAdmin := caller.Role == store.UserRoleADMIN
 				if err := s.organizer.AuthorizeEvent(ctx, eventID, caller.UserID, isAdmin); err == nil {
 					if summary, err := s.organizer.GetEventSalesSummary(ctx, eventID); err == nil {
 						payload["organizerSalesSummary"] = summary
@@ -188,19 +301,23 @@ func (s *AssistantService) buildGroundedContext(ctx context.Context, caller Assi
 	return string(raw), nil
 }
 
-func (s *AssistantService) callOllama(ctx context.Context, systemPrompt, userMsg string) (string, error) {
+func (s *AssistantService) callOllama(ctx context.Context, systemPrompt string, history []AssistantHistoryTurn, userMsg string) (string, error) {
+	messages := make([]map[string]string, 0, len(history)+2)
+	messages = append(messages, map[string]string{"role": "system", "content": systemPrompt})
+	for _, h := range history {
+		messages = append(messages, map[string]string{"role": h.Role, "content": h.Content})
+	}
+	messages = append(messages, map[string]string{"role": "user", "content": userMsg})
+
 	body := map[string]any{
 		"model":      s.cfg.OllamaModel,
 		"stream":     false,
 		"keep_alive": "30m",
 		"options": map[string]any{
-			"num_predict": 180,
+			"num_predict": 200,
 			"temperature": 0.3,
 		},
-		"messages": []map[string]string{
-			{"role": "system", "content": systemPrompt},
-			{"role": "user", "content": userMsg},
-		},
+		"messages": messages,
 	}
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -234,17 +351,28 @@ func (s *AssistantService) callOllama(ctx context.Context, systemPrompt, userMsg
 	return parsed.Message.Content, nil
 }
 
-func (s *AssistantService) callGemini(ctx context.Context, systemPrompt, userMsg string) (string, error) {
+func (s *AssistantService) callGemini(ctx context.Context, systemPrompt string, history []AssistantHistoryTurn, userMsg string) (string, error) {
+	contents := make([]map[string]any, 0, len(history)+1)
+	for _, h := range history {
+		role := "user"
+		if h.Role == "assistant" {
+			role = "model"
+		}
+		contents = append(contents, map[string]any{
+			"role":  role,
+			"parts": []map[string]string{{"text": h.Content}},
+		})
+	}
+	contents = append(contents, map[string]any{
+		"role":  "user",
+		"parts": []map[string]string{{"text": userMsg}},
+	})
+
 	body := map[string]any{
 		"systemInstruction": map[string]any{
 			"parts": []map[string]string{{"text": systemPrompt}},
 		},
-		"contents": []map[string]any{
-			{
-				"role":  "user",
-				"parts": []map[string]string{{"text": userMsg}},
-			},
-		},
+		"contents": contents,
 	}
 	buf, err := json.Marshal(body)
 	if err != nil {

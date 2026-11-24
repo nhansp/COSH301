@@ -84,6 +84,7 @@ export interface ChatMessage {
   text: string;
   payload?: AssistantPayload;
   suggestions?: string[];
+  llmModel?: string;
   timestamp: number;
 }
 
@@ -542,10 +543,21 @@ export function recommendByPreferences(
 // Main assistant response generator
 // ---------------------------------------------------------------------------
 
+export interface AssistantHistoryTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface AssistantContext {
   events: EventItem[];
   role?: UserRole;
   currentEventId?: string;
+  history?: AssistantHistoryTurn[];
+}
+
+interface ServerLlmReply {
+  text: string;
+  model?: string;
 }
 
 async function requestServerLlmProse(
@@ -553,8 +565,9 @@ async function requestServerLlmProse(
   lang: AssistantLang,
   intent: string,
   currentEventId?: string,
-  targetEventId?: string
-): Promise<string | null> {
+  targetEventId?: string,
+  history?: AssistantHistoryTurn[]
+): Promise<ServerLlmReply | null> {
   try {
     const res = await fetch('/api/assistant/chat', {
       method: 'POST',
@@ -565,13 +578,17 @@ async function requestServerLlmProse(
         lang,
         intent,
         currentEventId,
-        targetEventId
+        targetEventId,
+        history: history?.slice(-6)
       })
     });
     if (!res.ok) return null;
     const data = await res.json();
     if (data?.usedLlm && typeof data.text === 'string' && data.text.trim()) {
-      return data.text.trim();
+      return {
+        text: data.text.trim(),
+        model: typeof data.llmModel === 'string' && data.llmModel ? data.llmModel : data.llmProvider
+      };
     }
     return null;
   } catch {
@@ -612,9 +629,16 @@ export async function generateAssistantReply(
     reply: Omit<ChatMessage, 'id' | 'timestamp'>,
     intent: string,
     targetEventId?: string
-  ) => {
-    const llmText = await requestServerLlmProse(userInput, lang, intent, ctx.currentEventId, targetEventId);
-    return llmText ? { ...reply, text: llmText } : reply;
+  ): Promise<Omit<ChatMessage, 'id' | 'timestamp'>> => {
+    const llm = await requestServerLlmProse(
+      userInput,
+      lang,
+      intent,
+      ctx.currentEventId,
+      targetEventId,
+      ctx.history
+    );
+    return llm ? { ...reply, text: llm.text, llmModel: llm.model } : reply;
   };
 
   // Direct sales analysis trigger (e.g. from Organizer Console button)
@@ -633,7 +657,8 @@ export async function generateAssistantReply(
 
   // Direct preference submission from inline PreferencePickerCard
   if (override?.preferences) {
-    return buildRecommendationReply(enriched, override.preferences, lang);
+    const reply = buildRecommendationReply(enriched, override.preferences, lang);
+    return attachOptionalLlm(reply, 'recommendations');
   }
 
   // 1. Organizer Sales Analysis intent
@@ -704,7 +729,7 @@ export async function generateAssistantReply(
   if (asksTrending) {
     const ranked = [...enriched].sort((a, b) => b.trendingScore - a.trendingScore);
     const top = ranked[0];
-    return {
+    const reply: Omit<ChatMessage, 'id' | 'timestamp'> = {
       sender: 'assistant',
       text:
         lang === 'en'
@@ -719,6 +744,7 @@ export async function generateAssistantReply(
           ? ['Recommend by preference', 'Concerts under 1M VND', 'Brief all events']
           : ['Gợi ý theo sở thích', 'Concert dưới 1 triệu', 'Tóm tắt tất cả sự kiện']
     };
+    return attachOptionalLlm(reply, 'trending', top.event.id);
   }
 
   // 3. Specific event brief (takes priority over implicit genre aliases when user names an event without asking for recommendations)
@@ -733,7 +759,7 @@ export async function generateAssistantReply(
   if (matchedEvent && !asksRecommend) {
     const standingCount = matchedEvent.zones.filter(z => z.kind === 'standing').length;
     const seatedCount = matchedEvent.zones.length - standingCount;
-    return {
+    const reply: Omit<ChatMessage, 'id' | 'timestamp'> = {
       sender: 'assistant',
       text:
         lang === 'en'
@@ -748,6 +774,7 @@ export async function generateAssistantReply(
           ? ['Trending events', 'Recommend similar shows', 'Brief all events']
           : ['Sự kiện đang hot', 'Gợi ý đêm diễn tương tự', 'Tóm tắt tất cả sự kiện']
     };
+    return attachOptionalLlm(reply, 'event_brief', matchedEvent.event.id);
   }
 
   // 4. Preference-based recommendation intent
@@ -771,14 +798,15 @@ export async function generateAssistantReply(
   }
 
   if (hasExplicitPrefs || asksRecommend) {
-    return buildRecommendationReply(enriched, prefs, lang);
+    const reply = buildRecommendationReply(enriched, prefs, lang);
+    return attachOptionalLlm(reply, 'recommendations');
   }
 
   // 5. Full schedule brief
   if (asksBrief) {
     const minAll = Math.min(...enriched.map(e => e.minPrice));
     const maxAll = Math.max(...enriched.map(e => e.maxPrice));
-    return {
+    const reply: Omit<ChatMessage, 'id' | 'timestamp'> = {
       sender: 'assistant',
       text:
         lang === 'en'
@@ -793,6 +821,7 @@ export async function generateAssistantReply(
           ? ['What are the trending events?', 'Recommend by my preferences', 'Concerts under 1M VND']
           : ['Sự kiện nào đang hot?', 'Gợi ý theo sở thích', 'Concert dưới 1 triệu']
     };
+    return attachOptionalLlm(reply, 'schedule_brief');
   }
 
   // 6. Helpful default response tailored to user's role

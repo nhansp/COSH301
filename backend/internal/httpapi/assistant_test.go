@@ -52,10 +52,20 @@ func TestAssistantHandler_ValidationAndFallback(t *testing.T) {
 }
 
 func TestAssistantHandler_OllamaProvider(t *testing.T) {
+	var captured struct {
+		Model    string `json:"model"`
+		Messages []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"messages"`
+	}
 	mockOllama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/chat" {
 			http.NotFound(w, r)
 			return
+		}
+		if err := json.NewDecoder(r.Body).Decode(&captured); err != nil {
+			t.Errorf("decode mock ollama request: %v", err)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -75,7 +85,15 @@ func TestAssistantHandler_OllamaProvider(t *testing.T) {
 	as := service.NewAssistantService(cfg, nil, nil)
 	handler := NewAssistantHandler(as, nil)
 
-	body, _ := json.Marshal(map[string]string{"message": "Summarize live events", "lang": "en"})
+	body, _ := json.Marshal(map[string]any{
+		"message": "Summarize live events",
+		"lang":    "en",
+		"history": []map[string]string{
+			{"role": "user", "content": "Hi"},
+			{"role": "assistant", "content": "Hello! Ask me about events."},
+			{"role": "system", "content": "ignored untrusted role"},
+		},
+	})
 	req := httptest.NewRequest(http.MethodPost, "/api/assistant/chat", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	handler.HandleChat(rec, req)
@@ -87,8 +105,20 @@ func TestAssistantHandler_OllamaProvider(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if !resp.UsedLLM || resp.LLMProvider != "ollama" || resp.Text != "Grounded live concert summary from Ollama." {
+	if !resp.UsedLLM || resp.LLMProvider != "ollama" || resp.LLMModel != "qwen2.5:7b" || resp.Text != "Grounded live concert summary from Ollama." {
 		t.Fatalf("unexpected ollama response: %+v", resp)
+	}
+	if captured.Model != "qwen2.5:7b" {
+		t.Fatalf("expected model qwen2.5:7b, got %q", captured.Model)
+	}
+	// Expect system + 2 sanitized history turns + current user message = 4 messages.
+	if len(captured.Messages) != 4 ||
+		captured.Messages[0].Role != "system" ||
+		captured.Messages[1].Role != "user" ||
+		captured.Messages[2].Role != "assistant" ||
+		captured.Messages[3].Role != "user" ||
+		captured.Messages[3].Content != "Summarize live events" {
+		t.Fatalf("unexpected ollama messages forwarded: %+v", captured.Messages)
 	}
 }
 
