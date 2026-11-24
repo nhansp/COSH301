@@ -61,6 +61,15 @@ type Querier interface {
 	InsertPriceChange(ctx context.Context, arg InsertPriceChangeParams) error
 	IssueOrderTickets(ctx context.Context, id pgtype.UUID) ([]pgtype.UUID, error)
 	ListActiveHoldsForUser(ctx context.Context, arg ListActiveHoldsForUserParams) ([]ListActiveHoldsForUserRow, error)
+	// Sales of the events an organizer owns, or of every event for an admin.
+	ListAssistantEventSales(ctx context.Context, arg ListAssistantEventSalesParams) ([]ListAssistantEventSalesRow, error)
+	// Price and seats left per zone of one event.
+	ListAssistantEventZones(ctx context.Context, eventID pgtype.UUID) ([]ListAssistantEventZonesRow, error)
+	// Read-only queries for the assistant (FR-24). Every number the assistant says comes from here.
+	// Events a customer can still buy a ticket for or ask about.
+	ListAssistantEvents(ctx context.Context) ([]ListAssistantEventsRow, error)
+	// Tickets sold per zone of one event, scoped the same way as ListAssistantEventSales.
+	ListAssistantZoneSales(ctx context.Context, arg ListAssistantZoneSalesParams) ([]ListAssistantZoneSalesRow, error)
 	ListAuditLogsByEvent(ctx context.Context, arg ListAuditLogsByEventParams) ([]AuditLog, error)
 	ListAuditLogsByUser(ctx context.Context, arg ListAuditLogsByUserParams) ([]AuditLog, error)
 	ListEventZonesWithPrices(ctx context.Context, eventID pgtype.UUID) ([]ListEventZonesWithPricesRow, error)
