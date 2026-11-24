@@ -212,7 +212,7 @@ func (q *Queries) ListEventZonesWithPrices(ctx context.Context, eventID pgtype.U
 
 const listPublishedEvents = `-- name: ListPublishedEvents :many
 SELECT e.id, e.organizer_id, e.venue_id, e.name, e.slug, e.description, e.genre, e.image_url, e.city, e.starts_at, e.ends_at, e.sales_starts_at, e.sales_ends_at, e.status, e.max_tickets_per_user, e.waiting_room_enabled, e.waiting_room_capacity, e.created_at, e.updated_at, e.image_credit, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone,
-       (SELECT MIN(ez.base_price) FROM event_zones ez WHERE ez.event_id = e.id)::bigint AS price_from
+       COALESCE((SELECT MIN(ez.base_price) FROM event_zones ez WHERE ez.event_id = e.id), 0)::bigint AS price_from
 FROM events e
 JOIN venues v ON e.venue_id = v.id
 WHERE e.status IN ('ON_SALE', 'SOLD_OUT', 'PAUSED')
