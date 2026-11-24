@@ -47,6 +47,16 @@ func TestFeatureManager_Profiles(t *testing.T) {
 	}
 }
 
+func TestFeatureManager_ChatbotIsOnInEveryProfile(t *testing.T) {
+	defer os.Unsetenv("FEATURE_PROFILE")
+	for _, profile := range []string{"sprint2", "sprint3", "sprint4", "final"} {
+		os.Setenv("FEATURE_PROFILE", profile)
+		if !NewFeatureManagerFromEnv().IsEnabled(FlagChatbot) {
+			t.Errorf("expected %s to be enabled in %s", FlagChatbot, profile)
+		}
+	}
+}
+
 func TestFeatureManager_EnvOverride(t *testing.T) {
 	os.Setenv("FEATURE_PROFILE", "sprint2")
 	os.Setenv("FEATURE_PAYMENTS", "on")   // Override disabled flag in sprint2
