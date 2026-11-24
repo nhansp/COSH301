@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Box, ChevronUp, Eye, FlaskConical, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Box, ChevronUp, Clock, Eye, FlaskConical, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -246,6 +246,20 @@ export const TicketSelectionPage: React.FC = () => {
     if (!event) return;
     navigate(`/checkout/${event.id}`);
   };
+
+  const keepHoldAndOpenHolds = () => {
+    if (!event || mine.length === 0) return;
+    navigate('/my-tickets?tab=holds', {
+      state: {
+        justHeld: {
+          count: mine.length,
+          eventName: event.title
+        }
+      }
+    });
+  };
+
+  const canHoldOnly = !isOrganizer && isEnabled('seat_hold') && isEnabled('payments');
 
   const accent = useEventAccent(event?.imageUrl);
 
@@ -558,6 +572,8 @@ export const TicketSelectionPage: React.FC = () => {
                   pending={pending}
                   onRelease={seat => inventory.release(seat)}
                   onCheckout={goToCheckout}
+                  onHoldOnly={canHoldOnly ? keepHoldAndOpenHolds : undefined}
+                  holdLabel="Giữ ghế"
                   checkoutLabel={
                     isOrganizer
                       ? 'Thử thanh toán (Mô phỏng)'
@@ -588,6 +604,8 @@ export const TicketSelectionPage: React.FC = () => {
                 pending={pending}
                 onRelease={seat => inventory.release(seat)}
                 onCheckout={goToCheckout}
+                onHoldOnly={canHoldOnly ? keepHoldAndOpenHolds : undefined}
+                holdLabel="Giữ ghế"
                 checkoutLabel={
                   isOrganizer
                     ? 'Thử thanh toán (Mô phỏng)'
@@ -621,13 +639,21 @@ export const TicketSelectionPage: React.FC = () => {
               </span>
             </button>
             {!summaryOpen && (
-              <button type="button" onClick={goToCheckout} className="btn btn-primary h-12 shrink-0 px-5">
-                {isOrganizer
-                  ? 'Thử thanh toán'
-                  : isEnabled('payments')
-                    ? 'Thanh toán ngay'
-                    : 'Xem ghế đã giữ'}
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                {canHoldOnly && (
+                  <button type="button" onClick={keepHoldAndOpenHolds} className="btn btn-secondary h-12 px-3.5 text-sm">
+                    <Clock className="size-4 text-violet-ink" />
+                    <span>Giữ ghế</span>
+                  </button>
+                )}
+                <button type="button" onClick={goToCheckout} className="btn btn-primary h-12 px-4">
+                  {isOrganizer
+                    ? 'Thử thanh toán'
+                    : isEnabled('payments')
+                      ? 'Thanh toán'
+                      : 'Xem ghế đã giữ'}
+                </button>
+              </div>
             )}
           </div>
         </div>

@@ -22,7 +22,7 @@ import { TicketQRCard } from '../components/tickets/TicketQRCard';
 import { eventDate } from '../components/events/EventCard';
 import { useAuth } from '../context/AuthContext';
 import { useFeatures } from '../context/FeatureContext';
-import { useHolds } from '../hooks/useHolds';
+import { useHolds, notifyHoldsChanged } from '../hooks/useHolds';
 import { Hold } from '../types';
 import { invalidateAssistantCache } from '../services/assistantService';
 import { formatPrice, SERVICE_FEE_RATE, serviceFeeOf } from '../services/eventService';
@@ -304,6 +304,7 @@ export const CheckoutPage: React.FC = () => {
     setPendingOrder(null);
     invalidateAssistantCache();
     refresh();
+    notifyHoldsChanged();
   };
 
   let body: React.ReactNode;

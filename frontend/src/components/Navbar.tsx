@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, LayoutDashboard, LogOut, Menu, Ticket, X } from 'lucide-react';
+import { ChevronDown, Clock, LayoutDashboard, LogOut, Menu, Ticket, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFeatures } from '../context/FeatureContext';
+import { useHolds } from '../hooks/useHolds';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import type { PageTone } from './layout/PageShell';
@@ -16,8 +17,9 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
   const { isEnabled } = useFeatures();
   const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const showOrganizerLink = isOrganizer && isEnabled('organizer_console');
-  const showHeldSeatsLink = isAuthenticated && !isOrganizer && (isEnabled('seat_hold') || isEnabled('payments'));
-  const myTicketsLabel = isEnabled('payments') ? 'Vé của tôi' : 'Ghế đang giữ';
+  const showMyTicketsLink = isAuthenticated && !isOrganizer && isEnabled('payments');
+  const showHeldSeatsLink = isAuthenticated && !isOrganizer && isEnabled('seat_hold');
+  const { holds } = useHolds(showHeldSeatsLink);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -59,10 +61,31 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
 
   const goToLogin = () => navigate(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`);
 
+  const activeTabParam = new URLSearchParams(location.search).get('tab');
+
   const nav = [
-    { to: '/', label: 'Lịch diễn', show: true, count: 0 },
-    { to: '/my-tickets', label: myTicketsLabel, show: showHeldSeatsLink, count: 0 },
-    { to: '/organizer', label: 'Quản lý sự kiện', show: showOrganizerLink, count: 0 }
+    { to: '/', label: 'Lịch diễn', show: true, count: 0, isActive: location.pathname === '/' },
+    {
+      to: '/my-tickets?tab=holds',
+      label: 'Ghế đang giữ',
+      show: showHeldSeatsLink,
+      count: holds.length,
+      isActive: location.pathname === '/my-tickets' && (activeTabParam === 'holds' || !showMyTicketsLink)
+    },
+    {
+      to: '/my-tickets?tab=tickets',
+      label: 'Vé của tôi',
+      show: showMyTicketsLink,
+      count: 0,
+      isActive: location.pathname === '/my-tickets' && activeTabParam !== 'holds'
+    },
+    {
+      to: '/organizer',
+      label: 'Quản lý sự kiện',
+      show: showOrganizerLink,
+      count: 0,
+      isActive: location.pathname.startsWith('/organizer')
+    }
   ].filter(item => item.show);
 
   return (
@@ -77,7 +100,7 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
           <Logo />
           <nav aria-label="Điều hướng chính" className="hidden items-center gap-7 md:flex">
             {nav.map(item => {
-              const active = location.pathname === item.to;
+              const active = item.isActive;
               return (
                 <Link
                   key={item.to}
@@ -89,7 +112,7 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
                 >
                   {item.label}
                   {item.count > 0 && (
-                    <span className="type-figure grid h-5 min-w-5 place-items-center rounded-full bg-violet px-1.5 text-xs text-midnight">
+                    <span className="type-figure grid h-5 min-w-5 place-items-center rounded-full bg-coral px-1.5 text-xs text-white">
                       {item.count}
                     </span>
                   )}
@@ -142,9 +165,20 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
                   </div>
                   <div className="border-t border-kumo-hairline pt-1.5">
                     {showHeldSeatsLink && (
-                      <Link role="menuitem" to="/my-tickets" className={menuItem}>
+                      <Link role="menuitem" to="/my-tickets?tab=holds" className={menuItem}>
+                        <Clock className="size-4 text-kumo-subtle" />
+                        <span className="flex-1">Ghế đang giữ</span>
+                        {holds.length > 0 && (
+                          <span className="type-figure rounded-full bg-coral/20 px-2 py-0.5 text-xs font-semibold text-coral">
+                            {holds.length}
+                          </span>
+                        )}
+                      </Link>
+                    )}
+                    {showMyTicketsLink && (
+                      <Link role="menuitem" to="/my-tickets?tab=tickets" className={menuItem}>
                         <Ticket className="size-4 text-kumo-subtle" />
-                        <span className="flex-1">{myTicketsLabel}</span>
+                        <span className="flex-1">Vé của tôi</span>
                       </Link>
                     )}
                     {showOrganizerLink && (
@@ -197,7 +231,7 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
         >
           <nav aria-label="Điều hướng" className="flex flex-col px-4 pt-6">
             {nav.map(item => {
-              const active = location.pathname === item.to;
+              const active = item.isActive;
               return (
                 <Link
                   key={item.to}

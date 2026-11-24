@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SeatItem } from '../types';
 import { apiFetchHolds, apiFetchSeats, apiHoldSeat, apiReleaseSeat, formatPrice } from '../services/eventService';
 import { loadOrganizerTestCart } from '../services/organizerTestCart';
+import { notifyHoldsChanged } from './useHolds';
 
 export type InventoryNotice = { id: number; text: string; tone: 'error' | 'info' | 'success' };
 
@@ -221,6 +222,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled, testMode = fa
       setStatus(seat.id, 'selected');
       // Keep the ref current for loops that hold several seats in one go.
       mineRef.current = [...mineRef.current, { ...seat, status: 'selected' }];
+      notifyHoldsChanged();
       if (!quiet) notify(`Đã giữ ghế ${seat.label} · ${formatPrice(seat.price)}`, 'success');
       return { ok: true };
     },
@@ -254,6 +256,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled, testMode = fa
         const { [seat.id]: _dropped, ...rest } = prev;
         return rest;
       });
+      notifyHoldsChanged();
       if (!quiet) notify(`Đã trả ghế ${seat.label}.`, 'info');
       return true;
     },

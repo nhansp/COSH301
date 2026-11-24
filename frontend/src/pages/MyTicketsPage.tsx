@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   CalendarDays,
+  CheckCircle2,
   ChevronDown,
+  Clock,
   CreditCard,
   MapPin,
+  Plus,
   QrCode,
   Ticket,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
@@ -41,23 +45,45 @@ function groupTicketsByOrder(tickets: UserTicket[]): UserTicket[][] {
 }
 
 export const MyTicketsPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
   const holdEnabled = isEnabled('seat_hold');
   const paymentsEnabled = isEnabled('payments');
   const { holds, now, status: holdsStatus, refresh: refreshHolds, release, releasingId, releaseError } =
     useHolds(holdEnabled);
 
+  const tabParam = searchParams.get('tab');
+  const incomingJustHeld = (location.state as { justHeld?: { count: number; eventName: string } } | null)?.justHeld ?? null;
+
   const [tickets, setTickets] = useState<UserTicket[]>([]);
   const [ticketsStatus, setTicketsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [activeTab, setActiveTab] = useState<'tickets' | 'holds'>('tickets');
-  const userPickedTabRef = useRef(false);
+  const [activeTab, setActiveTab] = useState<'tickets' | 'holds'>(() => (tabParam === 'holds' ? 'holds' : 'tickets'));
+  const [justHeldBanner, setJustHeldBanner] = useState<{ count: number; eventName: string } | null>(incomingJustHeld);
+  const userPickedTabRef = useRef(tabParam === 'holds' || tabParam === 'tickets');
   const [openQrTicketId, setOpenQrTicketId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (tabParam === 'holds' || tabParam === 'tickets') {
+      userPickedTabRef.current = true;
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  useEffect(() => {
+    if (incomingJustHeld) {
+      setJustHeldBanner(incomingJustHeld);
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+    }
+  }, [incomingJustHeld, location.pathname, location.search, navigate]);
+
   const selectTab = (tab: 'tickets' | 'holds') => {
     userPickedTabRef.current = true;
     setActiveTab(tab);
+    setSearchParams({ tab }, { replace: true });
   };
 
   const loadTickets = useCallback(async () => {
@@ -339,19 +365,28 @@ export const MyTicketsPage: React.FC = () => {
                   <span className="font-semibold">{formatPrice(paymentsEnabled ? total : subtotal)}</span>
                   {paymentsEnabled && <span className="text-xs text-kumo-subtle"> (đã gồm phí 3%)</span>}
                 </span>
-                <Link
-                  to={`/checkout/${event.eventId}`}
-                  className={paymentsEnabled ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
-                >
-                  {paymentsEnabled ? (
-                    <>
-                      <CreditCard className="size-4" />
-                      Tiếp tục thanh toán
-                    </>
-                  ) : (
-                    'Xem chi tiết'
-                  )}
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    to={`/events/${event.eventId}/tickets`}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    <Plus className="size-4" />
+                    Chọn thêm ghế
+                  </Link>
+                  <Link
+                    to={`/checkout/${event.eventId}`}
+                    className={paymentsEnabled ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
+                  >
+                    {paymentsEnabled ? (
+                      <>
+                        <CreditCard className="size-4" />
+                        Tiếp tục thanh toán
+                      </>
+                    ) : (
+                      'Xem chi tiết'
+                    )}
+                  </Link>
+                </div>
               </div>
             </section>
           );
@@ -373,6 +408,28 @@ export const MyTicketsPage: React.FC = () => {
             ? 'Quản lý vé điện tử kèm mã QR cố định và các ghế đang giữ chờ thanh toán.'
             : 'Ghế được giữ 5 phút rồi tự trả lại. Vé chỉ phát hành khi thanh toán mở.'}
         </p>
+
+        {justHeldBanner && (
+          <div
+            role="status"
+            className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-kumo-success-tint px-4 py-3 text-sm text-kumo-success ring ring-kumo-success/30"
+          >
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="size-5 shrink-0" />
+              <span>
+                Đã giữ <strong>{justHeldBanner.count} ghế</strong> cho sự kiện <strong>{justHeldBanner.eventName}</strong> trong 5 phút. Bạn có thể thanh toán bất cứ lúc nào trước khi hết giờ.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setJustHeldBanner(null)}
+              aria-label="Ẩn thông báo"
+              className="rounded-lg p-1 text-kumo-success/80 hover:bg-kumo-success/10 hover:text-kumo-success"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
 
         {!featuresLoading && paymentsEnabled && (
           <div
@@ -408,7 +465,7 @@ export const MyTicketsPage: React.FC = () => {
                   : 'text-kumo-subtle hover:text-kumo-strong'
               }`}
             >
-              <CreditCard className="size-4" />
+              <Clock className="size-4" />
               <span>Ghế đang giữ</span>
               {holds.length > 0 && (
                 <span className="type-figure rounded-full bg-coral/25 px-2 py-0.5 text-xs text-coral">

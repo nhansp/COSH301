@@ -233,8 +233,21 @@ export const ZoneDetail: React.FC<ZoneDetailProps> = ({
     );
   }
 
+  const bestAvailableSeat = seats.find(s => s.status === 'available');
+
   return (
     <div className="space-y-3">
+      {bestAvailableSeat && remaining > 0 && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onSeatClick(bestAvailableSeat)}
+          className="btn btn-secondary btn-sm h-9 w-full text-xs"
+        >
+          <Armchair className="size-3.5 text-violet-ink" />
+          <span>Giữ nhanh 1 ghế trống ({bestAvailableSeat.label})</span>
+        </button>
+      )}
       <SeatGrid seats={seats} pending={pending} onSeatClick={onSeatClick} />
       <SeatLegend />
     </div>

@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Hold } from '../types';
 import { apiFetchHolds, apiReleaseSeat } from '../services/eventService';
 
+export const HOLDS_CHANGED_EVENT = 'sms:holds-changed';
+
+export function notifyHoldsChanged() {
+  window.dispatchEvent(new CustomEvent(HOLDS_CHANGED_EVENT));
+}
+
 /** Re-renders once a second so countdowns derived from `expiresAt` stay current. */
 function useNow(active: boolean): number {
   const [now, setNow] = useState(() => Date.now());
@@ -22,15 +28,25 @@ export function useHolds(enabled: boolean) {
   const [releasingId, setReleasingId] = useState<string | null>(null);
   const now = useNow(holds.length > 0);
 
-  const refresh = useCallback(async () => {
-    setStatus('loading');
+  const refresh = useCallback(async (silent = false) => {
+    if (!silent) setStatus('loading');
     const data = await apiFetchHolds();
     if (data) setHolds(data);
     setStatus(data ? 'ready' : 'error');
   }, []);
 
   useEffect(() => {
-    if (enabled) refresh();
+    if (!enabled) {
+      setHolds([]);
+      setStatus('ready');
+      return;
+    }
+    refresh();
+    const onChanged = () => {
+      refresh(true);
+    };
+    window.addEventListener(HOLDS_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(HOLDS_CHANGED_EVENT, onChanged);
   }, [enabled, refresh]);
 
   // A hold past its expiry is already freed by the server; stop listing it.
@@ -42,9 +58,13 @@ export function useHolds(enabled: boolean) {
     setReleasingId(hold.seatId);
     const ok = await apiReleaseSeat(hold.eventId, hold.seatId);
     setReleasingId(null);
-    if (ok) setHolds(prev => prev.filter(h => h.seatId !== hold.seatId));
-    else setReleaseError(`Chưa trả được ghế ${hold.seatLabel}. Thử lại sau giây lát.`);
+    if (ok) {
+      setHolds(prev => prev.filter(h => h.seatId !== hold.seatId));
+      notifyHoldsChanged();
+    } else {
+      setReleaseError(`Chưa trả được ghế ${hold.seatLabel}. Thử lại sau giây lát.`);
+    }
   };
 
-  return { holds: active, now, status, refresh, release, releasingId, releaseError };
+  return { holds: active, now, status, refresh: () => refresh(false), release, releasingId, releaseError };
 }

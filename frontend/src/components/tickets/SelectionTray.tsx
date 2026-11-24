@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown, Minus, X } from 'lucide-react';
+import { ChevronDown, Clock, Minus, X } from 'lucide-react';
 import { SeatItem } from '../../types';
 import { ZoneSummary } from '../../services/venue';
 import { formatPrice, formatPriceShort, serviceFeeOf, SERVICE_FEE_RATE } from '../../services/eventService';
@@ -16,6 +16,9 @@ interface SelectionTrayProps {
   onRelease: (seat: SeatItem) => void;
   onCheckout: () => void;
   checkoutLabel?: string;
+  /** Optional explicit "Giữ ghế" action for customers who want to keep seats held without paying immediately. */
+  onHoldOnly?: () => void;
+  holdLabel?: string;
   /** Shows a toggle that folds the ticket list away; the totals and checkout stay. */
   collapsible?: boolean;
   /** Caps the ticket list; it scrolls on its own past this height. */
@@ -53,6 +56,8 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
   onRelease,
   onCheckout,
   checkoutLabel = 'Xem ghế đã giữ',
+  onHoldOnly,
+  holdLabel = 'Giữ ghế',
   collapsible = false,
   listClassName = '',
   className = ''
@@ -149,7 +154,7 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
             <dd className="tabular-nums text-kumo-default">{formatPrice(fee)}</dd>
           </div>
         </dl>
-        {/* Total beside the button: one row less, so the list keeps more of the height. */}
+        {/* Total + action buttons */}
         <div className="mt-2 flex items-center justify-between gap-3">
           <p className="min-w-0">
             <span className="block text-sm font-medium text-kumo-strong">Tổng cộng</span>
@@ -157,10 +162,23 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
               {formatPrice(total)}
             </span>
           </p>
-          <button type="button" onClick={onCheckout} className="btn btn-primary h-12 shrink-0">
-            {checkoutLabel}
-          </button>
+          {!onHoldOnly && (
+            <button type="button" onClick={onCheckout} className="btn btn-primary h-12 shrink-0">
+              {checkoutLabel}
+            </button>
+          )}
         </div>
+        {onHoldOnly && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={onHoldOnly} className="btn btn-secondary h-11 w-full">
+              <Clock className="size-4 text-violet-ink" />
+              <span>{holdLabel}</span>
+            </button>
+            <button type="button" onClick={onCheckout} className="btn btn-primary h-11 w-full">
+              {checkoutLabel}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
