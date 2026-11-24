@@ -8,7 +8,8 @@ export type FeatureFlag =
   | 'organizer_console'
   | 'ticket_limit'
   | 'payments'
-  | 'chatbot';
+  | 'chatbot'
+  | 'dynamic_pricing';
 
 interface FeatureContextType {
   isLoading: boolean;

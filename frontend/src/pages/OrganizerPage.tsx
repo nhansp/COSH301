@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
@@ -15,6 +15,17 @@ import {
   apiUpdateZonePricing,
   pricingErrorMessage,
 } from '../services/organizerService';
+import {
+  PricingOverview,
+  ZonePricingState,
+  apiFetchPricingOverview,
+  apiRunPricingNow,
+  pricingActionError,
+} from '../services/pricingService';
+import { ZonePricingPanel } from '../components/organizer/ZonePricingPanel';
+
+// How often the console reloads the live inputs while an event is open.
+const PRICING_POLL_MS = 4000;
 
 type PriceDraft = Record<keyof ZonePricing, string>;
 
@@ -46,13 +57,21 @@ interface ZoneRowProps {
   zone: OrganizerZone;
   editable: boolean;
   onSaved: (zoneId: string, pricing: ZonePricing) => void;
+  /** Dynamic pricing state of the zone; absent while it loads or when the feature is off. */
+  dynamic?: { overview: PricingOverview; zone: ZonePricingState };
+  onPricingChanged: () => void;
 }
 
-const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) => {
+const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved, dynamic, onPricingChanged }) => {
   const [draft, setDraft] = useState<PriceDraft>(toDraft(zone));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // An approved suggestion or another organizer's edit changes the stored prices: show them.
+  useEffect(() => {
+    setDraft(toDraft(zone));
+  }, [zone.basePrice, zone.floorPrice, zone.ceilingPrice]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +94,7 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
     }
     onSaved(zone.zoneId, pricing);
     setSaved(true);
+    onPricingChanged();
   };
 
   return (
@@ -145,6 +165,15 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
           )}
         </div>
       )}
+      {dynamic && (
+        <ZonePricingPanel
+          eventId={eventId}
+          zone={dynamic.zone}
+          settings={dynamic.overview.settings}
+          now={Date.parse(dynamic.overview.generatedAt)}
+          onChanged={onPricingChanged}
+        />
+      )}
     </form>
   );
 };
@@ -157,7 +186,13 @@ export const OrganizerPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [overview, setOverview] = useState<PricingOverview | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [runNote, setRunNote] = useState<string | null>(null);
+
   const consoleEnabled = isEnabled('organizer_console');
+  const dynamicEnabled = isEnabled('dynamic_pricing');
+  const selectedId = selected?.id;
 
   useEffect(() => {
     if (!consoleEnabled) return;
@@ -167,9 +202,73 @@ export const OrganizerPage: React.FC = () => {
       .finally(() => setIsLoading(false));
   }, [consoleEnabled]);
 
+  // Applies a fresh pricing overview. Prices the engine or another organizer changed
+  // flow into the zone forms too, so they never show a price that is no longer current.
+  const applyOverview = useCallback((next: PricingOverview) => {
+    setOverview(next);
+    setZones(prev =>
+      prev.map(z => {
+        const live = next.zones.find(p => p.zoneId === z.zoneId);
+        return live
+          ? {
+              ...z,
+              basePrice: live.basePrice,
+              floorPrice: live.floorPrice,
+              ceilingPrice: live.ceilingPrice,
+              isDynamicPricingEnabled: live.isDynamicPricingEnabled,
+            }
+          : z;
+      })
+    );
+  }, []);
+
+  const refreshOverview = useCallback(async () => {
+    if (!selectedId) return;
+    const res = await apiFetchPricingOverview(selectedId);
+    if (res.ok) applyOverview(res.data);
+  }, [selectedId, applyOverview]);
+
+  // Reload the live inputs every few seconds while the tab is visible.
+  useEffect(() => {
+    if (!dynamicEnabled || !selectedId) return;
+    setOverview(null);
+    let stopped = false;
+    const tick = async () => {
+      if (document.hidden) return;
+      const res = await apiFetchPricingOverview(selectedId);
+      if (!stopped && res.ok) applyOverview(res.data);
+    };
+    tick();
+    const timer = setInterval(tick, PRICING_POLL_MS);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [dynamicEnabled, selectedId, applyOverview]);
+
+  // A run reply must not be overwritten by a slower poll that started before it.
+  const runSeq = useRef(0);
+  const handleRunNow = async () => {
+    if (!selectedId) return;
+    const seq = ++runSeq.current;
+    setIsRunning(true);
+    setRunNote(null);
+    const res = await apiRunPricingNow(selectedId);
+    setIsRunning(false);
+    if (!res.ok) {
+      setRunNote(pricingActionError(res.error));
+      return;
+    }
+    if (seq === runSeq.current) applyOverview(res.data.overview);
+    const { created, updated, withdrawn, zones: n } = res.data.run;
+    setRunNote(`Đã phân tích ${n} khu vực: ${created} đề xuất mới, ${updated} đề xuất cập nhật, ${withdrawn} đề xuất rút lại.`);
+  };
+
   const handleSelect = async (ev: OrganizerEvent) => {
     setSelected(ev);
     setZones([]);
+    setOverview(null);
+    setRunNote(null);
     setError(null);
     try {
       setZones(await apiFetchEventZones(ev.id));
@@ -260,15 +359,47 @@ export const OrganizerPage: React.FC = () => {
                 <h2 id="organizer-zones" className="text-sm font-medium text-kumo-subtle">
                   Khu vực: <span className="text-kumo-default">{selected.name}</span>
                 </h2>
-                {zones.map(zone => (
-                  <ZoneRow
-                    key={`${selected.id}-${zone.zoneId}`}
-                    eventId={selected.id}
-                    zone={zone}
-                    editable={isEnabled('zone_pricing')}
-                    onSaved={handleSaved}
-                  />
-                ))}
+                {dynamicEnabled && overview && (
+                  <div className="rounded-xl bg-kumo-elevated ring ring-kumo-line p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-sm font-semibold text-kumo-strong flex items-center gap-2">
+                        <span className="size-2 rounded-full bg-kumo-success animate-pulse" aria-hidden="true" />
+                        Số liệu cập nhật trực tiếp
+                        <span className="font-normal text-kumo-subtle tabular-nums">
+                          {new Date(overview.generatedAt).toLocaleTimeString('vi-VN')}
+                        </span>
+                      </p>
+                      <p className="text-xs text-kumo-subtle">
+                        Tự động phân tích mỗi {Math.round(overview.settings.intervalSeconds / 60)} phút, đo tốc độ bán trong{' '}
+                        {overview.settings.windowMinutes} phút gần nhất.
+                        {overview.lastRunAt && <> Lần phân tích gần nhất: {new Date(overview.lastRunAt).toLocaleTimeString('vi-VN')}.</>}
+                      </p>
+                      {runNote && (
+                        <p role="status" className="text-xs text-kumo-default">
+                          {runNote}
+                        </p>
+                      )}
+                    </div>
+                    <button type="button" className="btn btn-ink flex-shrink-0" onClick={handleRunNow} disabled={isRunning}>
+                      <RefreshCw className={`size-4 ${isRunning ? 'animate-spin' : ''}`} />
+                      {isRunning ? 'Đang phân tích...' : 'Chạy lại phân tích ngay'}
+                    </button>
+                  </div>
+                )}
+                {zones.map(zone => {
+                  const live = overview?.zones.find(p => p.zoneId === zone.zoneId);
+                  return (
+                    <ZoneRow
+                      key={`${selected.id}-${zone.zoneId}`}
+                      eventId={selected.id}
+                      zone={zone}
+                      editable={isEnabled('zone_pricing')}
+                      onSaved={handleSaved}
+                      dynamic={dynamicEnabled && overview && live ? { overview, zone: live } : undefined}
+                      onPricingChanged={refreshOverview}
+                    />
+                  );
+                })}
               </>
             )}
           </section>
