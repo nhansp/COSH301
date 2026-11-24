@@ -21,6 +21,7 @@ type RouterDependencies struct {
 	Organizer    *service.OrganizerService
 	Tickets      *service.TicketService
 	Payments     *service.PaymentService
+	Assistant    *service.AssistantService
 }
 
 func NewRouter(deps RouterDependencies) http.Handler {
@@ -98,6 +99,13 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		RequireRole(authHandler, anyRole, paymentHandler.HandleCreateVNPay)))
 	mux.HandleFunc("GET /api/payments/vnpay/ipn", RequireFeature(fm, config.FlagPayments, paymentHandler.HandleVNPayIPN))
 	mux.HandleFunc("GET /api/payments/vnpay/return", RequireFeature(fm, config.FlagPayments, paymentHandler.HandleVNPayReturn))
+
+	// 9. Assistant chatbot (FR-24). Open to signed-out visitors; the service scopes
+	// answers by the session's role.
+	assistantHandler := NewAssistantHandler(deps.Assistant, deps.AuthService)
+	assistantIPLimiter := NewRateLimiter(60, time.Minute)
+	mux.HandleFunc("POST /api/assistant/chat", RequireFeature(fm, config.FlagChatbot,
+		assistantIPLimiter.Wrap(assistantHandler.HandleChat)))
 
 	// Wrap with middlewares
 	handler := LoggingMiddleware(mux)

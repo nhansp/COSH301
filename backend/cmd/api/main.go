@@ -29,6 +29,14 @@ func main() {
 		}
 	}
 
+	if cfg.Features.IsEnabled(config.FlagChatbot) {
+		mode := "keywords only"
+		if cfg.LLM.BaseURL != "" {
+			mode = "language model " + cfg.LLM.Model
+		}
+		log.Printf("Assistant is on: %s", mode)
+	}
+
 	// Run migrations
 	if err := store.RunMigrations(cfg.DatabaseURL); err != nil {
 		log.Fatalf("Database migration failed: %v", err)
@@ -85,6 +93,8 @@ func main() {
 		Organizer:    organizerService,
 		Tickets:      service.NewTicketService(dbPool, queries),
 		Payments:     paymentService,
+		Assistant: service.NewAssistantService(queries, cfg.Features,
+			service.NewLLMClient(cfg.LLM.BaseURL, cfg.LLM.Model, cfg.LLM.APIKey)),
 	})
 
 	server := &http.Server{
