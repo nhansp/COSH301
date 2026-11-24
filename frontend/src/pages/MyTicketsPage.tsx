@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle,
@@ -50,9 +50,15 @@ export const MyTicketsPage: React.FC = () => {
   const [tickets, setTickets] = useState<UserTicket[]>([]);
   const [ticketsStatus, setTicketsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [activeTab, setActiveTab] = useState<'tickets' | 'holds'>('tickets');
+  const userPickedTabRef = useRef(false);
   const [openQrTicketId, setOpenQrTicketId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const selectTab = (tab: 'tickets' | 'holds') => {
+    userPickedTabRef.current = true;
+    setActiveTab(tab);
+  };
 
   const loadTickets = useCallback(async () => {
     if (!paymentsEnabled) {
@@ -75,16 +81,19 @@ export const MyTicketsPage: React.FC = () => {
     if (!featuresLoading) loadTickets();
   }, [featuresLoading, loadTickets]);
 
-  // Default to held seats tab if the user only has active holds and no paid tickets yet.
+  // Wait for feature flags and data to settle before choosing the initial tab on reload.
   useEffect(() => {
+    if (featuresLoading || userPickedTabRef.current) return;
     if (!paymentsEnabled) {
       setActiveTab('holds');
       return;
     }
-    if (ticketsStatus === 'ready' && holdsStatus === 'ready' && tickets.length === 0 && holds.length > 0) {
+    if (ticketsStatus === 'ready' && tickets.length > 0) {
+      setActiveTab('tickets');
+    } else if (ticketsStatus === 'ready' && holdsStatus === 'ready' && tickets.length === 0 && holds.length > 0) {
       setActiveTab('holds');
     }
-  }, [paymentsEnabled, ticketsStatus, holdsStatus, tickets.length, holds.length]);
+  }, [featuresLoading, paymentsEnabled, ticketsStatus, holdsStatus, tickets.length, holds.length]);
 
   const handleCancelTicket = async (ticket: UserTicket) => {
     if (!window.confirm(`Xác nhận hủy vé ghế ${ticket.seatLabel} (${ticket.eventName})? Ghế sẽ được mở bán lại.`)) {
@@ -133,7 +142,7 @@ export const MyTicketsPage: React.FC = () => {
           }
           action={
             holds.length > 0 ? (
-              <button type="button" onClick={() => setActiveTab('holds')} className="btn btn-primary">
+              <button type="button" onClick={() => selectTab('holds')} className="btn btn-primary">
                 Thanh toán ghế đang giữ ({holds.length})
               </button>
             ) : (
@@ -375,7 +384,7 @@ export const MyTicketsPage: React.FC = () => {
               type="button"
               role="tab"
               aria-selected={activeTab === 'tickets'}
-              onClick={() => setActiveTab('tickets')}
+              onClick={() => selectTab('tickets')}
               className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 activeTab === 'tickets'
                   ? 'bg-kumo-contrast text-kumo-inverse'
@@ -392,7 +401,7 @@ export const MyTicketsPage: React.FC = () => {
               type="button"
               role="tab"
               aria-selected={activeTab === 'holds'}
-              onClick={() => setActiveTab('holds')}
+              onClick={() => selectTab('holds')}
               className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 activeTab === 'holds'
                   ? 'bg-kumo-contrast text-kumo-inverse'

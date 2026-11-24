@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // The server session (HttpOnly cookie) is the source of truth; restore it via /api/auth/me.
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
         if (isMounted && data?.user) setUser(userFromApi(data.user));
@@ -91,6 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(body)
       });
       if (!res.ok) return { ok: false, error: await authErrorOf(res) };
@@ -107,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch('/api/auth/otp/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ destination })
       });
       if (!res.ok) return { ok: false, error: await authErrorOf(res) };
@@ -122,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const sessionExpired = () => setUser(null);
 
   const logout = () => {
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     setUser(null);
   };
 

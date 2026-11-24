@@ -237,47 +237,42 @@ func (s *AuthService) VerifyOTP(ctx context.Context, destination, code, ipAddres
 	return rawToken, &user, nil
 }
 
-// DemoLogin signs in a demo account without OTP (development/demo mode only).
-// Customer demo logins create an isolated account per visitor; organizer demo logins
-// reuse the seeded organizer account so they can manage events.
+// DemoLogin signs in a stable demo account without OTP (development/demo mode only).
+// Both customer and organizer demo logins reuse persistent accounts so tickets, holds,
+// and managed events stay attached across reloads and role switches.
 func (s *AuthService) DemoLogin(ctx context.Context, role, ipAddress, userAgent string) (string, *store.User, error) {
-	var user store.User
-	var err error
-
+	var (
+		email    = "khangia.demo@sortmyscene.live"
+		fullName = "Khán giả Demo"
+		userRole = store.UserRoleCUSTOMER
+	)
 	if strings.EqualFold(strings.TrimSpace(role), "ORGANIZER") {
-		const orgEmail = "btc@cosh301.nhansp.id.vn"
-		user, err = s.findUser(ctx, orgEmail, "EMAIL")
-		if errors.Is(err, pgx.ErrNoRows) {
-			user, err = s.queries.CreateUser(ctx, store.CreateUserParams{
-				Role:            store.UserRoleORGANIZER,
-				Status:          store.UserStatusACTIVE,
-				Email:           pgtype.Text{String: orgEmail, Valid: true},
-				FullName:        pgtype.Text{String: "Ban Tổ chức", Valid: true},
-				EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return "", nil, fmt.Errorf("create demo organizer: %w", err)
-			}
-		} else if err != nil {
-			return "", nil, fmt.Errorf("lookup demo organizer: %w", err)
-		} else if user.Status != store.UserStatusACTIVE {
-			return "", nil, ErrAccountInactive
-		}
-	} else {
-		token, genErr := GenerateToken()
-		if genErr != nil {
-			return "", nil, genErr
-		}
+		email = "btc@cosh301.nhansp.id.vn"
+		fullName = "Ban Tổ chức"
+		userRole = store.UserRoleORGANIZER
+	}
+
+	user, err := s.findUser(ctx, email, "EMAIL")
+	if errors.Is(err, pgx.ErrNoRows) {
 		user, err = s.queries.CreateUser(ctx, store.CreateUserParams{
-			Role:            store.UserRoleCUSTOMER,
+			Role:            userRole,
 			Status:          store.UserStatusACTIVE,
-			Email:           pgtype.Text{String: "demo-" + token[:12] + "@demo.invalid", Valid: true},
-			FullName:        pgtype.Text{String: "Khán giả demo", Valid: true},
+			Email:           pgtype.Text{String: email, Valid: true},
+			FullName:        pgtype.Text{String: fullName, Valid: true},
 			EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		})
 		if err != nil {
-			return "", nil, fmt.Errorf("create demo user: %w", err)
+			// Handle concurrent first-time demo login race cleanly.
+			if existing, lookupErr := s.findUser(ctx, email, "EMAIL"); lookupErr == nil {
+				user = existing
+			} else {
+				return "", nil, fmt.Errorf("create demo user: %w", err)
+			}
 		}
+	} else if err != nil {
+		return "", nil, fmt.Errorf("lookup demo user: %w", err)
+	} else if user.Status != store.UserStatusACTIVE {
+		return "", nil, ErrAccountInactive
 	}
 
 	if err := s.queries.UpdateUserLastLogin(ctx, user.ID); err != nil {
