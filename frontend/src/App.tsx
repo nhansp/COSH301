@@ -41,7 +41,7 @@ export default function App() {
               <Route
                 path="/my-tickets"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute roles={['CUSTOMER']}>
                     <MyTicketsPage />
                   </ProtectedRoute>
                 }

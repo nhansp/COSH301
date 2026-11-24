@@ -51,6 +51,9 @@ services:
       PORT: 8080
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-event_ticketing}?sslmode=disable
       FEATURE_PROFILE: ${FEATURE_PROFILE:-sprint2}
+      FEATURE_PAYMENTS: ${FEATURE_PAYMENTS:-on}
+      FEATURE_ROTATING_QR: ${FEATURE_ROTATING_QR:-off}
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-dev-payment-webhook-secret}
       APP_ENV: ${APP_ENV:-development}
       OTP_DEMO: ${OTP_DEMO:-false}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}

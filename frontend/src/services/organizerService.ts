@@ -66,6 +66,30 @@ export interface EventSalesSummary {
   zones: ZoneSalesSummary[];
 }
 
+export interface OrganizerSalesOverview {
+  eventCount: number;
+  totalCapacity: number;
+  soldCount: number;
+  heldCount: number;
+  availableCount: number;
+  fillRate: number;
+  realizedRevenue: number;
+  heldPipelineRevenue: number;
+  potentialRevenue: number;
+  remainingRevenue: number;
+  events: EventSalesSummary[];
+}
+
+export async function apiFetchOrganizerSalesOverview(): Promise<OrganizerSalesOverview | null> {
+  try {
+    const res = await fetch('/api/organizer/sales-overview', { credentials: 'include' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function apiFetchEventSalesSummary(eventId: string): Promise<EventSalesSummary | null> {
   try {
     const res = await fetch(`/api/organizer/events/${encodeURIComponent(eventId)}/sales-summary`, {

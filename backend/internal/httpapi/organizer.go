@@ -30,6 +30,16 @@ func (h *OrganizerHandler) HandleListEvents(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, events)
 }
 
+// HandleSalesOverview handles GET /api/organizer/sales-overview.
+func (h *OrganizerHandler) HandleSalesOverview(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	overview, err := h.organizer.GetSalesOverview(r.Context(), sess.UserID, sess.Role == store.UserRoleADMIN)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, overview)
+}
+
 // HandleEventSalesSummary handles GET /api/organizer/events/{id}/sales-summary.
 func (h *OrganizerHandler) HandleEventSalesSummary(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
 	eventID, err := h.events.ResolveEventID(r.Context(), r.PathValue("id"))

@@ -16,6 +16,8 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
   const { isEnabled } = useFeatures();
   const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
   const showOrganizerLink = isOrganizer && isEnabled('organizer_console');
+  const showHeldSeatsLink = isAuthenticated && !isOrganizer && (isEnabled('seat_hold') || isEnabled('payments'));
+  const myTicketsLabel = isEnabled('payments') ? 'Vé của tôi' : 'Ghế đang giữ';
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -59,7 +61,7 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
 
   const nav = [
     { to: '/', label: 'Lịch diễn', show: true, count: 0 },
-    { to: '/my-tickets', label: 'Ghế đang giữ', show: isAuthenticated && isEnabled('seat_hold'), count: 0 },
+    { to: '/my-tickets', label: myTicketsLabel, show: showHeldSeatsLink, count: 0 },
     { to: '/organizer', label: 'Quản lý sự kiện', show: showOrganizerLink, count: 0 }
   ].filter(item => item.show);
 
@@ -139,10 +141,12 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
                     </div>
                   </div>
                   <div className="border-t border-kumo-hairline pt-1.5">
-                    <Link role="menuitem" to="/my-tickets" className={menuItem}>
-                      <Ticket className="size-4 text-kumo-subtle" />
-                      <span className="flex-1">Ghế đang giữ</span>
-                    </Link>
+                    {showHeldSeatsLink && (
+                      <Link role="menuitem" to="/my-tickets" className={menuItem}>
+                        <Ticket className="size-4 text-kumo-subtle" />
+                        <span className="flex-1">{myTicketsLabel}</span>
+                      </Link>
+                    )}
                     {showOrganizerLink && (
                       <Link role="menuitem" to="/organizer" className={menuItem}>
                         <LayoutDashboard className="size-4 text-kumo-subtle" />

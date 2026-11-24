@@ -1,17 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2, LayoutGrid, BarChart3 } from 'lucide-react';
+import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2, LayoutGrid, BarChart3, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
+import { EventSalesDashboard, PortfolioSalesBanner } from '../components/organizer/OrganizerSalesDashboard';
 import { useFeatures } from '../context/FeatureContext';
-import { formatPrice } from '../services/eventService';
+import { formatPrice, apiFetchSeats } from '../services/eventService';
+import { SeatItem } from '../types';
 import { invalidateAssistantCache, openAssistant } from '../services/assistantService';
 import {
+  EventSalesSummary,
   OrganizerEvent,
+  OrganizerSalesOverview,
   OrganizerZone,
   ZonePricing,
   apiFetchOrganizerEvents,
+  apiFetchOrganizerSalesOverview,
   apiFetchEventZones,
   apiUpdateZonePricing,
   pricingErrorMessage,
@@ -46,10 +51,11 @@ interface ZoneRowProps {
   eventId: string;
   zone: OrganizerZone;
   editable: boolean;
+  highlighted?: boolean;
   onSaved: (zoneId: string, pricing: ZonePricing) => void;
 }
 
-const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) => {
+const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted, onSaved }) => {
   const [draft, setDraft] = useState<PriceDraft>(toDraft(zone));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -79,7 +85,13 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
   };
 
   return (
-    <form onSubmit={handleSave} className="rounded-xl bg-kumo-base ring ring-kumo-line p-4 sm:p-5">
+    <form
+      id={`zone-pricing-${zone.zoneId}`}
+      onSubmit={handleSave}
+      className={`rounded-xl bg-kumo-base p-4 sm:p-5 transition-shadow ${
+        highlighted ? 'ring-2 ring-violet-ink' : 'ring ring-kumo-line'
+      }`}
+    >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold tracking-tight text-kumo-strong truncate">{zone.zoneName}</h3>
@@ -153,36 +165,103 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, onSaved }) =
 export const OrganizerPage: React.FC = () => {
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
+  const [overview, setOverview] = useState<OrganizerSalesOverview | null>(null);
   const [selected, setSelected] = useState<OrganizerEvent | null>(null);
   const [zones, setZones] = useState<OrganizerZone[]>([]);
+  const [eventSeats, setEventSeats] = useState<SeatItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing'>('dashboard');
+  const [focusedZoneId, setFocusedZoneId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const consoleEnabled = isEnabled('organizer_console');
 
-  useEffect(() => {
-    if (!consoleEnabled) return;
-    apiFetchOrganizerEvents()
-      .then(setEvents)
-      .catch(() => setError('Không thể tải danh sách sự kiện.'))
-      .finally(() => setIsLoading(false));
-  }, [consoleEnabled]);
+  const loadOverview = useCallback(async () => {
+    const data = await apiFetchOrganizerSalesOverview();
+    if (data) setOverview(data);
+    return data;
+  }, []);
 
-  const handleSelect = async (ev: OrganizerEvent) => {
+  const selectSeqRef = useRef(0);
+
+  const handleSelect = useCallback(async (ev: OrganizerEvent) => {
+    const seq = ++selectSeqRef.current;
     setSelected(ev);
     setZones([]);
+    setEventSeats([]);
+    setFocusedZoneId(null);
     setError(null);
     try {
-      setZones(await apiFetchEventZones(ev.id));
+      const [zoneList, seatList] = await Promise.all([
+        apiFetchEventZones(ev.id),
+        apiFetchSeats(ev.id)
+      ]);
+      if (selectSeqRef.current !== seq) return;
+      setZones(zoneList);
+      setEventSeats(seatList ?? []);
     } catch {
-      setError('Không thể tải các khu vực của sự kiện.');
+      if (selectSeqRef.current === seq) {
+        setError('Không thể tải các khu vực của sự kiện.');
+      }
     }
+  }, []);
+
+  useEffect(() => {
+    if (!consoleEnabled) return;
+    let active = true;
+    Promise.all([apiFetchOrganizerEvents(), loadOverview()])
+      .then(([list]) => {
+        if (!active) return;
+        setEvents(list);
+        if (list.length > 0) {
+          handleSelect(list[0]);
+        }
+      })
+      .catch(() => {
+        if (active) setError('Không thể tải danh sách sự kiện.');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [consoleEnabled, loadOverview, handleSelect]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    invalidateAssistantCache();
+    await loadOverview();
+    if (selected) {
+      await Promise.all([
+        apiFetchEventZones(selected.id).then(setZones).catch(() => {}),
+        apiFetchSeats(selected.id).then(s => setEventSeats(s ?? [])).catch(() => {})
+      ]);
+    }
+    setIsRefreshing(false);
+  };
+
+  const handleInspectZonePricing = (zoneId: string) => {
+    setFocusedZoneId(zoneId);
+    setActiveTab('pricing');
+    window.requestAnimationFrame(() => {
+      document.getElementById(`zone-pricing-${zoneId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    });
   };
 
   const handleSaved = (zoneId: string, pricing: ZonePricing) => {
     setZones(prev => prev.map(z => (z.zoneId === zoneId ? { ...z, ...pricing } : z)));
     invalidateAssistantCache();
+    loadOverview();
   };
+
+  const selectedSummary: EventSalesSummary | undefined = selected
+    ? overview?.events.find(e => e.eventId === selected.id)
+    : undefined;
 
   if (featuresLoading) {
     return (
@@ -197,7 +276,34 @@ export const OrganizerPage: React.FC = () => {
     <PageShell>
       <Navbar />
       <main className="page-enter flex-1 max-w-page w-full mx-auto px-4 sm:px-6 lg:px-10 pt-10 pb-20">
-        <h1 className="type-display text-display-lg mb-10">Quản lý sự kiện</h1>
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="type-display text-display-lg">Quản lý sự kiện &amp; Doanh số</h1>
+            <p className="mt-2 text-kumo-subtle">
+              Theo dõi doanh thu, tỉ lệ lấp đầy trực tiếp từ cơ sở dữ liệu và cấu hình khung giá theo khu vực.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="btn btn-secondary btn-sm h-10"
+          >
+            <RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Đang cập nhật...' : 'Làm mới số liệu'}</span>
+          </button>
+        </div>
+
+        {overview && (
+          <PortfolioSalesBanner
+            overview={overview}
+            selectedEventId={selected?.id ?? null}
+            onSelectEvent={eventId => {
+              const found = events.find(e => e.id === eventId);
+              if (found) handleSelect(found);
+            }}
+          />
+        )}
 
         {error && (
           <p role="alert" className="mb-4 rounded-lg px-3 py-2 text-sm bg-kumo-danger-tint text-kumo-danger flex items-start gap-2">
@@ -261,9 +367,41 @@ export const OrganizerPage: React.FC = () => {
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 id="organizer-zones" className="text-sm font-medium text-kumo-subtle">
-                    Khu vực: <span className="text-kumo-default">{selected.name}</span>
-                  </h2>
+                  <div className="min-w-0">
+                    <h2 id="organizer-zones" className="text-base font-semibold text-kumo-strong truncate">
+                      {selected.name}
+                    </h2>
+                    <div role="tablist" aria-label="Chế độ xem sự kiện" className="mt-2 inline-flex gap-1 rounded-full bg-kumo-recessed p-1">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === 'dashboard'}
+                        onClick={() => setActiveTab('dashboard')}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                          activeTab === 'dashboard'
+                            ? 'bg-kumo-contrast text-kumo-inverse'
+                            : 'text-kumo-subtle hover:text-kumo-strong'
+                        }`}
+                      >
+                        <BarChart3 className="size-3.5" />
+                        <span>Bảng điều khiển doanh số</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === 'pricing'}
+                        onClick={() => setActiveTab('pricing')}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                          activeTab === 'pricing'
+                            ? 'bg-kumo-contrast text-kumo-inverse'
+                            : 'text-kumo-subtle hover:text-kumo-strong'
+                        }`}
+                      >
+                        <SlidersHorizontal className="size-3.5" />
+                        <span>Cấu hình giá khu vực</span>
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -271,7 +409,7 @@ export const OrganizerPage: React.FC = () => {
                       className="btn btn-secondary btn-sm h-9 text-xs"
                     >
                       <BarChart3 className="size-3.5 text-violet-ink" />
-                      <span>Phân tích bán vé</span>
+                      <span>Trợ lý doanh số</span>
                     </button>
                     <button
                       type="button"
@@ -279,19 +417,42 @@ export const OrganizerPage: React.FC = () => {
                       className="btn btn-secondary btn-sm h-9 text-xs"
                     >
                       <LayoutGrid className="size-3.5 text-violet-ink" />
-                      <span>Trực quan hoá biểu đồ sân khấu</span>
+                      <span>Biểu đồ sân khấu</span>
                     </button>
                   </div>
                 </div>
-                {zones.map(zone => (
-                  <ZoneRow
-                    key={`${selected.id}-${zone.zoneId}`}
-                    eventId={selected.id}
-                    zone={zone}
-                    editable={isEnabled('zone_pricing')}
-                    onSaved={handleSaved}
+
+                {activeTab === 'dashboard' && selectedSummary ? (
+                  <EventSalesDashboard
+                    summary={selectedSummary}
+                    seats={eventSeats}
+                    onOpenAiAnalysis={() => openAssistant({ eventId: selected.id, mode: 'sales_analysis' })}
+                    onOpenStageGraph={overlay =>
+                      openAssistant({
+                        eventId: selected.id,
+                        mode: 'stage_graph',
+                        stageTab: 'map',
+                        stageOverlay: overlay ?? 'occupancy'
+                      })
+                    }
+                    onSwitchToPricing={() => {
+                      setFocusedZoneId(null);
+                      setActiveTab('pricing');
+                    }}
+                    onInspectPricing={handleInspectZonePricing}
                   />
-                ))}
+                ) : (
+                  zones.map(zone => (
+                    <ZoneRow
+                      key={`${selected.id}-${zone.zoneId}`}
+                      eventId={selected.id}
+                      zone={zone}
+                      editable={isEnabled('zone_pricing')}
+                      highlighted={focusedZoneId === zone.zoneId}
+                      onSaved={handleSaved}
+                    />
+                  ))
+                )}
               </>
             )}
           </section>

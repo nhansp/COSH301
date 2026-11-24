@@ -366,3 +366,49 @@ func (s *OrganizerService) GetEventSalesSummary(ctx context.Context, eventID pgt
 	}
 	return out, nil
 }
+
+type OrganizerSalesOverviewDTO struct {
+	EventCount          int                    `json:"eventCount"`
+	TotalCapacity       int                    `json:"totalCapacity"`
+	SoldCount           int                    `json:"soldCount"`
+	HeldCount           int                    `json:"heldCount"`
+	AvailableCount      int                    `json:"availableCount"`
+	FillRate            float64                `json:"fillRate"`
+	RealizedRevenue     int64                  `json:"realizedRevenue"`
+	HeldPipelineRevenue int64                  `json:"heldPipelineRevenue"`
+	PotentialRevenue    int64                  `json:"potentialRevenue"`
+	RemainingRevenue    int64                  `json:"remainingRevenue"`
+	Events              []EventSalesSummaryDTO `json:"events"`
+}
+
+// GetSalesOverview aggregates live sales summaries across every event owned by the caller.
+func (s *OrganizerService) GetSalesOverview(ctx context.Context, userID pgtype.UUID, isAdmin bool) (*OrganizerSalesOverviewDTO, error) {
+	rows, err := s.queries.ListOrganizerEvents(ctx, store.ListOrganizerEventsParams{IsAdmin: isAdmin, OrganizerID: userID})
+	if err != nil {
+		return nil, fmt.Errorf("list organizer events for overview: %w", err)
+	}
+
+	overview := &OrganizerSalesOverviewDTO{
+		Events: make([]EventSalesSummaryDTO, 0, len(rows)),
+	}
+	for _, row := range rows {
+		summary, err := s.GetEventSalesSummary(ctx, row.ID)
+		if err != nil {
+			return nil, err
+		}
+		overview.EventCount++
+		overview.TotalCapacity += summary.TotalCapacity
+		overview.SoldCount += summary.SoldCount
+		overview.HeldCount += summary.HeldCount
+		overview.AvailableCount += summary.AvailableCount
+		overview.RealizedRevenue += summary.RealizedRevenue
+		overview.HeldPipelineRevenue += summary.HeldPipelineRevenue
+		overview.PotentialRevenue += summary.PotentialRevenue
+		overview.RemainingRevenue += summary.RemainingRevenue
+		overview.Events = append(overview.Events, *summary)
+	}
+	if overview.TotalCapacity > 0 {
+		overview.FillRate = float64(overview.SoldCount+overview.HeldCount) / float64(overview.TotalCapacity)
+	}
+	return overview, nil
+}

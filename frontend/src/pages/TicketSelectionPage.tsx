@@ -513,6 +513,7 @@ export const TicketSelectionPage: React.FC = () => {
                   pending={pending}
                   onRelease={seat => inventory.release(seat)}
                   onCheckout={goToCheckout}
+                  checkoutLabel={isEnabled('payments') ? 'Thanh toán ngay' : 'Xem ghế đã giữ'}
                 />
               </div>
             </aside>
@@ -536,6 +537,7 @@ export const TicketSelectionPage: React.FC = () => {
                 pending={pending}
                 onRelease={seat => inventory.release(seat)}
                 onCheckout={goToCheckout}
+                checkoutLabel={isEnabled('payments') ? 'Thanh toán ngay' : 'Xem ghế đã giữ'}
               />
             </div>
           )}
@@ -563,7 +565,7 @@ export const TicketSelectionPage: React.FC = () => {
             </button>
             {!summaryOpen && (
               <button type="button" onClick={goToCheckout} className="btn btn-primary h-12 shrink-0 px-5">
-                Xem ghế đã giữ
+                {isEnabled('payments') ? 'Thanh toán ngay' : 'Xem ghế đã giữ'}
               </button>
             )}
           </div>

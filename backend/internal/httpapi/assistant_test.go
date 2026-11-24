@@ -109,4 +109,11 @@ func TestOrganizerSalesSummary_RequiresAuth(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401 for unauthenticated organizer sales summary, got %d", rec.Code)
 	}
+
+	ovReq := httptest.NewRequest(http.MethodGet, "/api/organizer/sales-overview", nil)
+	ovRec := httptest.NewRecorder()
+	router.ServeHTTP(ovRec, ovReq)
+	if ovRec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for unauthenticated organizer sales overview, got %d", ovRec.Code)
+	}
 }

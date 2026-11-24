@@ -67,6 +67,7 @@ func main() {
 		RealtimeHub:  realtimeHub,
 		Organizer:    organizerService,
 		Tickets:      service.NewTicketService(dbPool, queries),
+		Payments:     service.NewPaymentService(dbPool, queries, cfg.PaymentWebhookSecret, cfg.DemoMode),
 		Assistant:    service.NewAssistantService(cfg, eventService, organizerService),
 	})
 

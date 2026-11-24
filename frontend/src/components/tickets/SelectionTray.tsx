@@ -15,6 +15,7 @@ interface SelectionTrayProps {
   pending: Set<string>;
   onRelease: (seat: SeatItem) => void;
   onCheckout: () => void;
+  checkoutLabel?: string;
   /** Shows a toggle that folds the ticket list away; the totals and checkout stay. */
   collapsible?: boolean;
   /** Caps the ticket list; it scrolls on its own past this height. */
@@ -51,6 +52,7 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
   pending,
   onRelease,
   onCheckout,
+  checkoutLabel = 'Xem ghế đã giữ',
   collapsible = false,
   listClassName = '',
   className = ''
@@ -156,7 +158,7 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
             </span>
           </p>
           <button type="button" onClick={onCheckout} className="btn btn-primary h-12 shrink-0">
-            Xem ghế đã giữ
+            {checkoutLabel}
           </button>
         </div>
       </div>

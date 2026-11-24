@@ -92,6 +92,62 @@ func (h *TicketHandler) HandleListUserCancelledTickets(w http.ResponseWriter, r 
 	writeJSON(w, http.StatusOK, list)
 }
 
+// HandleListMyTickets handles GET /api/me/tickets.
+func (h *TicketHandler) HandleListMyTickets(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	list, err := h.tickets.ListMyTickets(r.Context(), sess.UserID)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+// HandleGetTicketQR handles GET /api/tickets/{id}/qr.
+// Returns the deterministic fixed HMAC-signed QR payload for an active ticket.
+func (h *TicketHandler) HandleGetTicketQR(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	ticketID, err := store.StringToUUID(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_ticket_id")
+		return
+	}
+	isStaff := sess.Role == store.UserRoleADMIN || sess.Role == store.UserRoleORGANIZER || sess.Role == store.UserRoleGATESTAFF
+	qr, err := h.tickets.GetFixedQR(r.Context(), ticketID, sess.UserID, isStaff)
+	switch {
+	case errors.Is(err, service.ErrTicketNotFound):
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	case errors.Is(err, service.ErrTicketForbidden):
+		writeError(w, http.StatusForbidden, err.Error())
+		return
+	case errors.Is(err, service.ErrTicketInactive):
+		writeError(w, http.StatusConflict, err.Error())
+		return
+	case err != nil:
+		internalError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, qr)
+}
+
+type VerifyQRRequest struct {
+	Payload string `json:"payload"`
+}
+
+// HandleVerifyTicketQR handles POST /api/tickets/verify-qr for gate staff, organizers, and admins.
+func (h *TicketHandler) HandleVerifyTicketQR(w http.ResponseWriter, r *http.Request, _ *store.GetSessionByTokenHashRow) {
+	var req VerifyQRRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_payload")
+		return
+	}
+	res, err := h.tickets.VerifyTicketQR(r.Context(), req.Payload)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 // HandleResetDemoTickets handles POST /api/tickets/reset-demo.
 func (h *TicketHandler) HandleResetDemoTickets(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
 	if err := h.tickets.ResetDemo(r.Context(), sess.UserID); err != nil {

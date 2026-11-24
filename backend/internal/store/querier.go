@@ -14,12 +14,17 @@ type Querier interface {
 	// ConsumeOTPAttempt counts one verification attempt against the newest usable code
 	// and returns it, so concurrent guesses cannot exceed the attempt limit.
 	ConsumeOTPAttempt(ctx context.Context, arg ConsumeOTPAttemptParams) (OtpVerification, error)
+	ConvertSeatHold(ctx context.Context, arg ConvertSeatHoldParams) (int64, error)
 	CountRecentOTPs(ctx context.Context, arg CountRecentOTPsParams) (CountRecentOTPsRow, error)
 	CountUserHeldAndBoughtTickets(ctx context.Context, arg CountUserHeldAndBoughtTicketsParams) (int32, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerification, error)
+	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
+	CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderItem, error)
+	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
 	CreateSeatHold(ctx context.Context, arg CreateSeatHoldParams) (SeatHold, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
+	CreateTicket(ctx context.Context, arg CreateTicketParams) (Ticket, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteSession(ctx context.Context, tokenHash string) error
 	DeleteUserSessions(ctx context.Context, userID pgtype.UUID) error
@@ -35,23 +40,39 @@ type Querier interface {
 	GetEventSaleState(ctx context.Context, id pgtype.UUID) (GetEventSaleStateRow, error)
 	GetEventSeatMap(ctx context.Context, eventID pgtype.UUID) ([]GetEventSeatMapRow, error)
 	GetEventZoneForUpdate(ctx context.Context, arg GetEventZoneForUpdateParams) (EventZone, error)
+	GetOrderByIDForUpdate(ctx context.Context, id pgtype.UUID) (Order, error)
+	GetOrderWithEvent(ctx context.Context, id pgtype.UUID) (GetOrderWithEventRow, error)
+	GetPaymentByCodeForUpdate(ctx context.Context, paymentCode string) (Payment, error)
+	GetPaymentByProviderTxn(ctx context.Context, arg GetPaymentByProviderTxnParams) (Payment, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (GetSessionByTokenHashRow, error)
+	GetTicketByCode(ctx context.Context, ticketCode string) (GetTicketByCodeRow, error)
+	GetTicketDetailByID(ctx context.Context, id pgtype.UUID) (GetTicketDetailByIDRow, error)
 	GetUserByEmail(ctx context.Context, email pgtype.Text) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByPhone(ctx context.Context, phone pgtype.Text) (User, error)
 	InsertPriceChange(ctx context.Context, arg InsertPriceChangeParams) error
+	ListActiveHoldsForOrder(ctx context.Context, arg ListActiveHoldsForOrderParams) ([]ListActiveHoldsForOrderRow, error)
 	ListActiveHoldsForUser(ctx context.Context, arg ListActiveHoldsForUserParams) ([]ListActiveHoldsForUserRow, error)
 	ListAuditLogsByEvent(ctx context.Context, arg ListAuditLogsByEventParams) ([]AuditLog, error)
 	ListAuditLogsByUser(ctx context.Context, arg ListAuditLogsByUserParams) ([]AuditLog, error)
 	ListEventZonesWithPrices(ctx context.Context, eventID pgtype.UUID) ([]ListEventZonesWithPricesRow, error)
 	ListMyActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ListMyActiveHoldsRow, error)
+	ListOrderItemsWithSeats(ctx context.Context, orderID pgtype.UUID) ([]ListOrderItemsWithSeatsRow, error)
+	ListOrderPayments(ctx context.Context, orderID pgtype.UUID) ([]Payment, error)
+	ListOrderTickets(ctx context.Context, orderID pgtype.UUID) ([]ListOrderTicketsRow, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]ListOrganizerEventsRow, error)
 	ListPublishedEvents(ctx context.Context) ([]ListPublishedEventsRow, error)
 	ListStaffAuditLogs(ctx context.Context, arg ListStaffAuditLogsParams) ([]ListStaffAuditLogsRow, error)
 	// Cancellations recorded before the user's latest demo reset are hidden.
 	ListUserCancelledTickets(ctx context.Context, actorUserID pgtype.UUID) ([]ListUserCancelledTicketsRow, error)
+	ListUserOrders(ctx context.Context, userID pgtype.UUID) ([]ListUserOrdersRow, error)
+	ListUserTickets(ctx context.Context, userID pgtype.UUID) ([]ListUserTicketsRow, error)
 	LockUserEventAdvisory(ctx context.Context, arg LockUserEventAdvisoryParams) error
+	MarkAvailableSeatSold(ctx context.Context, arg MarkAvailableSeatSoldParams) (int64, error)
+	MarkHeldSeatSold(ctx context.Context, arg MarkHeldSeatSoldParams) (int64, error)
 	MarkOTPVerified(ctx context.Context, id pgtype.UUID) (int64, error)
+	MarkOrderPaid(ctx context.Context, arg MarkOrderPaidParams) (Order, error)
+	MarkOrderRefunded(ctx context.Context, id pgtype.UUID) (Order, error)
 	NotifyChannel(ctx context.Context, arg NotifyChannelParams) error
 	ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) (SeatHold, error)
 	ReleaseUserActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ReleaseUserActiveHoldsRow, error)
@@ -64,6 +85,7 @@ type Querier interface {
 	TryLockSeat(ctx context.Context, arg TryLockSeatParams) (EventSeat, error)
 	TryStealExpiredSeatHold(ctx context.Context, arg TryStealExpiredSeatHoldParams) (EventSeat, error)
 	UpdateEventZonePricing(ctx context.Context, arg UpdateEventZonePricingParams) (EventZone, error)
+	UpdatePaymentResult(ctx context.Context, arg UpdatePaymentResultParams) (Payment, error)
 	UpdateUserLastLogin(ctx context.Context, id pgtype.UUID) error
 	VoidUserSeatTicket(ctx context.Context, arg VoidUserSeatTicketParams) (int64, error)
 }

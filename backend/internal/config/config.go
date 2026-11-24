@@ -27,6 +27,8 @@ type Config struct {
 	OllamaModel          string
 	GeminiAPIKey         string
 	GeminiModel          string
+	// PaymentWebhookSecret signs and verifies payment IPN webhooks (HMAC-SHA256).
+	PaymentWebhookSecret string
 	Features             *FeatureManager
 }
 
@@ -65,6 +67,10 @@ func Load() *Config {
 	if geminiModel == "" {
 		geminiModel = "gemini-2.5-flash"
 	}
+	webhookSecret := strings.TrimSpace(os.Getenv("PAYMENT_WEBHOOK_SECRET"))
+	if webhookSecret == "" && appEnv != "production" {
+		webhookSecret = "dev-payment-webhook-secret"
+	}
 
 	return &Config{
 		Port:                 port,
@@ -79,6 +85,7 @@ func Load() *Config {
 		OllamaModel:          ollamaModel,
 		GeminiAPIKey:         strings.TrimSpace(os.Getenv("GEMINI_API_KEY")),
 		GeminiModel:          geminiModel,
+		PaymentWebhookSecret: webhookSecret,
 		Features:             NewFeatureManagerFromEnv(),
 	}
 }
