@@ -321,7 +321,7 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
 ### UC-10: Duyệt đề xuất giá
 
 - **Tác nhân:** Ban Tổ chức.
-- **Cờ:** `dynamic_pricing` (Sprint 5).
+- **Cờ:** `dynamic_pricing` (profile `sprint2` trở đi).
 - **Tiền điều kiện:** có đề xuất `PENDING` của sự kiện thuộc Ban Tổ chức.
 - **Luồng chính:**
   1. Cứ 5 phút, hệ thống tính giá đề xuất cho từng khu vực từ:
@@ -331,9 +331,9 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
      - tỷ lệ ghế đang bị giữ.
   2. Giá làm tròn tới 10.000đ và nằm trong [giá sàn, giá trần].
   3. Lệch từ 5% so với giá hiện tại thì hệ thống ghi `price_suggestions`.
-  4. Ban Tổ chức mở đề xuất, xem giá mới, lý do và số liệu.
+  4. Ban Tổ chức mở Organizer Console, xem giá mới, lý do, số liệu đầu vào và biểu đồ giá. Nút "Chạy lại phân tích ngay" chạy một lượt phân tích tức thì.
   5. Ban Tổ chức bấm duyệt: `POST /api/organizer/suggestions/{id}/approve`.
-  6. Giá các ghế chưa bán trong khu vực đổi, hệ thống ghi `price_changes`.
+  6. Giá các ghế chưa bán trong khu vực đổi, hệ thống ghi `price_changes` và báo giá mới tới sơ đồ ghế của khán giả qua SSE.
 - **Luồng phụ:**
   - 3a. Lệch dưới 5%: bỏ qua, không tạo đề xuất.
   - 5a. Bấm từ chối: `POST /api/organizer/suggestions/{id}/reject`, giá giữ nguyên.

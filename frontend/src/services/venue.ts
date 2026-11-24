@@ -1,4 +1,4 @@
-import { SeatItem, TicketTier, ZoneKind } from '../types';
+import { PriceTrend, SeatItem, TicketTier, ZoneKind } from '../types';
 
 /**
  * The backend has no zone type yet; standing areas are only named as such
@@ -33,10 +33,12 @@ export interface ZoneSummary {
   rank: number;
   band: number;
   color: string;
+  /** Latest price change of the zone, if any. */
+  trend?: PriceTrend;
 }
 
 /** Zones sorted by price (dearest first), with live availability from the seat list. */
-export function summarizeZones(tiers: TicketTier[], seats: SeatItem[]): ZoneSummary[] {
+export function summarizeZones(tiers: TicketTier[], seats: SeatItem[], liveTrends: Record<string, PriceTrend> = {}): ZoneSummary[] {
   const seatsByZone = new Map<string, SeatItem[]>();
   for (const seat of seats) {
     const list = seatsByZone.get(seat.zoneId);
@@ -73,7 +75,9 @@ export function summarizeZones(tiers: TicketTier[], seats: SeatItem[]): ZoneSumm
       available: zoneSeats.length > 0 ? open.length : tier.available,
       rank,
       band,
-      color: PRICE_BAND_COLORS[band]
+      color: PRICE_BAND_COLORS[band],
+      // A change that arrived over the stream is newer than the one loaded with the event.
+      trend: liveTrends[tier.id] ?? tier.trend
     };
   });
 }

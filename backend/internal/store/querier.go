@@ -22,6 +22,7 @@ type Querier interface {
 	CountOrderItems(ctx context.Context, orderID pgtype.UUID) (int32, error)
 	CountRecentOTPs(ctx context.Context, arg CountRecentOTPsParams) (CountRecentOTPsRow, error)
 	CountUserHeldAndBoughtTickets(ctx context.Context, arg CountUserHeldAndBoughtTicketsParams) (int32, error)
+	CountWaitingQueue(ctx context.Context, eventID pgtype.UUID) (int32, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerification, error)
 	CreateOTPAppDelivery(ctx context.Context, arg CreateOTPAppDeliveryParams) error
@@ -39,6 +40,9 @@ type Querier interface {
 	DeleteUserSessions(ctx context.Context, userID pgtype.UUID) error
 	EventExists(ctx context.Context, id pgtype.UUID) (bool, error)
 	EventSeatExists(ctx context.Context, arg EventSeatExistsParams) (bool, error)
+	// The engine withdraws an open suggestion the data no longer supports.
+	ExpirePendingPriceSuggestion(ctx context.Context, arg ExpirePendingPriceSuggestionParams) (int64, error)
+	ExpirePriceSuggestion(ctx context.Context, id pgtype.UUID) error
 	ExpireStalePendingOrders(ctx context.Context) (int64, error)
 	ExpireStaleSeatHolds(ctx context.Context) ([]ExpireStaleSeatHoldsRow, error)
 	// FindOwnedEventSeats resolves a seat reference (UUID or label) among the seats
@@ -47,6 +51,8 @@ type Querier interface {
 	GetEventByID(ctx context.Context, id pgtype.UUID) (GetEventByIDRow, error)
 	GetEventBySlug(ctx context.Context, slug string) (GetEventBySlugRow, error)
 	GetEventOrganizer(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
+	// Minutes until sales close. Without a sales end, sales close when the event starts.
+	GetEventPricingTiming(ctx context.Context, id pgtype.UUID) (GetEventPricingTimingRow, error)
 	GetEventSaleState(ctx context.Context, id pgtype.UUID) (GetEventSaleStateRow, error)
 	GetEventSeatMap(ctx context.Context, eventID pgtype.UUID) ([]GetEventSeatMapRow, error)
 	GetEventZoneForUpdate(ctx context.Context, arg GetEventZoneForUpdateParams) (EventZone, error)
@@ -54,11 +60,19 @@ type Querier interface {
 	GetPaymentByCode(ctx context.Context, paymentCode string) (Payment, error)
 	// Return page: payment and order state keyed by the transaction reference.
 	GetPaymentReturnState(ctx context.Context, paymentCode string) (GetPaymentReturnStateRow, error)
+	GetPendingPriceSuggestion(ctx context.Context, arg GetPendingPriceSuggestionParams) (PriceSuggestion, error)
+	GetPriceSuggestion(ctx context.Context, id pgtype.UUID) (PriceSuggestion, error)
+	GetPriceSuggestionForUpdate(ctx context.Context, id pgtype.UUID) (PriceSuggestion, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (GetSessionByTokenHashRow, error)
 	GetUserByEmail(ctx context.Context, email pgtype.Text) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByPhone(ctx context.Context, phone pgtype.Text) (User, error)
+	// Seat counts of a zone, and how many distinct seats were held or sold in the last window_minutes.
+	GetZoneDemand(ctx context.Context, arg GetZoneDemandParams) (GetZoneDemandRow, error)
+	// True when the organizer already rejected this exact change recently.
+	HasRecentRejection(ctx context.Context, arg HasRecentRejectionParams) (bool, error)
 	InsertPriceChange(ctx context.Context, arg InsertPriceChangeParams) error
+	InsertPriceSuggestion(ctx context.Context, arg InsertPriceSuggestionParams) (PriceSuggestion, error)
 	IssueOrderTickets(ctx context.Context, id pgtype.UUID) ([]pgtype.UUID, error)
 	ListActiveHoldsForUser(ctx context.Context, arg ListActiveHoldsForUserParams) ([]ListActiveHoldsForUserRow, error)
 	// Sales of the events an organizer owns, or of every event for an admin.
@@ -76,11 +90,17 @@ type Querier interface {
 	ListMyActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ListMyActiveHoldsRow, error)
 	ListOrderHoldIDs(ctx context.Context, orderID pgtype.UUID) ([]pgtype.UUID, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]ListOrganizerEventsRow, error)
+	ListPendingPriceSuggestions(ctx context.Context, eventID pgtype.UUID) ([]PriceSuggestion, error)
+	ListPricingEventIDs(ctx context.Context) ([]pgtype.UUID, error)
 	ListPublishedEvents(ctx context.Context) ([]ListPublishedEventsRow, error)
+	// The latest change of each zone that happened after since, for the trend badge on the seat map.
+	ListRecentZonePriceChanges(ctx context.Context, arg ListRecentZonePriceChangesParams) ([]ListRecentZonePriceChangesRow, error)
 	ListStaffAuditLogs(ctx context.Context, arg ListStaffAuditLogsParams) ([]ListStaffAuditLogsRow, error)
 	// Cancellations recorded before the user's latest demo reset are hidden.
 	ListUserCancelledTickets(ctx context.Context, actorUserID pgtype.UUID) ([]ListUserCancelledTicketsRow, error)
 	ListUserTickets(ctx context.Context, userID pgtype.UUID) ([]ListUserTicketsRow, error)
+	// The newest changes of every zone of an event, oldest first within a zone.
+	ListZonePriceHistory(ctx context.Context, arg ListZonePriceHistoryParams) ([]ListZonePriceHistoryRow, error)
 	// Checkout: the caller's holds that can still be bought, locked together with
 	// their seats so nobody else can release or take them while the order is built.
 	LockBuyableHolds(ctx context.Context, arg LockBuyableHoldsParams) ([]LockBuyableHoldsRow, error)
@@ -96,7 +116,9 @@ type Querier interface {
 	MarkOrderSeatsSold(ctx context.Context, orderID pgtype.UUID) error
 	MarkPaymentFailed(ctx context.Context, arg MarkPaymentFailedParams) error
 	MarkPaymentSuccess(ctx context.Context, arg MarkPaymentSuccessParams) error
+	MarkPriceSuggestionReviewed(ctx context.Context, arg MarkPriceSuggestionReviewedParams) (PriceSuggestion, error)
 	NotifyChannel(ctx context.Context, arg NotifyChannelParams) error
+	RefreshPriceSuggestion(ctx context.Context, arg RefreshPriceSuggestionParams) (PriceSuggestion, error)
 	ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) (SeatHold, error)
 	ReleaseUserActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ReleaseUserActiveHoldsRow, error)
 	RepriceAvailableZoneSeats(ctx context.Context, arg RepriceAvailableZoneSeatsParams) (int64, error)
@@ -105,8 +127,10 @@ type Querier interface {
 	ResetSeatToAvailable(ctx context.Context, arg ResetSeatToAvailableParams) error
 	SetEmailVerified(ctx context.Context, id pgtype.UUID) error
 	SetPhoneVerified(ctx context.Context, id pgtype.UUID) error
+	SetZoneDynamicPricing(ctx context.Context, arg SetZoneDynamicPricingParams) (EventZone, error)
 	TryLockSeat(ctx context.Context, arg TryLockSeatParams) (EventSeat, error)
 	TryStealExpiredSeatHold(ctx context.Context, arg TryStealExpiredSeatHoldParams) (EventSeat, error)
+	UpdateEventZoneBasePrice(ctx context.Context, arg UpdateEventZoneBasePriceParams) (EventZone, error)
 	UpdateEventZonePricing(ctx context.Context, arg UpdateEventZonePricingParams) (EventZone, error)
 	UpdateUserLastLogin(ctx context.Context, id pgtype.UUID) error
 	VoidUserSeatTicket(ctx context.Context, arg VoidUserSeatTicketParams) (int64, error)

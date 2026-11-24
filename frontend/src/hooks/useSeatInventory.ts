@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SeatItem } from '../types';
+import { PriceTrend, SeatItem } from '../types';
 import { apiFetchHolds, apiFetchSeats, apiHoldSeat, apiReleaseSeat, formatPrice } from '../services/eventService';
+import { describeTrend } from '../services/priceTrend';
 
 export type InventoryNotice = { id: number; text: string; tone: 'error' | 'info' | 'success' };
 
@@ -35,6 +36,8 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState<InventoryNotice | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  /** Zones whose price changed while the page was open, by zone id. */
+  const [priceTrends, setPriceTrends] = useState<Record<string, PriceTrend>>({});
 
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
@@ -78,6 +81,24 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
   const needsResync = useRef(false);
   const updateExpiries = setExpiries;
 
+  /**
+   * A zone's price changed. Seats on sale take the new price at once; held seats keep the
+   * price their holder saw, exactly as the server does.
+   */
+  const applyPriceChange = useCallback(
+    (msg: { zoneId?: string; oldPrice?: number; newPrice?: number; timestamp?: string }) => {
+      const { zoneId, oldPrice, newPrice } = msg;
+      if (!zoneId || !oldPrice || !newPrice || oldPrice === newPrice) return;
+      const at = Date.parse(msg.timestamp ?? '');
+      const trend: PriceTrend = { oldPrice, newPrice, at: Number.isNaN(at) ? Date.now() : at };
+      setPriceTrends(prev => ({ ...prev, [zoneId]: trend }));
+      setSeats(prev => prev.map(s => (s.zoneId === zoneId && s.status === 'available' ? { ...s, price: newPrice } : s)));
+      const zoneName = seatsRef.current.find(s => s.zoneId === zoneId)?.zoneName ?? 'một khu vực';
+      notify(`Giá ${zoneName} vừa ${describeTrend(trend)}: ${formatPrice(oldPrice)} → ${formatPrice(newPrice)}`, 'info');
+    },
+    [notify]
+  );
+
   useEffect(() => {
     setLoadState('loading');
     load();
@@ -101,7 +122,12 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
     };
     sse.addEventListener('update', (e: MessageEvent) => {
       try {
-        const { type, seatId, status } = JSON.parse(e.data);
+        const message = JSON.parse(e.data);
+        if (message.type === 'price_changed') {
+          applyPriceChange(message);
+          return;
+        }
+        const { type, seatId, status } = message;
         if (!seatId || !status) return;
         const next: SeatItem['status'] = status === 'AVAILABLE' ? 'available' : status === 'SOLD' ? 'sold' : 'held';
         const wasMine = mineRef.current.some(s => s.id === seatId);
@@ -124,7 +150,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
       }
     });
     return () => sse.close();
-  }, [eventId, notify, updateExpiries]);
+  }, [eventId, notify, updateExpiries, applyPriceChange]);
 
   // Countdown to the earliest expiry among the user's holds.
   const knownExpiries = mine.map(s => expiries[s.id]).filter((at): at is number => at !== undefined);
@@ -248,6 +274,7 @@ export function useSeatInventory({ eventId, maxSeats, holdEnabled }: Options) {
   return {
     seats,
     mine,
+    priceTrends,
     loadState,
     liveState,
     pending,

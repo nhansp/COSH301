@@ -32,6 +32,11 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-}
       # Empty means "use the profile default"; set on to turn VNPay payment on.
       FEATURE_PAYMENTS: ${FEATURE_PAYMENTS:-}
+      # Dynamic pricing engine. Empty means "use the default" (see .env.example).
+      PRICING_INTERVAL_SECONDS: ${PRICING_INTERVAL_SECONDS:-}
+      PRICING_WINDOW_MINUTES: ${PRICING_WINDOW_MINUTES:-}
+      PRICING_TARGET_HORIZON_MINUTES: ${PRICING_TARGET_HORIZON_MINUTES:-}
+      PRICING_REJECT_COOLDOWN_MINUTES: ${PRICING_REJECT_COOLDOWN_MINUTES:-}
       # No defaults for credentials: with payments on and these empty, the API refuses to start.
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-}
       VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-}

@@ -16,6 +16,7 @@ import { NoticeToast } from '../components/tickets/NoticeToast';
 import { ZoneDetail, ZoneList } from '../components/tickets/ZonePanel';
 import { SelectionTray, orderTotals } from '../components/tickets/SelectionTray';
 import { HoldTimer } from '../components/tickets/HoldTimer';
+import { PriceTrendBadge } from '../components/pricing/PriceTrendBadge';
 import { formatPrice } from '../services/eventService';
 import { SceneBoundary } from '../venue3d/SceneBoundary';
 import { FloorPlan2D } from '../components/tickets/FloorPlan2D';
@@ -84,7 +85,10 @@ export const TicketSelectionPage: React.FC = () => {
   const { seats, mine, pending } = inventory;
   const remaining = Math.max(0, maxSeats - mine.length);
 
-  const zones = useMemo(() => summarizeZones(event?.ticketTiers ?? [], seats), [event?.ticketTiers, seats]);
+  const zones = useMemo(
+    () => summarizeZones(event?.ticketTiers ?? [], seats, inventory.priceTrends),
+    [event?.ticketTiers, seats, inventory.priceTrends]
+  );
   const zoneById = useMemo(() => new Map(zones.map(z => [z.id, z])), [zones]);
   // Geometry depends on the seat list, not on seat states, so it is not rebuilt on every hold.
   const seatShape = seats.map(s => s.id).join();
@@ -305,6 +309,7 @@ export const TicketSelectionPage: React.FC = () => {
             {activeZone.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'} · {activeZone.available === 0 ? 'Hết vé' : `còn ${activeZone.available} vé`} ·{' '}
             {formatPrice(activeZone.priceFrom)}
           </p>
+          <PriceTrendBadge trend={activeZone.trend} className="mt-1" />
         </div>
       </div>
       {/* Hop to another category without going back to the list; an open seat view follows along. */}

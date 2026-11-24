@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -124,30 +125,89 @@ func (s *OrganizerService) UpdateZonePricing(ctx context.Context, eventID, zoneI
 		return nil, fmt.Errorf("read base price: %w", err)
 	}
 	if oldBase.Int64 != p.BasePrice {
-		if _, err := qtx.RepriceAvailableZoneSeats(ctx, store.RepriceAvailableZoneSeatsParams{
-			EventID:      eventID,
-			ZoneID:       zoneID,
-			CurrentPrice: numeric(p.BasePrice),
-		}); err != nil {
-			return nil, fmt.Errorf("reprice seats: %w", err)
+		if _, err := applyBasePrice(ctx, qtx, eventID, zoneID, userID, oldBase.Int64, p.BasePrice, ReasonManual); err != nil {
+			return nil, err
 		}
-		if err := qtx.InsertPriceChange(ctx, store.InsertPriceChangeParams{
-			EventID:   eventID,
-			ZoneID:    zoneID,
-			OldPrice:  current.BasePrice,
-			NewPrice:  numeric(p.BasePrice),
-			ChangedBy: userID,
-			Reason:    "MANUAL",
-		}); err != nil {
-			return nil, fmt.Errorf("log price change: %w", err)
+		// A suggestion made for the old price no longer applies.
+		if _, err := qtx.ExpirePendingPriceSuggestion(ctx, store.ExpirePendingPriceSuggestionParams{EventID: eventID, ZoneID: zoneID}); err != nil {
+			return nil, fmt.Errorf("expire stale suggestion: %w", err)
 		}
 	}
-
-	// Held seats keep the price their holder saw; they take the new base price
-	// when they return to sale.
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit pricing: %w", err)
 	}
 	return &p, nil
+}
+
+// Reasons recorded in price_changes.
+const (
+	ReasonManual  = "MANUAL"
+	ReasonDynamic = "DYNAMIC"
+)
+
+// applyBasePrice reprices a zone's available seats, logs the change and
+// announces it on the seat stream once the transaction commits. The zone's
+// base_price column must already hold newPrice.
+//
+// Held seats keep the price their holder saw; they take the new base price
+// when they return to sale. It returns how many seats were repriced.
+func applyBasePrice(ctx context.Context, qtx *store.Queries, eventID, zoneID, userID pgtype.UUID, oldPrice, newPrice int64, reason string) (int64, error) {
+	repriced, err := qtx.RepriceAvailableZoneSeats(ctx, store.RepriceAvailableZoneSeatsParams{
+		EventID:      eventID,
+		ZoneID:       zoneID,
+		CurrentPrice: numeric(newPrice),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("reprice seats: %w", err)
+	}
+	if err := qtx.InsertPriceChange(ctx, store.InsertPriceChangeParams{
+		EventID:   eventID,
+		ZoneID:    zoneID,
+		OldPrice:  numeric(oldPrice),
+		NewPrice:  numeric(newPrice),
+		ChangedBy: userID,
+		Reason:    reason,
+	}); err != nil {
+		return 0, fmt.Errorf("log price change: %w", err)
+	}
+	if err := notifyPriceChange(ctx, qtx, PriceChangeMessage{
+		Type:     PriceChangedType,
+		EventID:  store.UUIDToString(eventID),
+		ZoneID:   store.UUIDToString(zoneID),
+		OldPrice: oldPrice,
+		NewPrice: newPrice,
+		Reason:   reason,
+	}); err != nil {
+		return 0, fmt.Errorf("announce price change: %w", err)
+	}
+	return repriced, nil
+}
+
+// PriceChangedType is the Type of a PriceChangeMessage.
+const PriceChangedType = "price_changed"
+
+// PriceChangeMessage tells seat map viewers that a zone's price changed.
+type PriceChangeMessage struct {
+	Type      string    `json:"type"`
+	EventID   string    `json:"eventId"`
+	ZoneID    string    `json:"zoneId"`
+	OldPrice  int64     `json:"oldPrice"`
+	NewPrice  int64     `json:"newPrice"`
+	Reason    string    `json:"reason"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// notifyPriceChange sends the message on the seat channel. PostgreSQL delivers
+// it when the surrounding transaction commits, so viewers never see a price that rolled back.
+func notifyPriceChange(ctx context.Context, q *store.Queries, msg PriceChangeMessage) error {
+	msg.Timestamp = time.Now().UTC()
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return q.NotifyChannel(ctx, store.NotifyChannelParams{
+		PgNotify:   SeatNotificationChannel,
+		PgNotify_2: string(payload),
+	})
 }

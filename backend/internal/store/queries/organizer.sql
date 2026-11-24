@@ -32,3 +32,9 @@ WHERE es.seat_id = s.id
 -- name: InsertPriceChange :exec
 INSERT INTO price_changes (event_id, zone_id, old_price, new_price, changed_by, reason)
 VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: UpdateEventZoneBasePrice :one
+UPDATE event_zones
+SET base_price = $3, updated_at = now()
+WHERE event_id = $1 AND zone_id = $2
+RETURNING *;

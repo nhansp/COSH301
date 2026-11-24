@@ -60,6 +60,7 @@ var sprint2Flags = map[string]bool{
 	FlagZonePricing:      true,
 	FlagOrganizerConsole: true,
 	FlagChatbot:          true,
+	FlagDynamicPricing:   true,
 }
 
 var sprint3Flags = map[string]bool{
@@ -68,6 +69,7 @@ var sprint3Flags = map[string]bool{
 	FlagSeatHold:         true,
 	FlagZonePricing:      true,
 	FlagOrganizerConsole: true,
+	FlagDynamicPricing:   true,
 	FlagWaitingRoom:      true,
 	FlagBotCheck:         true,
 	FlagTicketLimit:      true,
@@ -81,6 +83,7 @@ var sprint4Flags = map[string]bool{
 	FlagSeatHold:         true,
 	FlagZonePricing:      true,
 	FlagOrganizerConsole: true,
+	FlagDynamicPricing:   true,
 	FlagWaitingRoom:      true,
 	FlagBotCheck:         true,
 	FlagTicketLimit:      true,

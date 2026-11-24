@@ -125,6 +125,9 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
         capacity: z.capacity,
         description: `Khu vực ${z.zoneName} (${z.zoneCode})${z.floor ? ` - ${z.floor}` : ''}`,
         price: z.basePrice,
+        trend: z.recentChange
+          ? { oldPrice: z.recentChange.oldPrice, newPrice: z.recentChange.newPrice, at: Date.parse(z.recentChange.changedAt) }
+          : undefined,
         available: availableByZone?.get(z.zoneId) ?? z.capacity,
         perks: []
       }))

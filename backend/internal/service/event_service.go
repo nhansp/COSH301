@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"eventticketing/internal/store"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -46,7 +47,19 @@ type EventZonePriceDTO struct {
 	FloorPrice              int64  `json:"floorPrice"`
 	CeilingPrice            int64  `json:"ceilingPrice"`
 	IsDynamicPricingEnabled bool   `json:"isDynamicPricingEnabled"`
+	// RecentChange is the zone's latest price change, set only while it is recent.
+	RecentChange *PriceTrendDTO `json:"recentChange,omitempty"`
 }
+
+// PriceTrendDTO is a price change shown to buyers as "price just went up".
+type PriceTrendDTO struct {
+	OldPrice  int64  `json:"oldPrice"`
+	NewPrice  int64  `json:"newPrice"`
+	ChangedAt string `json:"changedAt"`
+}
+
+// recentPriceChangeWindow is how long a price change is still called recent.
+const recentPriceChangeWindow = 30 * time.Minute
 
 func (s *EventService) ListEvents(ctx context.Context) ([]store.ListPublishedEventsRow, error) {
 	return s.queries.ListPublishedEvents(ctx)
@@ -70,6 +83,22 @@ func (s *EventService) buildEventDetailDTO(
 		return nil, fmt.Errorf("failed to fetch event zones: %w", err)
 	}
 
+	changes, err := s.queries.ListRecentZonePriceChanges(ctx, store.ListRecentZonePriceChangesParams{
+		EventID:   id,
+		CreatedAt: pgtype.Timestamptz{Time: time.Now().Add(-recentPriceChangeWindow), Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch recent price changes: %w", err)
+	}
+	recent := make(map[pgtype.UUID]*PriceTrendDTO, len(changes))
+	for _, c := range changes {
+		recent[c.ZoneID] = &PriceTrendDTO{
+			OldPrice:  fromNumeric(c.OldPrice),
+			NewPrice:  fromNumeric(c.NewPrice),
+			ChangedAt: c.CreatedAt.Time.Format(time.RFC3339),
+		}
+	}
+
 	zoneDTOs := make([]EventZonePriceDTO, 0, len(zones))
 	for _, z := range zones {
 		basePrice, _ := z.BasePrice.Int64Value()
@@ -86,6 +115,7 @@ func (s *EventService) buildEventDetailDTO(
 			FloorPrice:              floorPrice.Int64,
 			CeilingPrice:            ceilPrice.Int64,
 			IsDynamicPricingEnabled: z.IsDynamicPricingEnabled,
+			RecentChange:            recent[z.ZoneID],
 		})
 	}
 

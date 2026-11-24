@@ -128,7 +128,7 @@ const listAssistantEvents = `-- name: ListAssistantEvents :many
 SELECT e.id, e.name, e.slug, e.genre, e.city, e.status, e.starts_at, e.ends_at,
        e.sales_starts_at, e.sales_ends_at, e.max_tickets_per_user,
        v.name AS venue_name,
-       (SELECT MIN(ez.base_price) FROM event_zones ez WHERE ez.event_id = e.id)::bigint AS price_from
+       COALESCE((SELECT MIN(ez.base_price) FROM event_zones ez WHERE ez.event_id = e.id), 0)::bigint AS price_from
 FROM events e
 JOIN venues v ON v.id = e.venue_id
 WHERE e.status IN ('ON_SALE', 'SOLD_OUT', 'PAUSED') AND e.ends_at > now()
