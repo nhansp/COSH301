@@ -7,7 +7,8 @@
  *   speaker notes, shown in /presenter and /ctl
  *
  * Attributes: id, layout (default|title|section|diagram|quote|demo-steps|demo-all), tone (paper|ink|stage),
- *             speaker, kicker, time (seconds), cols (CSS grid columns), badge, no, title (outline label).
+ *             speaker, kicker, time (seconds), cols (CSS grid columns), badge, no, title (outline label),
+ *             figh (max figure height in px).
  * Demo slides are generated from media/demo/manifest.json, one per chapter, each playing only its segment.
  * Query: ?preview renders a read-only copy for the remote views; ?chips shows speaker chips.
  */
@@ -78,6 +79,7 @@
     el.dataset.tone = tone;
     if (a.speaker) el.dataset.speaker = a.speaker;
     el.dataset.id = a.id || "s" + n;
+    if (a.figh) el.style.setProperty("--fig-h", a.figh + "px");
 
     let body = def.html != null ? def.html : (/^\|\|\|\s*$/m.test(def.md) ? columns(def.md, a.cols) : md.render(def.md));
     const kick = a.kicker ? '<div class="kicker"><span class="no">' + String(def.secNo || "").padStart(2, "0") + "</span>" + esc(a.kicker) + "</div>" : "";
@@ -240,6 +242,7 @@
         "<h2>" + esc(c.title) + "</h2>" +
         '<div class="demo-grid"><div>' + vslot(c.start, c.end) + segBar(c.start, c.end, false) + "</div>" +
         '<div class="demo-side"><div class="rail">' + rail + '</div><div class="step">' + (i + 1) + "<small> / " + n + "</small></div>" +
+        (c.pov ? '<div class="pov">Góc nhìn: ' + esc(c.pov) + "</div>" : "") +
         '<div class="cap">' + esc(c.caption || "") + "</div>" + "</div></div>";
       return { attrs: { id: "demo-" + c.id, layout: "demo-step", tone: "stage", speaker: c.speaker || "nhan", time: String(Math.round(dur) + 2), title: "Demo " + (i + 1) + ": " + c.title },
         html, notes: c.notes || c.caption || "", section: "Demo trực tiếp" };

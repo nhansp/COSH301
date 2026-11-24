@@ -1,132 +1,138 @@
 {
   "video": "e2e.mp4",
-  "duration": 261.32,
+  "duration": 239.98,
   "chapters": [
     {
       "id": "home",
       "title": "Trang chủ",
-      "start": 2.63,
-      "end": 9.7,
+      "start": 3.01,
+      "end": 10.02,
       "caption": "Trang chủ: các sự kiện sắp diễn ra",
-      "speaker": "nhan"
+      "speaker": "nhan",
+      "pov": "Khách A, khách B"
     },
     {
-      "id": "login",
-      "title": "Đăng nhập OTP",
-      "start": 9.7,
-      "end": 26.63,
-      "caption": "Đăng nhập bằng mã OTP qua email",
-      "speaker": "nhan"
+      "id": "otp-app",
+      "title": "Đăng nhập bằng ứng dụng OTP",
+      "start": 10.02,
+      "end": 36.77,
+      "caption": "Khách A đăng nhập bằng số điện thoại, mã đến ứng dụng COSH301 OTP",
+      "speaker": "nhan",
+      "pov": "Khách A, điện thoại"
     },
     {
       "id": "zone",
       "title": "Chọn khu",
-      "start": 26.63,
-      "end": 37.92,
+      "start": 36.77,
+      "end": 48.09,
       "caption": "Chọn vé, mở sơ đồ khu SVIP",
-      "speaker": "nhan"
+      "speaker": "nhan",
+      "pov": "Khách A, khách B"
     },
     {
       "id": "hold",
       "title": "Giữ ghế và cập nhật tức thì",
-      "start": 37.92,
-      "end": 44.57,
+      "start": 48.09,
+      "end": 54.73,
       "caption": "Khách A giữ ghế A1, màn hình B đổi màu ngay",
-      "speaker": "nhan"
+      "speaker": "nhan",
+      "pov": "Khách A, khách B"
     },
     {
       "id": "refused",
       "title": "Không giữ trùng",
-      "start": 44.57,
-      "end": 50.59,
+      "start": 54.73,
+      "end": 60.76,
       "caption": "Khách B bấm ghế A1 và bị từ chối",
-      "speaker": "nhan"
+      "speaker": "nhan",
+      "pov": "Khách B"
     },
     {
       "id": "release",
       "title": "Trả ghế",
-      "start": 50.59,
-      "end": 57.74,
+      "start": 60.76,
+      "end": 67.91,
       "caption": "Khách A trả ghế A1, B thấy ghế trống lại",
-      "speaker": "nhan"
+      "speaker": "nhan",
+      "pov": "Khách A, khách B"
     },
     {
       "id": "assistant",
       "title": "Trợ lý ảo",
-      "start": 57.74,
-      "end": 74.4,
+      "start": 67.91,
+      "end": 84.57,
       "caption": "Khán giả hỏi trợ lý ảo, số liệu lấy từ cơ sở dữ liệu",
-      "speaker": "huy"
-    },
-    {
-      "id": "otp-app",
-      "title": "Ứng dụng OTP",
-      "start": 74.4,
-      "end": 101.81,
-      "caption": "Đăng nhập bằng số điện thoại, mã đến ứng dụng COSH301 OTP",
-      "speaker": "nhan"
+      "speaker": "huy",
+      "pov": "Khách B"
     },
     {
       "id": "payment",
       "title": "Thanh toán VNPay",
-      "start": 101.81,
-      "end": 121.17,
-      "caption": "Vé đã thanh toán qua VNPay, và một khách khác chuyển sang trang VNPay",
-      "speaker": "nhan"
+      "start": 84.57,
+      "end": 103.77,
+      "caption": "Vé khách A đã mua qua VNPay; khách B giữ ghế và chuyển sang trang VNPay",
+      "speaker": "nhan",
+      "pov": "Khách A, khách B, cổng VNPay"
     },
     {
       "id": "organizer",
       "title": "Ban Tổ chức đặt giá",
-      "start": 121.17,
-      "end": 150.12,
+      "start": 103.77,
+      "end": 124.62,
       "caption": "Ban Tổ chức đặt giá sai bị chặn, giá đúng được lưu",
-      "speaker": "dung"
+      "speaker": "dung",
+      "pov": "Ban Tổ chức, khách B"
     },
     {
       "id": "k6-flood",
       "title": "Kiểm thử tải k6",
-      "start": 150.12,
-      "end": 202.76,
+      "start": 124.62,
+      "end": 181.86,
       "caption": "200 người xem và 60 người giữ ghế khu VieVIP trong 45 giây",
-      "speaker": "dung"
+      "speaker": "dung",
+      "pov": "Máy chủ, Ban Tổ chức"
     },
     {
       "id": "pricing",
       "title": "Định giá động",
-      "start": 202.76,
-      "end": 216.17,
+      "start": 181.86,
+      "end": 195.04,
       "caption": "Chạy lại phân tích: giá đề xuất tăng, Ban Tổ chức duyệt, khách thấy giá mới",
-      "speaker": "dung"
+      "speaker": "dung",
+      "pov": "Ban Tổ chức, khách B"
     },
     {
       "id": "race",
       "title": "Tranh một ghế",
-      "start": 216.17,
-      "end": 237.67,
+      "start": 195.04,
+      "end": 216.52,
       "caption": "100 tài khoản cùng giữ một ghế, đúng 1 thành công",
-      "speaker": "dung"
+      "speaker": "dung",
+      "pov": "Máy chủ, khách A"
     },
     {
       "id": "audit",
       "title": "Nhật ký giá",
-      "start": 237.67,
-      "end": 248.57,
+      "start": 216.52,
+      "end": 227.25,
       "caption": "Xem nhật ký giá, lệnh xóa bị từ chối",
-      "speaker": "huy"
+      "speaker": "huy",
+      "pov": "Máy chủ"
     },
     {
       "id": "survey",
       "title": "Khảo sát người dùng",
-      "start": 248.57,
-      "end": 258.28,
+      "start": 227.25,
+      "end": 236.97,
       "caption": "Phiếu khảo sát SUS ngay trong ứng dụng",
-      "speaker": "thanh"
+      "speaker": "thanh",
+      "pov": "Người tham gia kiểm thử"
     },
     {
       "id": "end",
       "title": "Kết thúc",
-      "start": 258.28,
-      "end": 261.32,
+      "start": 236.97,
+      "end": 239.98,
       "caption": "Hết phần demo",
       "speaker": "huy"
     }

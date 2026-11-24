@@ -1,130 +1,60 @@
-=== id=usecases layout=default speaker=ducanh time=40 kicker="Mô hình hóa"
+=== id=usecases layout=default cols="0.62fr 1.38fr" speaker=ducanh time=45 kicker="Mô hình hóa" figh=760
 ## Biểu đồ use case
-::: grid g3
-::: card tight
+|||
+![Hình 2. Sơ đồ use case tổng thể](img/report/h2-use-case.jpg)
+|||
 ### Khán giả
-`UC-01` Đăng nhập bằng OTP (mọi tác nhân)
-`UC-02` Xem danh sách sự kiện
-`UC-03` Xếp hàng phòng chờ
-`UC-04` Chọn và giữ ghế 5 phút
-`UC-05` Thanh toán, nhận vé
-`UC-06` Xem vé, mã QR
-:::
-::: card tight
+`UC-01` Đăng nhập OTP · `UC-02` Xem sự kiện · `UC-03` Phòng chờ · `UC-04` Giữ ghế 5 phút · `UC-05` Thanh toán · `UC-06` Xem vé, mã QR
 ### Ban Tổ chức và CEO
-`UC-07` Quản lý sự kiện và khu vực
-`UC-08` Duyệt giá đề xuất
-`UC-09` Xem bảng doanh thu
-`UC-10` Xuất báo cáo bán vé
-:::
-::: card tight
-### Nhân viên cổng và quản trị viên
-`UC-11` Soát vé bằng mã QR
-`UC-12` Đồng bộ soát vé ngoại tuyến
-`UC-13` Giám sát và kiểm toán
-:::
-:::
-Hệ thống ngoài: cổng thanh toán VNPay, Cloudflare, dịch vụ gửi mã OTP.
-NOTES:
-Danh sách theo bảng 8 của báo cáo. Đã chạy: UC-01, UC-02, UC-04, UC-05 (môi trường thử), UC-07 và UC-08. Các use case còn lại đang ở mức thiết kế.
+`UC-07` Quản lý sự kiện, khu vực · `UC-08` Duyệt giá đề xuất · `UC-09` Bảng doanh thu · `UC-10` Xuất báo cáo
+### Nhân viên cổng, quản trị viên
+`UC-11` Soát vé QR · `UC-12` Soát vé ngoại tuyến · `UC-13` Giám sát, kiểm toán
 
-=== id=dfd layout=default speaker=phuc time=30 kicker="Mô hình hóa"
+Hệ thống ngoài: VNPay, Cloudflare, dịch vụ gửi mã OTP.
+NOTES:
+Hình 2 và bảng 8 của báo cáo. Đã chạy: UC-01, UC-02, UC-04, UC-05 (môi trường thử), UC-07 và UC-08. Các use case còn lại đang ở mức thiết kế.
+
+=== id=dfd-context layout=default speaker=phuc time=30 kicker="Mô hình hóa" figh=560
+## Biểu đồ luồng dữ liệu mức ngữ cảnh
+![Hình 3. DFD mức ngữ cảnh](img/report/h3-dfd-ngu-canh.jpg)
+<p class="figcap">Cả hệ thống là một tiến trình 0.0; năm tác nhân ngoài trao đổi dữ liệu với hệ thống.</p>
+NOTES:
+Hình 3 trong báo cáo. Tác nhân: khán giả, Ban Tổ chức, nhân viên cổng, cổng thanh toán, dịch vụ SMS hoặc email.
+
+=== id=dfd layout=default cols="0.55fr 1.45fr" speaker=phuc time=35 kicker="Mô hình hóa" figh=760
 ## Biểu đồ luồng dữ liệu mức 0
-::: grid g3
-::: card tight lift
-<span class="no">1.0</span>
-### Xác thực OTP và phiên
-:::
-::: card tight lift
-<span class="no">2.0</span>
-### Sự kiện, địa điểm, giá khu
-:::
-::: card tight
-<span class="no">3.0</span>
-### Phòng chờ ảo
-:::
-::: card tight lift
-<span class="no">4.0</span>
-### Sơ đồ ghế và giữ chỗ
-:::
-::: card tight lift
-<span class="no">5.0</span>
-### Đơn hàng, thanh toán, vé
-:::
-::: card tight
-<span class="no">6.0</span>
-### Soát vé tại cổng
-:::
-::: card tight lift
-<span class="no">7.0</span>
-### Định giá động, khuyến mãi
-:::
-::: card tight
-<span class="no">8.0</span>
-### Báo cáo và nhật ký giá
-:::
-::: card tight
-<span class="no">9.0</span>
-### Phân quyền
-:::
-:::
-Các tiến trình tô đậm đã có mã chạy.
+|||
+![Hình 4. DFD mức 0](img/report/h4-dfd-muc-0.jpg)
+|||
+- **Tiến trình đã có mã chạy:** xác thực OTP; sự kiện và giá khu; sơ đồ ghế và giữ chỗ; đơn hàng và thanh toán; định giá động.
+- **Đang ở mức thiết kế:** phòng chờ ảo, soát vé tại cổng, báo cáo doanh thu.
+- **Kho dữ liệu:** người dùng và phiên, sự kiện và ghế, đơn hàng và vé, nhật ký giá.
+- Mức 1 được vẽ cho ba tiến trình chính: xác thực OTP, giữ chỗ, thanh toán.
 NOTES:
-DFD gồm mức ngữ cảnh, mức 0 và mức 1 cho các tiến trình 1.0, 4.0 và 5.0. Lưu ý: hình 4 trong báo cáo vẽ 7 tiến trình, tài liệu docs/dfd.md có 9 tiến trình; Phúc thống nhất lại trước buổi báo cáo.
+Hình 4 trong báo cáo vẽ 7 tiến trình và 4 kho dữ liệu; tài liệu docs/dfd.md tách thành 9 tiến trình (thêm phân quyền, nhật ký giá). Phúc thống nhất lại trước buổi báo cáo.
 
-=== id=erd layout=default speaker=huy time=30 kicker="Mô hình hóa"
+=== id=erd layout=default speaker=huy time=30 kicker="Mô hình hóa" figh=600
 ## Mô hình dữ liệu
-<div class="erd">
-<div class="grp"><h3>Định danh và bảo mật</h3><code>users</code><code>sessions</code><code>otp_verifications</code><code>otp_app_deliveries</code><code>audit_logs</code></div>
-<div class="grp"><h3>Địa điểm và ghế</h3><code>venues</code><code>venue_zones</code><code>seats</code><code>events</code><code>event_zones</code><code>event_seats</code></div>
-<div class="grp hot"><h3>Hàng chờ và giữ chỗ</h3><code>queue_entries</code><code>seat_holds</code></div>
-<div class="grp"><h3>Đơn hàng và thanh toán</h3><code>orders</code><code>order_items</code><code>payments</code></div>
-<div class="grp"><h3>Vé và soát vé</h3><code>tickets</code><code>gate_devices</code><code>checkins</code></div>
-<div class="grp"><h3>Giá và khuyến mãi</h3><code>price_changes</code><code>price_suggestions</code><code>promotions</code><code>promotion_usages</code><code>sales_snapshots</code></div>
-</div>
-
-Thiết kế ở Sprint 1 có 26 bảng; sau khi chuẩn hóa, cơ sở dữ liệu đang chạy có 24 bảng.
+![Hình 6. Sơ đồ thực thể liên kết](img/report/h6-erd.jpg)
+<p class="figcap">Thiết kế ở Sprint 1 có 26 bảng; sau khi chuẩn hóa, cơ sở dữ liệu đang chạy có 24 bảng.</p>
 NOTES:
-Bảng otp_app_deliveries được thêm cho ứng dụng OTP. Khóa chính dùng UUID, số tiền lưu kiểu NUMERIC(14,0). Thực thể trong ERD tương ứng với các lớp Entity trong biểu đồ lớp.
+Hình 6 trong báo cáo. Nhóm bảng: định danh và bảo mật; địa điểm và ghế; hàng chờ và giữ chỗ; đơn hàng và thanh toán; vé và soát vé; giá và khuyến mãi. Bảng otp_app_deliveries được thêm cho ứng dụng OTP. Khóa chính dùng UUID, số tiền lưu kiểu NUMERIC(14,0). Thực thể trong ERD tương ứng với các lớp Entity trong biểu đồ lớp.
 
-=== id=hold layout=default speaker=huy time=35 kicker="Nghiệp vụ cốt lõi"
+=== id=hold layout=default speaker=huy time=35 kicker="Nghiệp vụ cốt lõi" figh=500
 ## Giữ ghế và cập nhật thời gian thực
+![Hình 7. Sơ đồ tuần tự giữ ghế 5 phút và đồng bộ SSE](img/report/h7-giu-ghe.jpg)
 <div class="states">
 <div class="st av">Còn trống</div><div class="ar">khách chọn ghế</div>
-<div class="st he">Đang giữ</div><div class="ar">thanh toán</div>
+<div class="st he">Đang giữ 5 phút</div><div class="ar">thanh toán</div>
 <div class="st so">Đã bán</div>
 </div>
-<div class="flow">
-<div class="node"><b>Khách A</b>chọn ghế</div><div class="arrow">→</div>
-<div class="node"><b>Một giao dịch</b>giữ ghế, gửi thông báo</div><div class="arrow">→</div>
-<div class="node"><b>Bộ phát SSE</b>nhận thông báo sau khi giao dịch xong</div><div class="arrow">→</div>
-<div class="node hot"><b>Khách B</b>thấy ghế đổi màu</div>
-</div>
-
-- Mỗi lượt giữ có hạn 5 phút; hết hạn thì ghế tự trả lại.
-- Tiến trình nền kiểm tra 5 giây một lần và báo cho mọi trình duyệt đang mở.
 NOTES:
 Thông báo chỉ được gửi sau khi giao dịch hoàn tất, nên trình duyệt không bao giờ thấy trạng thái chưa được ghi. Nhóm dùng SSE vì chỉ cần luồng một chiều từ máy chủ về trình duyệt, nhẹ hơn WebSocket.
 
-=== id=race layout=default speaker=huy time=35 kicker="Nghiệp vụ cốt lõi"
+=== id=race layout=default speaker=huy time=35 kicker="Nghiệp vụ cốt lõi" figh=560
 ## Chống bán trùng ghế
-<div class="lanes two">
-<div class="h">Khách A</div><div class="h">Khách B</div>
-<div>Cập nhật ghế với điều kiện còn trống, giành được khóa dòng</div><div>Cập nhật cùng ghế, phải chờ khóa</div>
-<div class="win">Giữ ghế thành công</div><div class="lose">Ghế đã bị giữ, nhận lỗi <code>409</code></div>
-</div>
-::: grid g2
-::: card tight
-<span class="no">Lớp 1</span>
-### Cập nhật có điều kiện
-Chỉ ghế đang trống mới chuyển sang trạng thái giữ.
-:::
-::: card tight
-<span class="no">Lớp 2</span>
-### Chỉ mục duy nhất một phần
-Mỗi ghế của một sự kiện chỉ có một lượt giữ còn hiệu lực.
-:::
-:::
+![Hình 8. Sơ đồ tuần tự khóa dòng chống bán trùng](img/report/h8-chong-ban-trung.jpg)
+<p class="figcap"><b>Lớp 1:</b> chỉ ghế đang trống mới chuyển sang trạng thái giữ · <b>Lớp 2:</b> chỉ mục duy nhất, mỗi ghế chỉ có một lượt giữ còn hiệu lực</p>
 NOTES:
 Câu lệnh UPDATE khóa dòng; giao dịch đến sau đọc lại dòng sau khi giao dịch trước hoàn tất nên thấy ghế đã bị giữ. Chỉ mục tên là uq_seat_holds_active trên (event_id, seat_id).
 Giới hạn số vé mỗi người (FR-11) dùng thêm khóa cố vấn, hiện đang tắt bằng cờ ticket_limit.
