@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -25,6 +27,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +35,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,6 +66,19 @@ private fun OtpScreen() {
     var listening by remember { mutableStateOf(settings.listening) }
     var hint by remember { mutableStateOf<String?>(null) }
     val status by ServiceStatus.text.collectAsState()
+    val latest by LatestCode.code.collectAsState()
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    // The system may stop the service while the app is in the background; reopening the app resumes it.
+    LaunchedEffect(Unit) {
+        if (settings.listening && normalizePhone(settings.phone) != null) OtpService.start(context)
+    }
+    LaunchedEffect(latest) {
+        while (true) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
 
     fun fillFromSim() {
         val number = readDeviceNumber(context)
@@ -95,7 +117,7 @@ private fun OtpScreen() {
     ) {
         Text("COSH301 OTP", style = MaterialTheme.typography.headlineMedium)
         Text(
-            "Ứng dụng nhận mã đăng nhập COSH301 cho số điện thoại của bạn và hiện mã trong thông báo.",
+            "Ứng dụng nhận mã đăng nhập COSH301 cho số điện thoại của bạn và hiện mã trong thông báo và trên màn hình này.",
             style = MaterialTheme.typography.bodyMedium,
         )
 
@@ -156,10 +178,36 @@ private fun OtpScreen() {
         }
 
         Text("Trạng thái: $status", style = MaterialTheme.typography.bodyMedium)
+
+        latest?.takeIf { now - it.receivedAt < CODE_TTL_MS }?.let { code -> CodeCard(code) }
         Text(
             "Ứng dụng chỉ đọc số điện thoại trên máy này để biết mã nào thuộc về bạn. " +
                 "Số không được dùng cho việc nào khác.",
             style = MaterialTheme.typography.bodySmall,
         )
+    }
+}
+
+@Composable
+private fun CodeCard(code: LatestCode.Code) {
+    val clock = SimpleDateFormat("HH:mm:ss", Locale.forLanguageTag("vi-VN"))
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Mã đăng nhập mới", style = MaterialTheme.typography.titleSmall)
+            Text(
+                code.value.chunked(3).joinToString(" "),
+                fontSize = 44.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                "Nhận lúc ${clock.format(Date(code.receivedAt))}, hết hạn lúc " +
+                    "${clock.format(Date(code.receivedAt + CODE_TTL_MS))}. Nhập mã này trên trang web.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }
