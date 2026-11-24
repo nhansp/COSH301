@@ -13,8 +13,8 @@ export const LogoMark: React.FC<{ className?: string }> = ({ className = 'size-7
 );
 
 export const Logo: React.FC<LogoProps> = ({ className = '' }) => (
-  <Link to="/" aria-label="COSH301 Concerts, về trang chủ" className={`inline-flex items-center gap-2.5 rounded-md text-kumo-strong ${className}`}>
+  <Link to="/" aria-label="SortMyScene, về trang chủ" className={`inline-flex items-center gap-2.5 rounded-md text-kumo-strong ${className}`}>
     <LogoMark />
-    <span className="font-display text-xl leading-none font-bold tracking-[-0.045em]">COSH301 Concerts</span>
+    <span className="font-display text-xl leading-none font-bold tracking-[-0.045em]">SortMyScene</span>
   </Link>
 );

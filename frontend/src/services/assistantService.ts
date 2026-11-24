@@ -815,8 +815,8 @@ export async function generateAssistantReply(
     sender: 'assistant',
     text:
       lang === 'en'
-        ? `I'm your COSH301 Concerts Event Assistant (**${enriched.length} live concerts**). Ask me for an **event brief**, **trending concerts**, or **personalized recommendations** by genre, city, budget, or seating style!`
-        : `Chào bạn! Mình là Trợ lý Sự kiện COSH301 (**${enriched.length} concert** đang mở bán). Bạn có thể hỏi mình **tóm tắt sự kiện**, **concert đang hot**, hoặc **gợi ý theo gu nhạc, thành phố và ngân sách**!`,
+        ? `I'm your SortMyScene Event Assistant (**${enriched.length} live concerts**). Ask me for an **event brief**, **trending concerts**, or **personalized recommendations** by genre, city, budget, or seating style!`
+        : `Chào bạn! Mình là Trợ lý Sự kiện SortMyScene (**${enriched.length} concert** đang mở bán). Bạn có thể hỏi mình **tóm tắt sự kiện**, **concert đang hot**, hoặc **gợi ý theo gu nhạc, thành phố và ngân sách**!`,
     suggestions:
       lang === 'en'
         ? ['Brief all events', 'What is trending?', 'Recommend by preference']

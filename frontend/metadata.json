@@ -1,5 +1,5 @@
 {
-  "name": "COSH301 Concerts",
+  "name": "SortMyScene - Concert & Music Event Ticketing",
   "description": "Xem sự kiện, chọn ghế và giữ chỗ theo thời gian thực. Đăng nhập bằng mã OTP.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

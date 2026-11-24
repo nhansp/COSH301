@@ -25,7 +25,7 @@ export const Footer: React.FC = () => (
     </div>
     <div className="border-t border-kumo-hairline">
       <p className="mx-auto max-w-page px-4 py-4 text-xs text-kumo-subtle sm:px-6 lg:px-10">
-        © 2026 COSH301 Concerts. Ảnh sự kiện từ Wikimedia Commons theo giấy phép Creative Commons; tác giả ghi dưới từng ảnh.
+        © 2026 SortMyScene. Ảnh sự kiện từ Wikimedia Commons theo giấy phép Creative Commons; tác giả ghi dưới từng ảnh.
       </p>
     </div>
   </footer>
