@@ -66,6 +66,7 @@ func main() {
 	eventService := service.NewEventService(queries)
 	seatService := service.NewSeatService(dbPool, queries, cfg.Features.IsEnabled(config.FlagTicketLimit))
 	organizerService := service.NewOrganizerService(dbPool, queries)
+	pricingService := service.NewPricingService(dbPool, queries, cfg.Pricing)
 	realtimeHub := service.NewRealtimeHub(dbPool)
 	paymentService := service.NewPaymentService(dbPool, queries, vnpay.Client{
 		TmnCode:    cfg.VNPay.TmnCode,
@@ -78,6 +79,9 @@ func main() {
 	// Start background workers
 	realtimeHub.StartListener(ctx)
 	holdReaper.Start(ctx)
+	if cfg.Features.IsEnabled(config.FlagDynamicPricing) {
+		pricingService.Start(ctx)
+	}
 	if cfg.OTPAppDelivery {
 		authService.StartAppDeliveryReaper(ctx)
 	}
@@ -91,6 +95,7 @@ func main() {
 		SeatService:  seatService,
 		RealtimeHub:  realtimeHub,
 		Organizer:    organizerService,
+		Pricing:      pricingService,
 		Tickets:      service.NewTicketService(dbPool, queries),
 		Payments:     paymentService,
 		Assistant: service.NewAssistantService(queries, cfg.Features,

@@ -151,6 +151,36 @@ func (q *Queries) RepriceAvailableZoneSeats(ctx context.Context, arg RepriceAvai
 	return result.RowsAffected(), nil
 }
 
+const updateEventZoneBasePrice = `-- name: UpdateEventZoneBasePrice :one
+UPDATE event_zones
+SET base_price = $3, updated_at = now()
+WHERE event_id = $1 AND zone_id = $2
+RETURNING id, event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled, created_at, updated_at
+`
+
+type UpdateEventZoneBasePriceParams struct {
+	EventID   pgtype.UUID    `json:"event_id"`
+	ZoneID    pgtype.UUID    `json:"zone_id"`
+	BasePrice pgtype.Numeric `json:"base_price"`
+}
+
+func (q *Queries) UpdateEventZoneBasePrice(ctx context.Context, arg UpdateEventZoneBasePriceParams) (EventZone, error) {
+	row := q.db.QueryRow(ctx, updateEventZoneBasePrice, arg.EventID, arg.ZoneID, arg.BasePrice)
+	var i EventZone
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.ZoneID,
+		&i.BasePrice,
+		&i.FloorPrice,
+		&i.CeilingPrice,
+		&i.IsDynamicPricingEnabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateEventZonePricing = `-- name: UpdateEventZonePricing :one
 UPDATE event_zones
 SET base_price = $3, floor_price = $4, ceiling_price = $5, updated_at = now()

@@ -580,6 +580,7 @@ type PriceSuggestion struct {
 	ReviewedBy     pgtype.UUID        `json:"reviewed_by"`
 	ReviewedAt     pgtype.Timestamptz `json:"reviewed_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Promotion struct {

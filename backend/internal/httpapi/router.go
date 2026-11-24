@@ -19,6 +19,7 @@ type RouterDependencies struct {
 	SeatService  *service.SeatService
 	RealtimeHub  *service.RealtimeHub
 	Organizer    *service.OrganizerService
+	Pricing      *service.PricingService
 	Tickets      *service.TicketService
 	Payments     *service.PaymentService
 	Assistant    *service.AssistantService
@@ -31,6 +32,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	sysHandler := NewSystemHandler(fm, deps.Config.DemoMode)
 	authHandler := NewAuthHandler(deps.AuthService, deps.Config.CookieSecure)
 	organizerHandler := NewOrganizerHandler(deps.Organizer, deps.EventService)
+	pricingHandler := NewPricingHandler(deps.Pricing, deps.Organizer, deps.EventService)
 	otpLimiter := NewRateLimiter(30, time.Minute)
 	demoLimiter := NewRateLimiter(5, time.Minute)
 	eventHandler := NewEventHandler(deps.EventService)
@@ -78,6 +80,20 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		RequireRole(authHandler, organizerRoles, organizerHandler.HandleListEvents)))
 	mux.HandleFunc("PUT /api/organizer/events/{id}/zones/{zoneId}/pricing", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireFeature(fm, config.FlagZonePricing, RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateZonePricing))))
+
+	// 6b. Dynamic pricing (FR-22): the engine only suggests, the organizer decides (W-01).
+	if deps.Pricing != nil {
+		pricingRoute := func(h func(http.ResponseWriter, *http.Request, *store.GetSessionByTokenHashRow)) http.HandlerFunc {
+			return RequireFeature(fm, config.FlagOrganizerConsole,
+				RequireFeature(fm, config.FlagDynamicPricing, RequireRole(authHandler, organizerRoles, h)))
+		}
+		runLimiter := NewRateLimiter(30, time.Minute)
+		mux.HandleFunc("GET /api/organizer/events/{id}/pricing", pricingRoute(pricingHandler.HandleOverview))
+		mux.HandleFunc("POST /api/organizer/events/{id}/pricing/run", runLimiter.Wrap(pricingRoute(pricingHandler.HandleRun)))
+		mux.HandleFunc("PUT /api/organizer/events/{id}/zones/{zoneId}/dynamic-pricing", pricingRoute(pricingHandler.HandleSetZoneEnabled))
+		mux.HandleFunc("POST /api/organizer/suggestions/{id}/approve", pricingRoute(pricingHandler.HandleApprove))
+		mux.HandleFunc("POST /api/organizer/suggestions/{id}/reject", pricingRoute(pricingHandler.HandleReject))
+	}
 
 	// 7. Tickets exist only once payment is on; audit logs belong to the organizer console.
 	mux.HandleFunc("GET /api/tickets", RequireFeature(fm, config.FlagPayments,

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -29,6 +30,7 @@ type Config struct {
 	PublicURL string
 	VNPay     VNPayConfig
 	LLM       LLMConfig
+	Pricing   PricingConfig
 	Features  *FeatureManager
 }
 
@@ -39,6 +41,25 @@ type LLMConfig struct {
 	Model   string
 	APIKey  string
 }
+
+// PricingConfig tunes the dynamic pricing engine (FR-22).
+type PricingConfig struct {
+	// Interval is how often the engine analyzes every event on sale.
+	Interval time.Duration
+	// WindowMinutes is the sliding window that sales velocity is measured over.
+	WindowMinutes int
+	// TargetHorizonMinutes caps the time left that the target velocity assumes.
+	// 0 means no cap: the target is the pace needed to sell out by the end of sales.
+	TargetHorizonMinutes int
+	// RejectCooldownMinutes is how long a rejection silences the same suggestion.
+	RejectCooldownMinutes int
+}
+
+const (
+	DefaultPricingIntervalSeconds = 300
+	DefaultPricingWindowMinutes   = 15
+	DefaultPricingRejectCooldown  = 60
+)
 
 // VNPayConfig holds the merchant credentials and URLs for the VNPay payment gateway.
 type VNPayConfig struct {
@@ -120,8 +141,23 @@ func Load() *Config {
 			Model:   envOr("LLM_MODEL", "cosh301-assistant"),
 			APIKey:  strings.TrimSpace(os.Getenv("LLM_API_KEY")),
 		},
+		Pricing: PricingConfig{
+			Interval:              time.Duration(envInt("PRICING_INTERVAL_SECONDS", DefaultPricingIntervalSeconds, 1)) * time.Second,
+			WindowMinutes:         envInt("PRICING_WINDOW_MINUTES", DefaultPricingWindowMinutes, 1),
+			TargetHorizonMinutes:  envInt("PRICING_TARGET_HORIZON_MINUTES", 0, 0),
+			RejectCooldownMinutes: envInt("PRICING_REJECT_COOLDOWN_MINUTES", DefaultPricingRejectCooldown, 0),
+		},
 		Features: NewFeatureManagerFromEnv(),
 	}
+}
+
+// envInt reads a whole number of at least lowest; an unset or invalid value gives fallback.
+func envInt(key string, fallback, lowest int) int {
+	n, err := strconv.Atoi(strings.TrimSpace(os.Getenv(key)))
+	if err != nil || n < lowest {
+		return fallback
+	}
+	return n
 }
 
 func envOr(key, fallback string) string {
