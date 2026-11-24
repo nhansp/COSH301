@@ -1,31 +1,32 @@
 === id=usecases layout=default speaker=ducanh time=40 kicker="Use case"
-## 13 use case, 3 vai trò
+## 13 use case, 5 tác nhân
 ::: grid g3
 ::: card tight
 ### Khán giả
-`UC-01` đăng nhập OTP
-`UC-02` danh sách sự kiện
-`UC-03` phòng chờ
-`UC-04` sơ đồ ghế
-`UC-05` giữ ghế
-`UC-06` thanh toán, nhận vé
-`UC-07` vé và QR
+`UC-01` đăng nhập OTP (mọi tác nhân)
+`UC-02` xem danh mục sự kiện
+`UC-03` xếp hàng phòng chờ ảo
+`UC-04` chọn và giữ ghế 5 phút
+`UC-05` thanh toán, nhận vé
+`UC-06` xem vé, QR xoay vòng
 :::
 ::: card tight
-### Ban Tổ chức
-`UC-08` địa điểm, sự kiện
-`UC-09` đặt giá khu
-`UC-10` duyệt đề xuất giá
-`UC-11` nhật ký giá
-`UC-12` gợi ý khuyến mãi
+### Ban Tổ chức · CEO
+`UC-07` quản trị sự kiện, khu vực
+`UC-08` duyệt đề xuất giá động
+`UC-09` dashboard doanh thu
+`UC-10` xuất báo cáo bán vé
 :::
 ::: card tight
-### CEO
-`UC-13` dashboard doanh thu
+### Nhân viên cổng · Quản trị viên
+`UC-11` soát vé bằng QR
+`UC-12` đồng bộ soát vé ngoại tuyến
+`UC-13` giám sát, kiểm toán hệ thống
 :::
 :::
 Hệ thống ngoài: cổng thanh toán VNPay, SMTP, SMS Gateway, Cloudflare Turnstile.
 NOTES:
+Script slide 9. Danh sách theo Bảng 8 của báo cáo. Đã chạy: UC-01, 02, 04, một phần UC-05 (VNPay sandbox) và UC-07 (đặt giá khu). Còn lại ở mức thiết kế.
 Script slide 9. Mọi vai trò đăng nhập bằng OTP (UC-01). Tài khoản mới luôn là CUSTOMER. Danh sách UC-01 đến UC-13 lấy theo docs/use-cases.md, đối chiếu lại với báo cáo.
 
 === id=dfd layout=default speaker=phuc time=25 kicker="Luồng dữ liệu"
