@@ -1,0 +1,19 @@
+{
+  "speakers": {
+    "thanh": { "name": "Đinh Tiến Thành", "short": "Thành", "color": "#9b7bff" },
+    "phuc": { "name": "Nguyễn Đức Phúc", "short": "Phúc", "color": "#ff8d73" },
+    "ducanh": { "name": "Lê Đức Anh", "short": "Đức Anh", "color": "#ffe2a8" },
+    "huy": { "name": "Vũ Đức Huy", "short": "Huy", "color": "#4fd39a" },
+    "dung": { "name": "Nguyễn Anh Dũng", "short": "Dũng", "color": "#8fa0ff" },
+    "nhan": { "name": "Trần Trung Nhân", "short": "Nhân", "color": "#f2b45a" }
+  },
+  "files": [
+    { "file": "01-gioi-thieu.md", "no": 1, "section": "Giới thiệu và bối cảnh" },
+    { "file": "02-yeu-cau.md", "no": 2, "section": "Yêu cầu" },
+    { "file": "03-kien-truc.md", "no": 3, "section": "Kiến trúc" },
+    { "file": "04-mo-hinh.md", "no": 4, "section": "Mô hình hóa và giữ ghế" },
+    { "file": "05-lo-trinh.md", "no": 5, "section": "Lộ trình" },
+    { "file": "06-ket-luan.md", "no": 6, "section": "Kiểm thử và kết luận" },
+    { "file": "07-demo.md", "no": 7, "section": "Demo trực tiếp" }
+  ]
+}

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Người trình bày · EventTicketing</title>
+<link rel="stylesheet" href="css/fonts.css">
+<style>
+:root { --bg: #11121a; --panel: #201d30; --line: #34324a; --ink: #ece8f0; --muted: #a3a6b3; --coral: #ff8d73; --violet: #9b7bff; --green: #4fd39a; --amber: #f2b45a; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: "Be Vietnam Pro", system-ui, sans-serif; }
+body { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); grid-template-rows: auto 1fr; gap: 18px; padding: 18px 22px; height: 100vh; }
+header { grid-column: 1 / -1; display: flex; align-items: center; gap: 22px; }
+#who { display: inline-flex; align-items: center; gap: 12px; padding: 10px 24px 10px 16px; border-radius: 999px; background: var(--panel); font: 700 28px/1 "Space Grotesk", sans-serif; letter-spacing: -0.01em; }
+#who i { width: 20px; height: 20px; border-radius: 50%; }
+#pos { font: 500 22px "Space Grotesk", sans-serif; color: var(--muted); }
+#pos b { color: var(--ink); }
+#dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: var(--muted); margin-right: 10px; }
+#dot.on { background: var(--green); }
+.sp { flex: 1; }
+.timer { display: flex; align-items: baseline; gap: 14px; font-family: "Space Grotesk", sans-serif; }
+.timer b { font-size: 44px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.timer span { color: var(--muted); font-size: 17px; }
+.timer.over b { color: var(--coral); }
+button { border: 1.5px solid var(--line); border-radius: 10px; background: none; color: var(--ink); font: 600 15px "Be Vietnam Pro", sans-serif; padding: 9px 16px; cursor: pointer; }
+button:hover { background: var(--panel); }
+button.go { background: var(--coral); color: #11121a; border-color: var(--coral); }
+main { display: grid; grid-template-rows: auto 1fr; gap: 14px; min-height: 0; }
+.frame { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; }
+.frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.frame.none iframe { visibility: hidden; }
+#f-cur { outline: 3px solid var(--coral); outline-offset: 3px; width: min(100%, calc(58vh * 16 / 9)); margin: 0 auto; }
+.ctrl { display: flex; gap: 10px; }
+aside { display: grid; grid-template-rows: auto auto 1fr auto; gap: 14px; min-height: 0; }
+aside h4 { font: 600 12px "Be Vietnam Pro", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+#next { display: grid; grid-template-columns: 38% 1fr; gap: 12px; align-items: center; }
+#nextTitle { font: 600 17px/1.3 "Be Vietnam Pro", sans-serif; }
+#nextWho { color: var(--muted); font-size: 14px; margin-top: 4px; }
+#notes { font: 400 21px/1.55 "Be Vietnam Pro", sans-serif; white-space: pre-line; overflow: auto; background: var(--panel); border-radius: 12px; padding: 16px 20px; }
+#title { font: 700 30px/1.15 "Space Grotesk", sans-serif; letter-spacing: -0.02em; }
+#outline { overflow: auto; max-height: 24vh; font-size: 14px; border-top: 1px solid var(--line); }
+#outline div { display: grid; grid-template-columns: 34px 1fr 74px 40px; gap: 8px; padding: 5px 4px; cursor: pointer; border-bottom: 1px solid var(--line); align-items: center; }
+#outline div.cur { background: var(--panel); color: var(--coral); font-weight: 600; }
+#outline i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+#outline span { color: var(--muted); }
+#totals { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; color: var(--muted); }
+#totals i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+</style>
+</head>
+<body>
+<header>
+    <div id="who" hidden></div>
+    <div id="pos"><span id="dot"></span><b id="slide">–</b> / <span id="total">–</span> · <span id="sec"></span></div>
+    <div class="sp"></div>
+    <div class="timer" id="timer"><b id="elapsed">0:00</b><span id="budget"></span></div>
+    <button id="tgo" class="go">Bắt đầu</button><button id="treset">Đặt lại</button>
+</header>
+<main>
+    <div class="frame none" id="f-cur"><iframe tabindex="-1" title="Slide hiện tại"></iframe></div>
+    <div>
+        <div class="ctrl"><button id="prev">‹ Trước</button><button id="next-btn" class="go">Tiếp ›</button><button id="replay">Phát lại video</button><button id="toggle">Phát / dừng</button></div>
+        <div id="title" style="margin-top:16px"></div>
+    </div>
+</main>
+<aside>
+    <div><h4>Tiếp theo</h4><div id="next"><div class="frame none" id="f-next"><iframe tabindex="-1" title="Slide tiếp theo"></iframe></div><div><div id="nextTitle"></div><div id="nextWho"></div></div></div></div>
+    <div><h4>Thời lượng theo người nói</h4><div id="totals"></div></div>
+    <div style="min-height:0;display:flex;flex-direction:column"><h4>Ghi chú</h4><div id="notes" style="flex:1"></div></div>
+    <div><h4>Danh sách slide</h4><div id="outline"></div></div>
+</aside>
+<script src="js/remote.js"></script>
+<script>
+(function () {
+    const $ = id => document.getElementById(id), R = window.Remote;
+    let outlineKey = "";
+
+    R.on.state = st => {
+        $("slide").textContent = st.slide;
+        $("total").textContent = st.total || "–";
+        $("sec").textContent = st.section || "";
+        R.frame($("f-cur"), st.slide);
+        R.frame($("f-next"), st.slide < st.total ? st.slide + 1 : 0);
+        R.chip($("who"), st.speaker);
+        $("title").textContent = st.title || "";
+        $("nextTitle").textContent = st.nextTitle || "Hết";
+        const ns = R.speaker(st.nextSpeaker);
+        $("nextWho").textContent = ns ? ns.name : "";
+        $("notes").textContent = st.notes || "";
+        const key = JSON.stringify(st.outline) + JSON.stringify(st.speakers);
+        if (key !== outlineKey) { outlineKey = key; drawOutline(st); }
+        $("outline").querySelectorAll("div").forEach((d, i) => d.classList.toggle("cur", i === st.slide - 1));
+        const c = $("outline").querySelector(".cur");
+        if (c) c.scrollIntoView({ block: "nearest" });
+        budget(st);
+    };
+
+    function drawOutline(st) {
+        $("outline").innerHTML = (st.outline || []).map((o, i) => {
+            const sp = R.speaker(o.s);
+            return '<div data-n="' + (i + 1) + '"><span>' + (i + 1) + "</span><b style=\"font-weight:inherit\">" + R.esc(o.t) + "</b><span>" +
+                (sp ? '<i style="background:' + sp.color + '"></i>' + R.esc(sp.short) : "") + "</span><span>" + (o.time ? R.fmt(o.time) : "") + "</span></div>";
+        }).join("");
+        const tot = R.speakerTotals();
+        $("totals").innerHTML = Object.keys(tot).map(k => {
+            const sp = R.speaker(k);
+            return "<span>" + (sp ? '<i style="background:' + sp.color + '"></i>' + R.esc(sp.short) : R.esc(k)) + " <b style=\"color:var(--ink)\">" + R.fmt(tot[k]) + "</b></span>";
+        }).join("") + "<span>Tổng <b style=\"color:var(--ink)\">" + R.fmt(Object.values(tot).reduce((a, b) => a + b, 0)) + "</b></span>";
+    }
+    $("outline").addEventListener("click", e => { const d = e.target.closest("div[data-n]"); if (d) R.send("goto", d.dataset.n); });
+
+    // timer: total time since Start, against the sum of the slide budgets
+    let t0 = 0, acc = 0, running = false;
+    const planned = () => (R.state.outline || []).reduce((a, o) => a + (o.time || 0), 0);
+    function budget() { $("budget").textContent = planned() ? "kế hoạch " + R.fmt(planned()) : ""; }
+    function paint() {
+        const s = acc + (running ? (Date.now() - t0) / 1000 : 0);
+        $("elapsed").textContent = R.fmt(s);
+        $("timer").classList.toggle("over", planned() > 0 && s > planned());
+    }
+    $("tgo").addEventListener("click", () => {
+        if (running) { acc += (Date.now() - t0) / 1000; running = false; $("tgo").textContent = "Tiếp tục"; }
+        else { t0 = Date.now(); running = true; $("tgo").textContent = "Tạm dừng"; }
+    });
+    $("treset").addEventListener("click", () => { acc = 0; running = false; t0 = 0; $("tgo").textContent = "Bắt đầu"; paint(); });
+    setInterval(paint, 500);
+
+    $("prev").addEventListener("click", () => R.send("prev"));
+    $("next-btn").addEventListener("click", () => R.send("next"));
+    $("replay").addEventListener("click", () => R.send("replay"));
+    $("toggle").addEventListener("click", () => R.send("toggle"));
+    addEventListener("keydown", e => {
+        if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); R.send("next"); }
+        else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); R.send("prev"); }
+        else if (e.key === "r") R.send("replay");
+        else if (e.key === "p") R.send("toggle");
+    });
+    R.connect($("dot"));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+{
+  "video": "e2e.mp4",
+  "duration": 159.4,
+  "chapters": [
+    {
+      "id": "home",
+      "title": "Trang chủ",
+      "start": 1.93,
+      "end": 8.98,
+      "caption": "Trang chủ: các sự kiện sắp diễn ra",
+      "speaker": "nhan"
+    },
+    {
+      "id": "login",
+      "title": "Đăng nhập OTP",
+      "start": 8.98,
+      "end": 26.15,
+      "caption": "Đăng nhập bằng mã OTP qua email",
+      "speaker": "nhan"
+    },
+    {
+      "id": "zone",
+      "title": "Chọn khu",
+      "start": 26.15,
+      "end": 39.01,
+      "caption": "Chọn vé → sơ đồ khu → khu SVIP",
+      "speaker": "nhan"
+    },
+    {
+      "id": "hold",
+      "title": "Giữ ghế + realtime",
+      "start": 39.01,
+      "end": 45.69,
+      "caption": "Khách A giữ ghế A1, màn hình B đổi màu ngay",
+      "speaker": "nhan"
+    },
+    {
+      "id": "refused",
+      "title": "Không giữ trùng",
+      "start": 45.69,
+      "end": 51.72,
+      "caption": "Khách B bấm ghế A1 → bị từ chối",
+      "speaker": "nhan"
+    },
+    {
+      "id": "holds",
+      "title": "Ghế đang giữ",
+      "start": 51.72,
+      "end": 55.75,
+      "caption": "Xem ghế đã giữ: đồng hồ đếm ngược",
+      "speaker": "nhan"
+    },
+    {
+      "id": "release",
+      "title": "Trả ghế",
+      "start": 55.75,
+      "end": 61.37,
+      "caption": "Trả ghế A1, B thấy ghế trống lại",
+      "speaker": "nhan"
+    },
+    {
+      "id": "b-holds",
+      "title": "B giữ được ghế",
+      "start": 61.37,
+      "end": 70.06,
+      "caption": "Giờ khách B giữ được ghế A1",
+      "speaker": "nhan"
+    },
+    {
+      "id": "organizer-login",
+      "title": "Ban tổ chức đăng nhập",
+      "start": 70.06,
+      "end": 86.89,
+      "caption": "Ban tổ chức đăng nhập: mã OTP chỉ ghi vào log máy chủ",
+      "speaker": "dung"
+    },
+    {
+      "id": "price-invalid",
+      "title": "Giá sai bị chặn",
+      "start": 86.89,
+      "end": 92.56,
+      "caption": "Giá cơ bản cao hơn giá trần → bị chặn",
+      "speaker": "dung"
+    },
+    {
+      "id": "price-saved",
+      "title": "Lưu giá hợp lệ",
+      "start": 92.56,
+      "end": 103.52,
+      "caption": "Giá hợp lệ → lưu và ghi nhật ký giá",
+      "speaker": "dung"
+    },
+    {
+      "id": "otp-app",
+      "title": "OTP qua ứng dụng",
+      "start": 103.52,
+      "end": 122.16,
+      "caption": "Đăng nhập bằng số điện thoại: mã đến ứng dụng COSH301 OTP",
+      "speaker": "nhan"
+    },
+    {
+      "id": "race",
+      "title": "Tranh ghế 100 người",
+      "start": 122.16,
+      "end": 144.17,
+      "caption": "100 người mua cùng giữ một ghế: đúng 1 người được",
+      "speaker": "dung"
+    },
+    {
+      "id": "audit",
+      "title": "Nhật ký giá bất biến",
+      "start": 144.17,
+      "end": 156.2,
+      "caption": "Nhật ký giá: xem được, không xoá được",
+      "speaker": "huy"
+    },
+    {
+      "id": "end",
+      "title": "Kết thúc",
+      "start": 156.2,
+      "end": 159.4,
+      "caption": "Hết phần demo",
+      "speaker": "huy"
+    }
+  ]
+}

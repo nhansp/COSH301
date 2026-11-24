@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.mirror-serial
+# The demo recording is large; place it by hand (see README.md)
+media/**/*.mp4
