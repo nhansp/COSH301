@@ -9,7 +9,7 @@ Trạng thái:
 - **Chưa làm**: chưa có code.
 
 Cờ của từng profile lấy từ `backend/internal/config/features.go`.
-Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`, `chatbot`.
+Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`, `dynamic_pricing`, `chatbot`.
 
 ## 1. Yêu cầu chức năng
 
@@ -36,7 +36,7 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-19 | Dashboard doanh thu cho CEO | `ceo_dashboard` | 5 | Chưa làm | |
 | FR-20 | Nhật ký giá | `price_log` | 5 | Đang làm | Mỗi lần BTC đổi giá cơ bản đều ghi `price_changes`. Trigger chặn sửa và xóa. Chưa có trang xem |
 | FR-21 | Xuất báo cáo CSV/XLSX | `reports_export` | 5 | Chưa làm | |
-| FR-22 | Định giá động: đề xuất giá, BTC duyệt | `dynamic_pricing` | 5 | Chưa làm | Đã có bảng `price_suggestions` và giá sàn, giá trần theo khu vực (FR-08). Chưa có job tính đề xuất và endpoint duyệt. Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md) |
+| FR-22 | Định giá động: đề xuất giá, BTC duyệt | `dynamic_pricing` | 2 | Xong | Tác vụ nền 5 phút sinh đề xuất từ lượt giữ ghế và vé bán, BTC duyệt hoặc từ chối trên Organizer Console, giá mới đẩy tới sơ đồ ghế qua SSE. Chi tiết ở [`dynamic-pricing.md`](dynamic-pricing.md) |
 | FR-23 | Gợi ý khuyến mãi | `promo_suggestions` | 5 | Chưa làm | |
 | FR-24 | Trợ lý chatbot hỗ trợ đặt vé và Ban Tổ chức | `chatbot` | 2 | Xong | `POST /api/assistant/chat`. Mô hình chỉ phân loại câu hỏi, số liệu lấy từ PostgreSQL, có chế độ từ khóa khi mô hình lỗi. Thiết kế ở [`assistant.md`](assistant.md) |
 

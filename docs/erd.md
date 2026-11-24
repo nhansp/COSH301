@@ -282,6 +282,7 @@ erDiagram
         uuid reviewed_by FK
         timestamptz reviewed_at
         timestamptz created_at
+        timestamptz updated_at
     }
 
     promotions {
@@ -361,6 +362,9 @@ Hệ thống chuyển từ thiết kế MySQL ban đầu sang PostgreSQL 18 nh�
 | `events` | Bổ sung `waiting_room_enabled` và `waiting_room_capacity` | Cấu hình bật/tắt và giới hạn sức chứa của phòng chờ ảo khi mở bán (FR-09) |
 | `payments` | Bổ sung Partial Unique Index trên `(provider, provider_txn_id)` | Đảm bảo tính lũy kế (idempotency) khi cổng thanh toán gửi lại webhook IPN nhiều lần |
 | `price_suggestions` | Bổ sung bảng mới | Lưu trữ đề xuất định giá động do thuật toán AI sinh ra để Ban Tổ chức xem xét phê duyệt (W-01, FR-22) |
+| `price_suggestions` | Bổ sung cột `updated_at`, ràng buộc `status` thuộc `PENDING`, `APPROVED`, `REJECTED`, `EXPIRED` và chỉ mục duy nhất từng phần `WHERE status = 'PENDING'` | Mỗi khu vực có tối đa một đề xuất mở, được làm mới tại chỗ ở mỗi lần phân tích (FR-22, migration `00007`) |
+| `event_zones` | Cột `is_dynamic_pricing_enabled` mặc định `TRUE` | Định giá động là mặc định, BTC tắt riêng từng khu vực khi cần (migration `00007`) |
+| `seat_holds`, `tickets` | Bổ sung chỉ mục `(event_id, created_at)` và `(event_id, issued_at)` | Đếm nhanh số ghế bị giữ hoặc bán trong cửa sổ 15 phút của định giá động |
 | `price_changes`, `audit_logs` | Bổ sung trigger chặn `UPDATE` và `DELETE` | Đảm bảo tính bất biến tuyệt đối của nhật ký thay đổi giá và nhật ký kiểm toán hệ thống (NFR-12) |
 
 ---

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: EventTicketing API
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Đặc tả các endpoint đã có trong `backend/internal/httpapi/router.go`.
     Endpoint mới được thêm vào file này cùng lúc với code.
@@ -425,6 +425,7 @@ paths:
         Mở bằng `EventSource`.
         Sự kiện đầu tiên là `connected`.
         Mỗi thay đổi ghế gửi một sự kiện `update`, nội dung là `SeatUpdate`.
+        Khi giá một khu vực đổi (BTC duyệt đề xuất giá động hoặc đặt giá tay), api gửi một sự kiện `update` có `type` là `price_changed`, nội dung là `PriceChanged`.
         Cứ 15 giây api gửi một dòng chú thích `: ping` để giữ kết nối.
       operationId: streamSeats
       x-feature: [seat_map_realtime]
@@ -443,6 +444,9 @@ paths:
 
                 event: update
                 data: {"type":"seat_held","eventId":"7d0c…","seatId":"a1b2…","status":"HELD","timestamp":"2026-11-03T10:00:00Z"}
+
+                event: update
+                data: {"type":"price_changed","eventId":"7d0c…","zoneId":"3f9e…","oldPrice":500000,"newPrice":540000,"reason":"DYNAMIC","timestamp":"2026-11-03T10:05:00Z"}
         '404':
           $ref: '#/components/responses/FeatureDisabled'
 
@@ -643,6 +647,257 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: '`event_not_found`, `zone_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/events/{id}/pricing:
+    get:
+      tags: [organizer]
+      summary: Số liệu định giá động của từng khu vực (FR-22)
+      description: |
+        Trả số liệu đầu vào tính ở thời điểm gọi, đề xuất đang chờ duyệt và các lần đổi giá gần nhất của từng khu vực.
+        Không đổi dữ liệu.
+      operationId: getEventPricing
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '200':
+          description: Bảng số liệu định giá
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` (sai vai trò) hoặc `not_event_organizer` (không phải BTC của sự kiện)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`event_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/events/{id}/pricing/run:
+    post:
+      tags: [organizer]
+      summary: Chạy ngay một lượt phân tích giá cho sự kiện (FR-22)
+      description: |
+        Làm điều mà tác vụ nền làm mỗi 5 phút, nhưng chỉ cho một sự kiện: tạo, làm mới hoặc rút lại đề xuất của từng khu vực.
+        Không đổi giá nào. Giới hạn 30 lần mỗi phút mỗi địa chỉ (`429 rate_limited`).
+      operationId: runEventPricing
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '200':
+          description: Kết quả lượt phân tích và bảng số liệu mới
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run, overview]
+                properties:
+                  run:
+                    $ref: '#/components/schemas/PricingRunSummary'
+                  overview:
+                    $ref: '#/components/schemas/PricingOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` hoặc `not_event_organizer`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`event_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: '`rate_limited`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/events/{id}/zones/{zoneId}/dynamic-pricing:
+    put:
+      tags: [organizer]
+      summary: Bật hoặc tắt định giá động cho một khu vực (FR-22)
+      description: Tắt thì đề xuất đang chờ của khu vực chuyển sang `EXPIRED`.
+      operationId: setZoneDynamicPricing
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+        - name: zoneId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Đã lưu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+        '400':
+          description: '`invalid_payload`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` hoặc `not_event_organizer`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`event_not_found`, `zone_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/suggestions/{id}/approve:
+    post:
+      tags: [organizer]
+      summary: Duyệt một đề xuất giá (FR-22, W-01)
+      description: |
+        Trong một giao dịch: đặt `base_price` của khu vực bằng giá đề xuất, đổi giá các ghế `AVAILABLE`,
+        ghi một dòng `price_changes` có `reason` là `DYNAMIC`, đánh dấu đề xuất `APPROVED`
+        và phát thông báo `price_changed` trên luồng SSE.
+        Ghế `HELD` và `SOLD` giữ nguyên giá.
+        Hai lần duyệt đồng thời chỉ có một lần được áp dụng.
+      operationId: approvePriceSuggestion
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID của đề xuất
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Đã áp dụng giá mới
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceApproval'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` hoặc `not_event_organizer`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`suggestion_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: |
+            `suggestion_not_pending` (đã được duyệt, từ chối hoặc rút lại) hoặc
+            `suggestion_stale` (giá hay giá sàn, giá trần của khu vực đã đổi sau khi đề xuất được tạo; đề xuất chuyển sang `EXPIRED`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/suggestions/{id}/reject:
+    post:
+      tags: [organizer]
+      summary: Từ chối một đề xuất giá (FR-22, W-01)
+      description: Đánh dấu đề xuất `REJECTED`. Không giá nào đổi.
+      operationId: rejectPriceSuggestion
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID của đề xuất
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Đã từ chối
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: REJECTED
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` hoặc `not_event_organizer`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`suggestion_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`suggestion_not_pending`'
           content:
             application/json:
               schema:
@@ -1338,6 +1593,261 @@ components:
           format: int64
         isDynamicPricingEnabled:
           type: boolean
+        recentChange:
+          $ref: '#/components/schemas/PriceTrend'
+
+    PriceTrend:
+      type: object
+      description: Lần đổi giá gần nhất của khu vực. Chỉ có khi lần đổi đó cách đây không quá 30 phút.
+      properties:
+        oldPrice:
+          type: integer
+          format: int64
+        newPrice:
+          type: integer
+          format: int64
+        changedAt:
+          type: string
+          format: date-time
+
+    PriceChanged:
+      type: object
+      description: Dữ liệu của sự kiện SSE `update` khi giá một khu vực đổi.
+      properties:
+        type:
+          type: string
+          enum: [price_changed]
+        eventId:
+          type: string
+          format: uuid
+        zoneId:
+          type: string
+          format: uuid
+        oldPrice:
+          type: integer
+          format: int64
+        newPrice:
+          type: integer
+          format: int64
+        reason:
+          type: string
+          enum: [DYNAMIC, MANUAL]
+        timestamp:
+          type: string
+          format: date-time
+
+    ZoneInputs:
+      type: object
+      description: Số liệu đầu vào của một lần phân tích, xem `docs/dynamic-pricing.md` mục 3 và 4.
+      properties:
+        velocityActual:
+          type: number
+          description: Ghế bị giữ hoặc bán mỗi phút trong cửa sổ
+        velocityTarget:
+          type: number
+          description: Ghế cần bán mỗi phút để hết trước giờ đóng bán
+        velocityRatio:
+          type: number
+        demandSeats:
+          type: integer
+        windowMinutes:
+          type: integer
+        minutesLeft:
+          type: number
+        remaining:
+          type: integer
+          description: Ghế chưa bán (`AVAILABLE` và `HELD`)
+        held:
+          type: integer
+        sold:
+          type: integer
+        total:
+          type: integer
+        heldRatio:
+          type: number
+        fillRate:
+          type: number
+          description: '`sold / total`, chỉ để hiển thị'
+        queue:
+          type: integer
+        alpha:
+          type: number
+        delta:
+          type: number
+          description: Tỉ lệ điều chỉnh giá đã chặn ±20%, ví dụ `0.18` là +18%
+
+    PriceSuggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        currentPrice:
+          type: integer
+          format: int64
+        suggestedPrice:
+          type: integer
+          format: int64
+        changePercent:
+          type: number
+        reason:
+          type: string
+        inputs:
+          $ref: '#/components/schemas/ZoneInputs'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PricePreview:
+      type: object
+      description: Điều mà tác vụ sẽ đề xuất từ số liệu ngay lúc này.
+      properties:
+        suggestedPrice:
+          type: integer
+          format: int64
+        changePercent:
+          type: number
+        significant:
+          type: boolean
+          description: '`true` khi mức đổi từ 5% trở lên, tức là sẽ thành đề xuất'
+
+    PricePoint:
+      type: object
+      description: Một dòng `price_changes`
+      properties:
+        at:
+          type: string
+          format: date-time
+        oldPrice:
+          type: integer
+          format: int64
+        newPrice:
+          type: integer
+          format: int64
+        reason:
+          type: string
+          example: DYNAMIC
+
+    ZonePricingState:
+      type: object
+      properties:
+        zoneId:
+          type: string
+          format: uuid
+        zoneCode:
+          type: string
+        zoneName:
+          type: string
+        floor:
+          type: string
+        capacity:
+          type: integer
+        basePrice:
+          type: integer
+          format: int64
+        floorPrice:
+          type: integer
+          format: int64
+        ceilingPrice:
+          type: integer
+          format: int64
+        isDynamicPricingEnabled:
+          type: boolean
+        analysis:
+          type: string
+          enum: [ok, sold_out, sales_closed]
+          description: '`inputs` và `preview` chỉ có khi là `ok`'
+        inputs:
+          allOf:
+            - $ref: '#/components/schemas/ZoneInputs'
+          nullable: true
+        preview:
+          allOf:
+            - $ref: '#/components/schemas/PricePreview'
+          nullable: true
+        pending:
+          allOf:
+            - $ref: '#/components/schemas/PriceSuggestion'
+          nullable: true
+        history:
+          type: array
+          description: Tối đa 12 lần đổi giá gần nhất, cũ trước mới sau
+          items:
+            $ref: '#/components/schemas/PricePoint'
+
+    PricingSettings:
+      type: object
+      properties:
+        intervalSeconds:
+          type: integer
+        windowMinutes:
+          type: integer
+        targetHorizonMinutes:
+          type: integer
+          description: '`0` là không chặn'
+        minChangePercent:
+          type: number
+        maxStepPercent:
+          type: number
+        roundTo:
+          type: integer
+          format: int64
+
+    PricingOverview:
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        generatedAt:
+          type: string
+          format: date-time
+        lastRunAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Lần phân tích gần nhất của tiến trình api này
+        settings:
+          $ref: '#/components/schemas/PricingSettings'
+        zones:
+          type: array
+          items:
+            $ref: '#/components/schemas/ZonePricingState'
+
+    PricingRunSummary:
+      type: object
+      properties:
+        zones:
+          type: integer
+        created:
+          type: integer
+        updated:
+          type: integer
+        withdrawn:
+          type: integer
+
+    PriceApproval:
+      type: object
+      properties:
+        suggestionId:
+          type: string
+          format: uuid
+        zoneId:
+          type: string
+          format: uuid
+        oldPrice:
+          type: integer
+          format: int64
+        newPrice:
+          type: integer
+          format: int64
+        repricedSeats:
+          type: integer
+          format: int64
+          description: Số ghế `AVAILABLE` đã đổi giá
 
     SeatMapItem:
       type: object
