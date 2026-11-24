@@ -1,15 +1,31 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2, BarChart3, RefreshCw, SlidersHorizontal } from 'lucide-react';
+import { Link, Navigate } from 'react-router-dom';
+import {
+  CalendarDays,
+  MapPin,
+  Save,
+  AlertCircle,
+  CheckCircle2,
+  BarChart3,
+  RefreshCw,
+  SlidersHorizontal,
+  Plus,
+  Wand2,
+  ExternalLink
+} from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
 import { EventSalesDashboard, PortfolioSalesBanner } from '../components/organizer/OrganizerSalesDashboard';
+import { EventCreatorStudio } from '../components/organizer/EventCreatorStudio';
+import { StageLayoutEditorPanel } from '../components/organizer/StageLayoutEditorPanel';
 import { useFeatures } from '../context/FeatureContext';
+import { useEvents } from '../context/EventContext';
 import { formatPrice, apiFetchSeats } from '../services/eventService';
-import { SeatItem } from '../types';
+import { SeatItem, StageLayoutConfig } from '../types';
 import { invalidateAssistantCache, openAssistant } from '../services/assistantService';
 import {
+  CreatedOrganizerEvent,
   EventSalesSummary,
   OrganizerEvent,
   OrganizerSalesOverview,
@@ -164,12 +180,15 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted,
 
 export const OrganizerPage: React.FC = () => {
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
+  const { refreshEvents } = useEvents();
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [overview, setOverview] = useState<OrganizerSalesOverview | null>(null);
   const [selected, setSelected] = useState<OrganizerEvent | null>(null);
   const [zones, setZones] = useState<OrganizerZone[]>([]);
   const [eventSeats, setEventSeats] = useState<SeatItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'layout' | 'pricing'>('dashboard');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createdBanner, setCreatedBanner] = useState<CreatedOrganizerEvent | null>(null);
   const [focusedZoneId, setFocusedZoneId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -259,6 +278,35 @@ export const OrganizerPage: React.FC = () => {
     loadOverview();
   };
 
+  const handleLayoutSaved = (nextConfig: StageLayoutConfig) => {
+    if (selected) {
+      setOverview(prev =>
+        prev
+          ? {
+              ...prev,
+              events: prev.events.map(ev =>
+                ev.eventId === selected.id ? { ...ev, layoutConfig: nextConfig } : ev
+              )
+            }
+          : prev
+      );
+    }
+    invalidateAssistantCache();
+    refreshEvents();
+    loadOverview();
+  };
+
+  const handleEventCreated = async (created: CreatedOrganizerEvent) => {
+    setIsCreating(false);
+    setCreatedBanner(created);
+    invalidateAssistantCache();
+    const [list] = await Promise.all([apiFetchOrganizerEvents(), loadOverview(), refreshEvents()]);
+    setEvents(list);
+    const match = list.find(e => e.id === created.id) ?? created;
+    await handleSelect(match);
+    setActiveTab('dashboard');
+  };
+
   const selectedSummary: EventSalesSummary | undefined = selected
     ? overview?.events.find(e => e.eventId === selected.id)
     : undefined;
@@ -283,16 +331,58 @@ export const OrganizerPage: React.FC = () => {
               Theo dõi doanh thu, tỉ lệ lấp đầy trực tiếp từ cơ sở dữ liệu và cấu hình khung giá theo khu vực.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="btn btn-secondary btn-sm h-10"
-          >
-            <RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>{isRefreshing ? 'Đang cập nhật...' : 'Làm mới số liệu'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreating(prev => !prev);
+                setCreatedBanner(null);
+              }}
+              className="btn btn-ink btn-sm h-10"
+            >
+              <Plus className="size-4" />
+              <span>{isCreating ? 'Ẩn trình tạo sự kiện' : 'Tạo sự kiện mới'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="btn btn-secondary btn-sm h-10"
+            >
+              <RefreshCw className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Đang cập nhật...' : 'Làm mới số liệu'}</span>
+            </button>
+          </div>
         </div>
+
+        {createdBanner && (
+          <div
+            role="status"
+            className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-kumo-success-tint px-4 py-3.5 text-sm text-kumo-success ring ring-kumo-success/30"
+          >
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="size-5 shrink-0" />
+              <span>
+                Đã tạo sự kiện <strong>{createdBanner.name}</strong> ({createdBanner.zoneCount} khu ·{' '}
+                {createdBanner.totalCapacity.toLocaleString('vi-VN')} chỗ) với thiết kế sân khấu trực tiếp!
+              </span>
+            </div>
+            <Link
+              to={`/events/${createdBanner.slug}/tickets`}
+              className="btn btn-secondary btn-sm h-9 text-xs text-kumo-strong"
+            >
+              <span>Xem sơ đồ 2D / 3D</span>
+              <ExternalLink className="size-3.5" />
+            </Link>
+          </div>
+        )}
+
+        {isCreating && (
+          <EventCreatorStudio
+            onClose={() => setIsCreating(false)}
+            onCreated={handleEventCreated}
+          />
+        )}
 
         {overview && (
           <PortfolioSalesBanner
@@ -389,6 +479,20 @@ export const OrganizerPage: React.FC = () => {
                       <button
                         type="button"
                         role="tab"
+                        aria-selected={activeTab === 'layout'}
+                        onClick={() => setActiveTab('layout')}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                          activeTab === 'layout'
+                            ? 'bg-kumo-contrast text-kumo-inverse'
+                            : 'text-kumo-subtle hover:text-kumo-strong'
+                        }`}
+                      >
+                        <Wand2 className="size-3.5" />
+                        <span>Thiết kế sân khấu</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
                         aria-selected={activeTab === 'pricing'}
                         onClick={() => setActiveTab('pricing')}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
@@ -422,6 +526,12 @@ export const OrganizerPage: React.FC = () => {
                       setActiveTab('pricing');
                     }}
                     onInspectPricing={handleInspectZonePricing}
+                  />
+                ) : activeTab === 'layout' && selectedSummary ? (
+                  <StageLayoutEditorPanel
+                    summary={selectedSummary}
+                    seats={eventSeats}
+                    onSaved={handleLayoutSaved}
                   />
                 ) : (
                   zones.map(zone => (

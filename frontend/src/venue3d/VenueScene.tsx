@@ -4,7 +4,7 @@ import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { SeatItem } from '../types';
-import { PovView, SeatPlacement, VenueLayout, ZoneGeometry, ZoneSummary, zoneStats } from '../services/venue';
+import { PovView, STAGE_THEMES, SeatPlacement, VenueLayout, ZoneGeometry, ZoneSummary, zoneStats } from '../services/venue';
 import {
   PALETTE,
   Placed,
@@ -86,8 +86,6 @@ function useDisposable<T extends { dispose: () => void }>(factory: () => T, deps
 // ---------------------------------------------------------------------------
 // Architecture: stage, rigging, shell. Static once the layout is known.
 // ---------------------------------------------------------------------------
-
-const BEAM_COLORS = [PALETTE.electric, PALETTE.magenta, PALETTE.violet];
 
 /**
  * Three tiers, picked once from the frame and the device:
@@ -176,6 +174,10 @@ const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean; animateLed
     [arch, circulation, extras]
   );
   const { W, D, H, center, front, back } = arch.stage;
+  const stageTheme = STAGE_THEMES[layout.stage.theme] ?? STAGE_THEMES.electric;
+  const beamPalette = stageTheme.beamColors;
+  const runway = layout.stage.runway;
+  const isCenterStage = layout.stage.shape === 'center';
 
   const led = useLedMaterial(animateLed);
   const haze = useDisposable(hazeTexture, []);
@@ -207,16 +209,16 @@ const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean; animateLed
         position: f.position,
         pitch: 0.32,
         tilt: (i - (frontLamps.length - 1) / 2) * 0.09,
-        color: BEAM_COLORS[i % BEAM_COLORS.length]
+        color: beamPalette[i % beamPalette.length]
       })),
       ...backLamps.map((f, i) => ({
         position: [f.position[0], f.position[1] + 0.5, f.position[2]] as [number, number, number],
         pitch: -2.45,
         tilt: (i - (backLamps.length - 1) / 2) * -0.22,
-        color: BEAM_COLORS[(i + 1) % BEAM_COLORS.length]
+        color: beamPalette[(i + 1) % beamPalette.length]
       }))
     ];
-  }, [arch.fixtures, center]);
+  }, [arch.fixtures, center, beamPalette]);
   const invalidate = useThree(s => s.invalidate);
   useLayoutEffect(() => {
     const mesh = beamsRef.current;
@@ -254,29 +256,91 @@ const Architecture: React.FC<{ layout: VenueLayout; shadows: boolean; animateLed
       </mesh>
       <mesh position={[center[0], H - 0.05, front + 0.01]} raycast={() => null}>
         <boxGeometry args={[W, 0.06, 0.06]} />
-        <meshBasicMaterial color={PALETTE.electric} toneMapped={false} />
+        <meshBasicMaterial color={stageTheme.edge} toneMapped={false} />
       </mesh>
       {/* A low LED fascia along the deck front, so the stage face reads from the stands. */}
       <mesh position={[center[0], 0.36 + (H - 0.36) / 2, front + 0.012]} material={led} raycast={() => null}>
         <planeGeometry args={[W - 0.4, (H - 0.36) * 0.6]} />
       </mesh>
 
-      {/* LED wall behind the band and two angled side screens. */}
-      <mesh position={[ledPlace.x, ledPlace.y, ledPlace.z]} material={led} raycast={() => null}>
-        <planeGeometry args={[ledPlace.width, ledPlace.height]} />
-      </mesh>
-      {[-1, 1].map(sign => (
-        <React.Fragment key={sign}>
-          {/* Tall LED columns flanking the main wall. */}
-          <mesh position={[ledPlace.x + sign * (ledPlace.width / 2 + 1.05), ledPlace.y, ledPlace.z + 0.05]} material={led} raycast={() => null}>
-            <planeGeometry args={[1.5, ledPlace.height + 0.6]} />
+      {/* Optional runway / thrust T-stage deck extension */}
+      {runway && (
+        <group>
+          <mesh
+            position={[center[0], 0.34 + (H - 0.34) / 2, front + runway.length / 2]}
+            castShadow
+            receiveShadow
+            raycast={() => null}
+          >
+            <boxGeometry args={[runway.width, Math.max(0.25, H - 0.34), runway.length]} />
+            <meshStandardMaterial color="#1b1f40" roughness={0.3} metalness={0.55} />
           </mesh>
-          {/* Side screens for the back of the house, angled towards the stands. */}
-          <mesh position={[sign * (W / 2 + 3.9), 5.4, center[2] + 0.6]} rotation={[0, -sign * 0.35, 0]} material={led} raycast={() => null}>
-            <planeGeometry args={[3.6, 4.2]} />
+          {[-1, 1].map(sign => (
+            <mesh
+              key={`runway-edge-${sign}`}
+              position={[center[0] + sign * (runway.width / 2), H - 0.05, front + runway.length / 2]}
+              raycast={() => null}
+            >
+              <boxGeometry args={[0.06, 0.06, runway.length]} />
+              <meshBasicMaterial color={stageTheme.edge} toneMapped={false} />
+            </mesh>
+          ))}
+          {runway.tipWidth && runway.tipDepth && (
+            <>
+              <mesh
+                position={[center[0], 0.34 + (H - 0.34) / 2, front + runway.length + runway.tipDepth / 2]}
+                castShadow
+                receiveShadow
+                raycast={() => null}
+              >
+                <boxGeometry args={[runway.tipWidth, Math.max(0.25, H - 0.34), runway.tipDepth]} />
+                <meshStandardMaterial color="#1b1f40" roughness={0.3} metalness={0.55} />
+              </mesh>
+              <mesh
+                position={[center[0], H - 0.05, front + runway.length + runway.tipDepth + 0.01]}
+                raycast={() => null}
+              >
+                <boxGeometry args={[runway.tipWidth, 0.06, 0.06]} />
+                <meshBasicMaterial color={stageTheme.edge} toneMapped={false} />
+              </mesh>
+            </>
+          )}
+        </group>
+      )}
+
+      {/* LED wall behind the band (or suspended 4-sided halo cube above a 360° center stage). */}
+      {isCenterStage ? (
+        <group position={[center[0], 6.4, center[2]]}>
+          {[
+            { pos: [0, 0, 2.2] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
+            { pos: [0, 0, -2.2] as [number, number, number], rot: [0, Math.PI, 0] as [number, number, number] },
+            { pos: [2.2, 0, 0] as [number, number, number], rot: [0, Math.PI / 2, 0] as [number, number, number] },
+            { pos: [-2.2, 0, 0] as [number, number, number], rot: [0, -Math.PI / 2, 0] as [number, number, number] }
+          ].map((face, idx) => (
+            <mesh key={idx} position={face.pos} rotation={face.rot} material={led} raycast={() => null}>
+              <planeGeometry args={[4.2, 2.6]} />
+            </mesh>
+          ))}
+        </group>
+      ) : (
+        <>
+          <mesh position={[ledPlace.x, ledPlace.y, ledPlace.z]} material={led} raycast={() => null}>
+            <planeGeometry args={[ledPlace.width, ledPlace.height]} />
           </mesh>
-        </React.Fragment>
-      ))}
+          {[-1, 1].map(sign => (
+            <React.Fragment key={sign}>
+              {/* Tall LED columns flanking the main wall. */}
+              <mesh position={[ledPlace.x + sign * (ledPlace.width / 2 + 1.05), ledPlace.y, ledPlace.z + 0.05]} material={led} raycast={() => null}>
+                <planeGeometry args={[1.5, ledPlace.height + 0.6]} />
+              </mesh>
+              {/* Side screens for the back of the house, angled towards the stands. */}
+              <mesh position={[sign * (W / 2 + 3.9), 5.4, center[2] + 0.6]} rotation={[0, -sign * 0.35, 0]} material={led} raycast={() => null}>
+                <planeGeometry args={[3.6, 4.2]} />
+              </mesh>
+            </React.Fragment>
+          ))}
+        </>
+      )}
 
       <mesh position={[center[0], 7, back - 1.2]} raycast={() => null}>
         <planeGeometry args={[W * 3, 16]} />
@@ -639,12 +703,13 @@ const Followspot: React.FC<{ target: THREE.Vector3 | null }> = ({ target }) => {
 const OVERVIEW_FOV = 38;
 const POV_FOV = 58;
 
-/** Normal orbit limits; the POV mode swaps in tighter ones and puts these back on exit. */
+/** Normal orbit limits; 360° center stages allow full orbit around the bowl. */
 function applyOrbitLimits(c: CameraControlsImpl, layout: VenueLayout) {
   c.minPolarAngle = 22 * DEG;
   c.maxPolarAngle = 74 * DEG;
-  c.minAzimuthAngle = -80 * DEG;
-  c.maxAzimuthAngle = 80 * DEG;
+  const fullOrbit = layout.stage.shape === 'center';
+  c.minAzimuthAngle = fullOrbit ? -Infinity : -80 * DEG;
+  c.maxAzimuthAngle = fullOrbit ? Infinity : 80 * DEG;
   c.minDistance = 6;
   c.maxDistance = layout.extent * 2.6;
   c.azimuthRotateSpeed = 1;

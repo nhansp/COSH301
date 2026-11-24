@@ -23,7 +23,7 @@ func (q *Queries) EventExists(ctx context.Context, id pgtype.UUID) (bool, error)
 }
 
 const getEventByID = `-- name: GetEventByID :one
-SELECT e.id, e.organizer_id, e.venue_id, e.name, e.slug, e.description, e.genre, e.image_url, e.city, e.starts_at, e.ends_at, e.sales_starts_at, e.sales_ends_at, e.status, e.max_tickets_per_user, e.waiting_room_enabled, e.waiting_room_capacity, e.created_at, e.updated_at, e.image_credit, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone
+SELECT e.id, e.organizer_id, e.venue_id, e.name, e.slug, e.description, e.genre, e.image_url, e.city, e.starts_at, e.ends_at, e.sales_starts_at, e.sales_ends_at, e.status, e.max_tickets_per_user, e.waiting_room_enabled, e.waiting_room_capacity, e.created_at, e.updated_at, e.image_credit, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone, v.layout_config AS venue_layout_config
 FROM events e
 JOIN venues v ON e.venue_id = v.id
 WHERE e.id = $1
@@ -54,6 +54,7 @@ type GetEventByIDRow struct {
 	VenueName           string             `json:"venue_name"`
 	VenueAddress        pgtype.Text        `json:"venue_address"`
 	VenueTimezone       string             `json:"venue_timezone"`
+	VenueLayoutConfig   []byte             `json:"venue_layout_config"`
 }
 
 func (q *Queries) GetEventByID(ctx context.Context, id pgtype.UUID) (GetEventByIDRow, error) {
@@ -83,12 +84,13 @@ func (q *Queries) GetEventByID(ctx context.Context, id pgtype.UUID) (GetEventByI
 		&i.VenueName,
 		&i.VenueAddress,
 		&i.VenueTimezone,
+		&i.VenueLayoutConfig,
 	)
 	return i, err
 }
 
 const getEventBySlug = `-- name: GetEventBySlug :one
-SELECT e.id, e.organizer_id, e.venue_id, e.name, e.slug, e.description, e.genre, e.image_url, e.city, e.starts_at, e.ends_at, e.sales_starts_at, e.sales_ends_at, e.status, e.max_tickets_per_user, e.waiting_room_enabled, e.waiting_room_capacity, e.created_at, e.updated_at, e.image_credit, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone
+SELECT e.id, e.organizer_id, e.venue_id, e.name, e.slug, e.description, e.genre, e.image_url, e.city, e.starts_at, e.ends_at, e.sales_starts_at, e.sales_ends_at, e.status, e.max_tickets_per_user, e.waiting_room_enabled, e.waiting_room_capacity, e.created_at, e.updated_at, e.image_credit, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone, v.layout_config AS venue_layout_config
 FROM events e
 JOIN venues v ON e.venue_id = v.id
 WHERE e.slug = $1
@@ -119,6 +121,7 @@ type GetEventBySlugRow struct {
 	VenueName           string             `json:"venue_name"`
 	VenueAddress        pgtype.Text        `json:"venue_address"`
 	VenueTimezone       string             `json:"venue_timezone"`
+	VenueLayoutConfig   []byte             `json:"venue_layout_config"`
 }
 
 func (q *Queries) GetEventBySlug(ctx context.Context, slug string) (GetEventBySlugRow, error) {
@@ -148,12 +151,13 @@ func (q *Queries) GetEventBySlug(ctx context.Context, slug string) (GetEventBySl
 		&i.VenueName,
 		&i.VenueAddress,
 		&i.VenueTimezone,
+		&i.VenueLayoutConfig,
 	)
 	return i, err
 }
 
 const listEventZonesWithPrices = `-- name: ListEventZonesWithPrices :many
-SELECT ez.id, ez.event_id, ez.zone_id, ez.base_price, ez.floor_price, ez.ceiling_price, ez.is_dynamic_pricing_enabled, ez.created_at, ez.updated_at, vz.code, vz.name AS zone_name, vz.floor, vz.capacity
+SELECT ez.id, ez.event_id, ez.zone_id, ez.base_price, ez.floor_price, ez.ceiling_price, ez.is_dynamic_pricing_enabled, ez.created_at, ez.updated_at, vz.code, vz.name AS zone_name, vz.floor, vz.capacity, vz.zone_kind
 FROM event_zones ez
 JOIN venue_zones vz ON ez.zone_id = vz.id
 WHERE ez.event_id = $1
@@ -174,6 +178,7 @@ type ListEventZonesWithPricesRow struct {
 	ZoneName                string             `json:"zone_name"`
 	Floor                   pgtype.Text        `json:"floor"`
 	Capacity                int32              `json:"capacity"`
+	ZoneKind                string             `json:"zone_kind"`
 }
 
 func (q *Queries) ListEventZonesWithPrices(ctx context.Context, eventID pgtype.UUID) ([]ListEventZonesWithPricesRow, error) {
@@ -199,6 +204,7 @@ func (q *Queries) ListEventZonesWithPrices(ctx context.Context, eventID pgtype.U
 			&i.ZoneName,
 			&i.Floor,
 			&i.Capacity,
+			&i.ZoneKind,
 		); err != nil {
 			return nil, err
 		}
@@ -211,7 +217,7 @@ func (q *Queries) ListEventZonesWithPrices(ctx context.Context, eventID pgtype.U
 }
 
 const listPublishedEvents = `-- name: ListPublishedEvents :many
-SELECT e.id, e.organizer_id, e.venue_id, e.name, e.slug, e.description, e.genre, e.image_url, e.city, e.starts_at, e.ends_at, e.sales_starts_at, e.sales_ends_at, e.status, e.max_tickets_per_user, e.waiting_room_enabled, e.waiting_room_capacity, e.created_at, e.updated_at, e.image_credit, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone,
+SELECT e.id, e.organizer_id, e.venue_id, e.name, e.slug, e.description, e.genre, e.image_url, e.city, e.starts_at, e.ends_at, e.sales_starts_at, e.sales_ends_at, e.status, e.max_tickets_per_user, e.waiting_room_enabled, e.waiting_room_capacity, e.created_at, e.updated_at, e.image_credit, v.name AS venue_name, v.address AS venue_address, v.timezone AS venue_timezone, v.layout_config AS venue_layout_config,
        (SELECT MIN(ez.base_price) FROM event_zones ez WHERE ez.event_id = e.id)::bigint AS price_from
 FROM events e
 JOIN venues v ON e.venue_id = v.id
@@ -243,6 +249,7 @@ type ListPublishedEventsRow struct {
 	VenueName           string             `json:"venue_name"`
 	VenueAddress        pgtype.Text        `json:"venue_address"`
 	VenueTimezone       string             `json:"venue_timezone"`
+	VenueLayoutConfig   []byte             `json:"venue_layout_config"`
 	PriceFrom           int64              `json:"price_from"`
 }
 
@@ -279,6 +286,7 @@ func (q *Queries) ListPublishedEvents(ctx context.Context) ([]ListPublishedEvent
 			&i.VenueName,
 			&i.VenueAddress,
 			&i.VenueTimezone,
+			&i.VenueLayoutConfig,
 			&i.PriceFrom,
 		); err != nil {
 			return nil, err

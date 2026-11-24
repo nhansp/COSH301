@@ -32,3 +32,45 @@ WHERE es.seat_id = s.id
 -- name: InsertPriceChange :exec
 INSERT INTO price_changes (event_id, zone_id, old_price, new_price, changed_by, reason)
 VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: EventSlugExists :one
+SELECT EXISTS (SELECT 1 FROM events WHERE slug = $1);
+
+-- name: CreateVenue :one
+INSERT INTO venues (name, address, timezone, layout_config)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: UpdateVenueLayoutConfigByEvent :one
+UPDATE venues v
+SET layout_config = $2
+FROM events e
+WHERE e.venue_id = v.id AND e.id = $1
+RETURNING v.layout_config;
+
+-- name: CreateEvent :one
+INSERT INTO events (
+    organizer_id, venue_id, name, slug, description, genre, image_url, image_credit,
+    city, starts_at, ends_at, status, max_tickets_per_user, waiting_room_enabled
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING *;
+
+-- name: CreateVenueZone :one
+INSERT INTO venue_zones (venue_id, code, name, floor, capacity, zone_kind)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
+
+-- name: CreateEventZone :one
+INSERT INTO event_zones (event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
+
+-- name: CreateSeat :one
+INSERT INTO seats (zone_id, row_label, seat_number, seat_label, x_position, y_position)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
+
+-- name: CreateEventSeat :exec
+INSERT INTO event_seats (event_id, seat_id, status, current_price)
+VALUES ($1, $2, 'AVAILABLE', $3);

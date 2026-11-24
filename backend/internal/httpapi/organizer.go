@@ -60,6 +60,46 @@ func (h *OrganizerHandler) HandleEventSalesSummary(w http.ResponseWriter, r *htt
 	writeJSON(w, http.StatusOK, summary)
 }
 
+// HandleCreateEvent handles POST /api/organizer/events.
+func (h *OrganizerHandler) HandleCreateEvent(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	var req service.CreateOrganizerEventRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_payload")
+		return
+	}
+	created, err := h.organizer.CreateEvent(r.Context(), sess.UserID, req)
+	if err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, created)
+}
+
+// HandleUpdateEventLayout handles PUT /api/organizer/events/{id}/layout.
+func (h *OrganizerHandler) HandleUpdateEventLayout(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
+	eventID, err := h.events.ResolveEventID(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, service.ErrEventNotFound.Error())
+		return
+	}
+	var cfg service.StageLayoutConfig
+	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_payload")
+		return
+	}
+	isAdmin := sess.Role == store.UserRoleADMIN
+	if err := h.organizer.AuthorizeEvent(r.Context(), eventID, sess.UserID, isAdmin); err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	updated, err := h.organizer.UpdateEventLayout(r.Context(), eventID, cfg)
+	if err != nil {
+		h.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}
+
 // HandleUpdateZonePricing handles PUT /api/organizer/events/{id}/zones/{zoneId}/pricing.
 func (h *OrganizerHandler) HandleUpdateZonePricing(w http.ResponseWriter, r *http.Request, sess *store.GetSessionByTokenHashRow) {
 	eventID, err := h.events.ResolveEventID(r.Context(), r.PathValue("id"))
@@ -98,7 +138,10 @@ func (h *OrganizerHandler) writeErr(w http.ResponseWriter, r *http.Request, err 
 		writeError(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, service.ErrNotEventOrganizer):
 		writeError(w, http.StatusForbidden, err.Error())
-	case errors.Is(err, service.ErrInvalidPriceBounds):
+	case errors.Is(err, service.ErrInvalidPriceBounds),
+		errors.Is(err, service.ErrInvalidEventPayload),
+		errors.Is(err, service.ErrInvalidEventSchedule),
+		errors.Is(err, service.ErrInvalidZones):
 		writeError(w, http.StatusBadRequest, err.Error())
 	default:
 		internalError(w, r, err)

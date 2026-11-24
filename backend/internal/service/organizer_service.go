@@ -2,10 +2,15 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,13 +22,454 @@ import (
 )
 
 var (
-	ErrEventNotFound      = errors.New("event_not_found")
-	ErrZoneNotFound       = errors.New("zone_not_found")
-	ErrNotEventOrganizer  = errors.New("not_event_organizer")
-	ErrInvalidPriceBounds = errors.New("invalid_price_bounds")
+	ErrEventNotFound        = errors.New("event_not_found")
+	ErrZoneNotFound         = errors.New("zone_not_found")
+	ErrNotEventOrganizer    = errors.New("not_event_organizer")
+	ErrInvalidPriceBounds   = errors.New("invalid_price_bounds")
+	ErrInvalidEventPayload  = errors.New("invalid_event_payload")
+	ErrInvalidEventSchedule = errors.New("invalid_event_schedule")
+	ErrInvalidZones         = errors.New("invalid_zones")
 )
 
-// OrganizerService lets organizers manage their events and zone prices (FR-08).
+var hexColorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+
+type ZoneStyleConfig struct {
+	Color       string `json:"color,omitempty"`
+	Rows        int    `json:"rows,omitempty"`
+	SeatsPerRow int    `json:"seatsPerRow,omitempty"`
+}
+
+type StageLayoutConfig struct {
+	StageShape    string                     `json:"stageShape,omitempty"`    // standard | thrust | catwalk | center
+	LayoutStyle   string                     `json:"layoutStyle,omitempty"`   // horseshoe | theater | amphitheater | arena360
+	StageTheme    string                     `json:"stageTheme,omitempty"`    // electric | sunset | emerald | gold
+	StageLabel    string                     `json:"stageLabel,omitempty"`
+	StageWidth    float64                    `json:"stageWidth,omitempty"`    // 10..26m
+	StageDepth    float64                    `json:"stageDepth,omitempty"`    // 4..10m
+	StageHeight   float64                    `json:"stageHeight,omitempty"`   // 0.8..2.4m
+	CatwalkLength float64                    `json:"catwalkLength,omitempty"` // 0..14m
+	CatwalkWidth  float64                    `json:"catwalkWidth,omitempty"`  // 2.5..6m
+	TierSpanDeg   float64                    `json:"tierSpanDeg,omitempty"`   // 70..320 deg
+	ZonesPerRing  int                        `json:"zonesPerRing,omitempty"`  // 1..5
+	PitWidth      float64                    `json:"pitWidth,omitempty"`      // 10..26m
+	PitDepth      float64                    `json:"pitDepth,omitempty"`      // 2.4..6m
+	ZoneStyles    map[string]ZoneStyleConfig `json:"zoneStyles,omitempty"`
+}
+
+type CreateEventZoneInput struct {
+	Code                    string `json:"code"`
+	Name                    string `json:"name"`
+	Floor                   string `json:"floor,omitempty"`
+	Kind                    string `json:"kind"` // seated | standing
+	Rows                    int    `json:"rows"`
+	SeatsPerRow             int    `json:"seatsPerRow"`
+	BasePrice               int64  `json:"basePrice"`
+	FloorPrice              int64  `json:"floorPrice"`
+	CeilingPrice            int64  `json:"ceilingPrice"`
+	IsDynamicPricingEnabled bool   `json:"isDynamicPricingEnabled"`
+	Color                   string `json:"color,omitempty"`
+}
+
+type CreateOrganizerEventRequest struct {
+	Name               string                 `json:"name"`
+	Description        string                 `json:"description"`
+	Genre              string                 `json:"genre"`
+	City               string                 `json:"city"`
+	VenueName          string                 `json:"venueName"`
+	VenueAddress       string                 `json:"venueAddress"`
+	ImageURL           string                 `json:"imageUrl"`
+	ImageCredit        string                 `json:"imageCredit"`
+	StartsAt           string                 `json:"startsAt"`
+	EndsAt             string                 `json:"endsAt"`
+	Status             string                 `json:"status"` // ON_SALE | DRAFT
+	MaxTicketsPerUser  int32                  `json:"maxTicketsPerUser"`
+	WaitingRoomEnabled bool                   `json:"waitingRoomEnabled"`
+	LayoutConfig       *StageLayoutConfig     `json:"layoutConfig,omitempty"`
+	Zones              []CreateEventZoneInput `json:"zones"`
+}
+
+type CreatedOrganizerEventDTO struct {
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	Slug          string            `json:"slug"`
+	Status        string            `json:"status"`
+	StartsAt      string            `json:"startsAt"`
+	EndsAt        string            `json:"endsAt"`
+	ImageURL      string            `json:"imageUrl"`
+	VenueName     string            `json:"venueName"`
+	City          string            `json:"city"`
+	ZoneCount     int               `json:"zoneCount"`
+	TotalCapacity int               `json:"totalCapacity"`
+	LayoutConfig  StageLayoutConfig `json:"layoutConfig"`
+}
+
+func clampFloat(v, minV, maxV, fallback float64) float64 {
+	if v <= 0 {
+		return fallback
+	}
+	if v < minV {
+		return minV
+	}
+	if v > maxV {
+		return maxV
+	}
+	return v
+}
+
+// SanitizeStageLayoutConfig normalizes and bounds stage/layout parameters before storing in JSONB.
+func SanitizeStageLayoutConfig(in *StageLayoutConfig) StageLayoutConfig {
+	out := StageLayoutConfig{
+		StageShape:   "standard",
+		LayoutStyle:  "horseshoe",
+		StageTheme:   "electric",
+		StageLabel:   "SÂN KHẤU",
+		StageWidth:   16,
+		StageDepth:   6,
+		StageHeight:  1.2,
+		TierSpanDeg:  150,
+		ZonesPerRing: 3,
+		PitWidth:     18,
+		PitDepth:     3.4,
+	}
+	if in == nil {
+		return out
+	}
+
+	switch in.StageShape {
+	case "standard", "thrust", "catwalk", "center":
+		out.StageShape = in.StageShape
+	}
+	switch in.LayoutStyle {
+	case "horseshoe", "theater", "amphitheater", "arena360":
+		out.LayoutStyle = in.LayoutStyle
+	}
+	switch in.StageTheme {
+	case "electric", "sunset", "emerald", "gold":
+		out.StageTheme = in.StageTheme
+	}
+
+	if lbl := strings.TrimSpace(in.StageLabel); lbl != "" {
+		runes := []rune(lbl)
+		if len(runes) > 36 {
+			lbl = string(runes[:36])
+		}
+		out.StageLabel = lbl
+	}
+
+	defaultSpan := 150.0
+	defaultPerRing := 3
+	switch out.LayoutStyle {
+	case "theater":
+		defaultSpan = 92
+		defaultPerRing = 2
+	case "amphitheater":
+		defaultSpan = 198
+		defaultPerRing = 4
+	case "arena360":
+		defaultSpan = 310
+		defaultPerRing = 4
+	}
+	if out.StageShape == "center" && in.TierSpanDeg == 0 {
+		defaultSpan = 310
+	}
+
+	out.StageWidth = clampFloat(in.StageWidth, 8, 26, 16)
+	out.StageDepth = clampFloat(in.StageDepth, 4, 14, 6)
+	out.StageHeight = clampFloat(in.StageHeight, 0.8, 2.4, 1.2)
+	if out.StageShape == "thrust" || out.StageShape == "catwalk" {
+		out.CatwalkLength = clampFloat(in.CatwalkLength, 3.5, 14, 7.5)
+		out.CatwalkWidth = clampFloat(in.CatwalkWidth, 2.4, 6, 3.4)
+	}
+	out.TierSpanDeg = clampFloat(in.TierSpanDeg, 70, 320, defaultSpan)
+	if in.ZonesPerRing >= 1 && in.ZonesPerRing <= 5 {
+		out.ZonesPerRing = in.ZonesPerRing
+	} else {
+		out.ZonesPerRing = defaultPerRing
+	}
+	out.PitWidth = clampFloat(in.PitWidth, 10, 26, 18)
+	out.PitDepth = clampFloat(in.PitDepth, 2.4, 6, 3.4)
+
+	if len(in.ZoneStyles) > 0 {
+		styles := make(map[string]ZoneStyleConfig, len(in.ZoneStyles))
+		for rawCode, st := range in.ZoneStyles {
+			code := strings.ToUpper(strings.TrimSpace(rawCode))
+			if code == "" || len(code) > 50 {
+				continue
+			}
+			clean := ZoneStyleConfig{}
+			if hexColorPattern.MatchString(strings.TrimSpace(st.Color)) {
+				clean.Color = strings.ToLower(strings.TrimSpace(st.Color))
+			}
+			if st.Rows >= 1 && st.Rows <= 12 {
+				clean.Rows = st.Rows
+			}
+			if st.SeatsPerRow >= 1 && st.SeatsPerRow <= 24 {
+				clean.SeatsPerRow = st.SeatsPerRow
+			}
+			if clean.Color != "" || clean.Rows > 0 || clean.SeatsPerRow > 0 {
+				styles[code] = clean
+			}
+		}
+		if len(styles) > 0 {
+			out.ZoneStyles = styles
+		}
+	}
+	return out
+}
+
+func slugifyEventName(raw string) string {
+	replacer := strings.NewReplacer(
+		"đ", "d", "Đ", "d",
+		"á", "a", "à", "a", "ả", "a", "ã", "a", "ạ", "a",
+		"ă", "a", "ắ", "a", "ằ", "a", "ẳ", "a", "ẵ", "a", "ặ", "a",
+		"â", "a", "ấ", "a", "ầ", "a", "ẩ", "a", "ẫ", "a", "ậ", "a",
+		"é", "e", "è", "e", "ẻ", "e", "ẽ", "e", "ẹ", "e",
+		"ê", "e", "ế", "e", "ề", "e", "ể", "e", "ễ", "e", "ệ", "e",
+		"í", "i", "ì", "i", "ỉ", "i", "ĩ", "i", "ị", "i",
+		"ó", "o", "ò", "o", "ỏ", "o", "õ", "o", "ọ", "o",
+		"ô", "o", "ố", "o", "ồ", "o", "ổ", "o", "ỗ", "o", "ộ", "o",
+		"ơ", "o", "ớ", "o", "ờ", "o", "ở", "o", "ỡ", "o", "ợ", "o",
+		"ú", "u", "ù", "u", "ủ", "u", "ũ", "u", "ụ", "u",
+		"ư", "u", "ứ", "u", "ừ", "u", "ử", "u", "ữ", "u", "ự", "u",
+		"ý", "y", "ỳ", "y", "ỷ", "y", "ỹ", "y", "ỵ", "y",
+	)
+	lower := replacer.Replace(strings.ToLower(strings.TrimSpace(raw)))
+	var b strings.Builder
+	lastDash := true
+	for _, r := range lower {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+			lastDash = false
+		} else if !lastDash {
+			b.WriteByte('-')
+			lastDash = true
+		}
+		if b.Len() >= 64 {
+			break
+		}
+	}
+	slug := strings.Trim(b.String(), "-")
+	if slug == "" {
+		return "event"
+	}
+	return slug
+}
+
+func randomHexSuffix(nBytes int) string {
+	buf := make([]byte, nBytes)
+	if _, err := rand.Read(buf); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano()%10000, 16)
+	}
+	return hex.EncodeToString(buf)
+}
+
+func parseEventTimestamp(raw string) (time.Time, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}, ErrInvalidEventSchedule
+	}
+	if t, err := time.Parse(time.RFC3339, raw); err == nil {
+		return t, nil
+	}
+	if t, err := time.Parse("2006-01-02T15:04", raw); err == nil {
+		loc, errLoc := time.LoadLocation("Asia/Ho_Chi_Minh")
+		if errLoc != nil {
+			loc = time.FixedZone("ICT", 7*3600)
+		}
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, loc), nil
+	}
+	return time.Time{}, ErrInvalidEventSchedule
+}
+
+type validatedZone struct {
+	Code                    string
+	Name                    string
+	Floor                   string
+	Kind                    string
+	Rows                    int
+	SeatsPerRow             int
+	BasePrice               int64
+	FloorPrice              int64
+	CeilingPrice            int64
+	IsDynamicPricingEnabled bool
+	Color                   string
+}
+
+type validatedCreateEvent struct {
+	Name               string
+	Description        string
+	Genre              string
+	City               string
+	VenueName          string
+	VenueAddress       string
+	ImageURL           string
+	ImageCredit        string
+	StartsAt           time.Time
+	EndsAt             time.Time
+	Status             store.EventStatus
+	MaxTicketsPerUser  int32
+	WaitingRoomEnabled bool
+	LayoutConfig       StageLayoutConfig
+	Zones              []validatedZone
+	TotalCapacity      int
+}
+
+// ValidateCreateOrganizerEvent validates event metadata, schedule, zones, and stage config.
+func ValidateCreateOrganizerEvent(req CreateOrganizerEventRequest) (*validatedCreateEvent, error) {
+	name := strings.TrimSpace(req.Name)
+	venueName := strings.TrimSpace(req.VenueName)
+	city := strings.TrimSpace(req.City)
+	if name == "" || len([]rune(name)) > 200 || venueName == "" || len([]rune(venueName)) > 180 || city == "" {
+		return nil, ErrInvalidEventPayload
+	}
+
+	startsAt, err := parseEventTimestamp(req.StartsAt)
+	if err != nil {
+		return nil, ErrInvalidEventSchedule
+	}
+	endsAt, err := parseEventTimestamp(req.EndsAt)
+	if err != nil || !endsAt.After(startsAt) {
+		return nil, ErrInvalidEventSchedule
+	}
+
+	status := store.EventStatusONSALE
+	switch strings.ToUpper(strings.TrimSpace(req.Status)) {
+	case "", "ON_SALE":
+		status = store.EventStatusONSALE
+	case "DRAFT":
+		status = store.EventStatusDRAFT
+	default:
+		return nil, ErrInvalidEventPayload
+	}
+
+	maxTickets := req.MaxTicketsPerUser
+	if maxTickets <= 0 {
+		maxTickets = 4
+	}
+	if maxTickets > 20 {
+		maxTickets = 20
+	}
+
+	if len(req.Zones) == 0 || len(req.Zones) > 16 {
+		return nil, ErrInvalidZones
+	}
+
+	layoutCfg := SanitizeStageLayoutConfig(req.LayoutConfig)
+	if layoutCfg.ZoneStyles == nil {
+		layoutCfg.ZoneStyles = make(map[string]ZoneStyleConfig)
+	}
+
+	seenCodes := make(map[string]bool, len(req.Zones))
+	zones := make([]validatedZone, 0, len(req.Zones))
+	totalSeats := 0
+
+	for idx, z := range req.Zones {
+		zName := strings.TrimSpace(z.Name)
+		if zName == "" || len([]rune(zName)) > 110 {
+			return nil, ErrInvalidZones
+		}
+		code := strings.ToUpper(strings.TrimSpace(z.Code))
+		if code == "" {
+			code = fmt.Sprintf("Z%d", idx+1)
+		}
+		code = strings.ReplaceAll(code, " ", "_")
+		if len(code) > 40 || seenCodes[code] {
+			return nil, ErrInvalidZones
+		}
+		seenCodes[code] = true
+
+		kind := strings.ToLower(strings.TrimSpace(z.Kind))
+		if kind == "" {
+			if isStandingZoneName(zName) {
+				kind = "standing"
+			} else {
+				kind = "seated"
+			}
+		}
+		if kind != "seated" && kind != "standing" {
+			return nil, ErrInvalidZones
+		}
+
+		rows := z.Rows
+		seatsPerRow := z.SeatsPerRow
+		if rows < 1 || rows > 12 || seatsPerRow < 1 || seatsPerRow > 24 {
+			return nil, ErrInvalidZones
+		}
+		capCount := rows * seatsPerRow
+		totalSeats += capCount
+		if totalSeats > 1500 {
+			return nil, ErrInvalidZones
+		}
+
+		base := z.BasePrice
+		floor := z.FloorPrice
+		ceiling := z.CeilingPrice
+		if base < 0 {
+			return nil, ErrInvalidPriceBounds
+		}
+		if floor == 0 && base > 0 {
+			floor = (base * 80) / 100
+		}
+		if ceiling == 0 && base > 0 {
+			ceiling = (base * 120) / 100
+		}
+		if floor < 0 || floor > base || base > ceiling {
+			return nil, ErrInvalidPriceBounds
+		}
+
+		color := strings.ToLower(strings.TrimSpace(z.Color))
+		if color != "" && !hexColorPattern.MatchString(color) {
+			color = ""
+		}
+		style := layoutCfg.ZoneStyles[code]
+		if color != "" {
+			style.Color = color
+		}
+		style.Rows = rows
+		style.SeatsPerRow = seatsPerRow
+		layoutCfg.ZoneStyles[code] = style
+
+		zones = append(zones, validatedZone{
+			Code:                    code,
+			Name:                    zName,
+			Floor:                   strings.TrimSpace(z.Floor),
+			Kind:                    kind,
+			Rows:                    rows,
+			SeatsPerRow:             seatsPerRow,
+			BasePrice:               base,
+			FloorPrice:              floor,
+			CeilingPrice:            ceiling,
+			IsDynamicPricingEnabled: z.IsDynamicPricingEnabled,
+			Color:                   color,
+		})
+	}
+
+	genre := strings.TrimSpace(req.Genre)
+	if genre == "" {
+		genre = "Concert"
+	}
+
+	return &validatedCreateEvent{
+		Name:               name,
+		Description:        strings.TrimSpace(req.Description),
+		Genre:              genre,
+		City:               city,
+		VenueName:          venueName,
+		VenueAddress:       strings.TrimSpace(req.VenueAddress),
+		ImageURL:           strings.TrimSpace(req.ImageURL),
+		ImageCredit:        strings.TrimSpace(req.ImageCredit),
+		StartsAt:           startsAt,
+		EndsAt:             endsAt,
+		Status:             status,
+		MaxTicketsPerUser:  maxTickets,
+		WaitingRoomEnabled: req.WaitingRoomEnabled,
+		LayoutConfig:       layoutCfg,
+		Zones:              zones,
+		TotalCapacity:      totalSeats,
+	}, nil
+}
+
+// OrganizerService lets organizers manage their events, layouts, and zone prices (FR-08).
 type OrganizerService struct {
 	dbPool  *pgxpool.Pool
 	queries *store.Queries
@@ -174,6 +620,167 @@ type ZoneSalesSummaryDTO struct {
 	PriceHeadroomPct        float64 `json:"priceHeadroomPct"`
 }
 
+func textOrNull(s string) pgtype.Text {
+	if strings.TrimSpace(s) == "" {
+		return pgtype.Text{Valid: false}
+	}
+	return pgtype.Text{String: s, Valid: true}
+}
+
+// CreateEvent creates a venue (with custom stage/layout JSONB), event, zones, and
+// generated seat inventory atomically in one PostgreSQL transaction.
+func (s *OrganizerService) CreateEvent(ctx context.Context, organizerID pgtype.UUID, req CreateOrganizerEventRequest) (*CreatedOrganizerEventDTO, error) {
+	v, err := ValidateCreateOrganizerEvent(req)
+	if err != nil {
+		return nil, err
+	}
+
+	layoutBytes, err := json.Marshal(v.LayoutConfig)
+	if err != nil {
+		return nil, fmt.Errorf("marshal layout config: %w", err)
+	}
+
+	tx, err := s.dbPool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin create event tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
+
+	baseSlug := slugifyEventName(v.Name)
+	slug := baseSlug
+	for attempt := 0; attempt < 6; attempt++ {
+		exists, err := qtx.EventSlugExists(ctx, slug)
+		if err != nil {
+			return nil, fmt.Errorf("check event slug: %w", err)
+		}
+		if !exists {
+			break
+		}
+		slug = fmt.Sprintf("%s-%s", baseSlug, randomHexSuffix(2))
+	}
+
+	venue, err := qtx.CreateVenue(ctx, store.CreateVenueParams{
+		Name:         v.VenueName,
+		Address:      textOrNull(v.VenueAddress),
+		Timezone:     "Asia/Ho_Chi_Minh",
+		LayoutConfig: layoutBytes,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create venue: %w", err)
+	}
+
+	ev, err := qtx.CreateEvent(ctx, store.CreateEventParams{
+		OrganizerID:        organizerID,
+		VenueID:            venue.ID,
+		Name:               v.Name,
+		Slug:               slug,
+		Description:        textOrNull(v.Description),
+		Genre:              textOrNull(v.Genre),
+		ImageUrl:           textOrNull(v.ImageURL),
+		ImageCredit:        textOrNull(v.ImageCredit),
+		City:               textOrNull(v.City),
+		StartsAt:           pgtype.Timestamptz{Time: v.StartsAt, Valid: true},
+		EndsAt:             pgtype.Timestamptz{Time: v.EndsAt, Valid: true},
+		Status:             v.Status,
+		MaxTicketsPerUser:  v.MaxTicketsPerUser,
+		WaitingRoomEnabled: v.WaitingRoomEnabled,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create event: %w", err)
+	}
+
+	for zIdx, z := range v.Zones {
+		capCount := int32(z.Rows * z.SeatsPerRow)
+		vz, err := qtx.CreateVenueZone(ctx, store.CreateVenueZoneParams{
+			VenueID:  venue.ID,
+			Code:     z.Code,
+			Name:     z.Name,
+			Floor:    textOrNull(z.Floor),
+			Capacity: capCount,
+			ZoneKind: z.Kind,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("create venue zone %s: %w", z.Code, err)
+		}
+
+		if _, err := qtx.CreateEventZone(ctx, store.CreateEventZoneParams{
+			EventID:                 ev.ID,
+			ZoneID:                  vz.ID,
+			BasePrice:               numeric(z.BasePrice),
+			FloorPrice:              numeric(z.FloorPrice),
+			CeilingPrice:            numeric(z.CeilingPrice),
+			IsDynamicPricingEnabled: z.IsDynamicPricingEnabled,
+		}); err != nil {
+			return nil, fmt.Errorf("create event zone %s: %w", z.Code, err)
+		}
+
+		for r := 1; r <= z.Rows; r++ {
+			rowLabel := string(rune('A' + r - 1))
+			for n := 1; n <= z.SeatsPerRow; n++ {
+				seatNum := strconv.Itoa(n)
+				seatLabel := rowLabel + seatNum
+				seat, err := qtx.CreateSeat(ctx, store.CreateSeatParams{
+					ZoneID:     vz.ID,
+					RowLabel:   pgtype.Text{String: rowLabel, Valid: true},
+					SeatNumber: pgtype.Text{String: seatNum, Valid: true},
+					SeatLabel:  seatLabel,
+					XPosition:  numeric(int64(n)),
+					YPosition:  numeric(int64(zIdx*14 + r)),
+				})
+				if err != nil {
+					return nil, fmt.Errorf("create seat %s/%s: %w", z.Code, seatLabel, err)
+				}
+				if err := qtx.CreateEventSeat(ctx, store.CreateEventSeatParams{
+					EventID:      ev.ID,
+					SeatID:       seat.ID,
+					CurrentPrice: numeric(z.BasePrice),
+				}); err != nil {
+					return nil, fmt.Errorf("create event seat %s/%s: %w", z.Code, seatLabel, err)
+				}
+			}
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit create event: %w", err)
+	}
+
+	return &CreatedOrganizerEventDTO{
+		ID:            store.UUIDToString(ev.ID),
+		Name:          ev.Name,
+		Slug:          ev.Slug,
+		Status:        string(ev.Status),
+		StartsAt:      ev.StartsAt.Time.Format(time.RFC3339),
+		EndsAt:        ev.EndsAt.Time.Format(time.RFC3339),
+		ImageURL:      ev.ImageUrl.String,
+		VenueName:     venue.Name,
+		City:          ev.City.String,
+		ZoneCount:     len(v.Zones),
+		TotalCapacity: v.TotalCapacity,
+		LayoutConfig:  v.LayoutConfig,
+	}, nil
+}
+
+// UpdateEventLayout persists a new stage and venue layout design for an existing event.
+func (s *OrganizerService) UpdateEventLayout(ctx context.Context, eventID pgtype.UUID, cfg StageLayoutConfig) (*StageLayoutConfig, error) {
+	sanitized := SanitizeStageLayoutConfig(&cfg)
+	raw, err := json.Marshal(sanitized)
+	if err != nil {
+		return nil, fmt.Errorf("marshal layout config: %w", err)
+	}
+	if _, err := s.queries.UpdateVenueLayoutConfigByEvent(ctx, store.UpdateVenueLayoutConfigByEventParams{
+		ID:           eventID,
+		LayoutConfig: raw,
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrEventNotFound
+		}
+		return nil, fmt.Errorf("update venue layout config: %w", err)
+	}
+	return &sanitized, nil
+}
+
 type EventSalesSummaryDTO struct {
 	EventID             string                `json:"eventId"`
 	EventName           string                `json:"eventName"`
@@ -181,6 +788,7 @@ type EventSalesSummaryDTO struct {
 	City                string                `json:"city"`
 	VenueName           string                `json:"venueName"`
 	StartsAt            string                `json:"startsAt"`
+	LayoutConfig        json.RawMessage       `json:"layoutConfig,omitempty"`
 	TotalCapacity       int                   `json:"totalCapacity"`
 	SoldCount           int                   `json:"soldCount"`
 	HeldCount           int                   `json:"heldCount"`
@@ -255,15 +863,16 @@ func (s *OrganizerService) GetEventSalesSummary(ctx context.Context, eventID pgt
 	}
 
 	out := &EventSalesSummaryDTO{
-		EventID:   store.UUIDToString(ev.ID),
-		EventName: ev.Name,
-		Slug:      ev.Slug,
-		City:      ev.City.String,
-		VenueName: ev.VenueName,
-		StartsAt:  ev.StartsAt.Time.Format(time.RFC3339),
-		HotZones:  []string{},
-		SlowZones: []string{},
-		Zones:     make([]ZoneSalesSummaryDTO, 0, len(zones)),
+		EventID:      store.UUIDToString(ev.ID),
+		EventName:    ev.Name,
+		Slug:         ev.Slug,
+		City:         ev.City.String,
+		VenueName:    ev.VenueName,
+		StartsAt:     ev.StartsAt.Time.Format(time.RFC3339),
+		LayoutConfig: rawLayoutConfig(ev.VenueLayoutConfig),
+		HotZones:     []string{},
+		SlowZones:    []string{},
+		Zones:        make([]ZoneSalesSummaryDTO, 0, len(zones)),
 	}
 
 	var standingTotal, standingTaken, seatedTotal, seatedTaken int
@@ -303,7 +912,7 @@ func (s *OrganizerService) GetEventSalesSummary(ctx context.Context, eventID pgt
 		}
 
 		kind := "seated"
-		if isStandingZoneName(z.ZoneName) {
+		if z.ZoneKind == "standing" || (z.ZoneKind == "" && isStandingZoneName(z.ZoneName)) {
 			kind = "standing"
 			standingTotal += capCount
 			standingTaken += sold + held

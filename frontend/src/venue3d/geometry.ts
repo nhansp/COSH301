@@ -208,13 +208,26 @@ export function tierCirculation(layout: VenueLayout) {
   return { stairs, glass: merge(glass), rails: merge(rails) };
 }
 
+function shellOrigin(layout: VenueLayout): [number, number, number] {
+  if (layout.stage.shape === 'center') return [layout.stage.center[0], 0, layout.stage.center[2]];
+  const front = layout.stage.center[2] + layout.stage.depth / 2;
+  return [0, 0, front];
+}
+
+function shellSpan(layout: VenueLayout): number {
+  const tiers = layout.zones.filter((z): z is TierGeometry => z.kind === 'tier');
+  if (tiers.length === 0) return 82 * DEG;
+  const maxAngle = Math.max(...tiers.map(t => Math.max(Math.abs(t.startAngle), Math.abs(t.endAngle))));
+  return Math.min(168 * DEG, Math.max(82 * DEG, maxAngle + 6 * DEG));
+}
+
 /**
  * Dim bowl of the wider arena beyond the outer wall: no seats, just scale. Open at the
  * back, like the cut-away shell, so it never stands between the camera and the stands.
  */
 export function arenaShell(layout: VenueLayout) {
-  const front = layout.stage.center[2] + layout.stage.depth / 2;
-  return { radius: shellRadius(layout) + 15, height: 15, origin: [0, 0, front] as const, thetaStart: 40 * DEG, thetaLength: 280 * DEG };
+  const origin = shellOrigin(layout);
+  return { radius: shellRadius(layout) + 15, height: 15, origin, thetaStart: 40 * DEG, thetaLength: 280 * DEG };
 }
 
 /** LED wall placement, shared by the screen mesh and its frame. */
@@ -223,21 +236,45 @@ export function ledWall(layout: VenueLayout) {
   return { width: W * 0.8, height: 5.4, x: center[0], y: H + 3.3, z: center[2] - D / 2 + 0.35 };
 }
 
-/** Drum riser at the back of the deck, lower wings either side, and a flight of steps at each front corner. */
+/** Drum riser, wings, corner steps, and optional runway/thrust B-stage plinths. */
 export function stageExtras(layout: VenueLayout) {
-  const { width: W, depth: D, height: H, center } = layout.stage;
+  const { width: W, depth: D, height: H, center, shape, runway } = layout.stage;
   const wingH = H * 0.6;
-  const parts: THREE.BufferGeometry[] = [
-    box(W * 0.36, 0.45, D * 0.34, center[0], H + 0.225, center[2] - D * 0.22),
-    box(3, wingH, D * 0.8, center[0] - (W / 2 + 2.9), wingH / 2, center[2] - D * 0.08),
-    box(3, wingH, D * 0.8, center[0] + (W / 2 + 2.9), wingH / 2, center[2] - D * 0.08)
-  ];
-  for (const sign of [-1, 1]) {
-    for (let i = 0; i < 4; i++) {
-      const h = (H * (i + 1)) / 4;
-      parts.push(box(1.1, h, 0.42, center[0] + sign * (W / 2 + 0.75), h / 2, center[2] + D / 2 - 0.3 - i * 0.42));
+  const parts: THREE.BufferGeometry[] = [];
+
+  if (shape === 'center') {
+    // Center 360° island: elevated central podium & subtle corner steps on 4 sides.
+    parts.push(box(W * 0.34, 0.35, D * 0.34, center[0], H + 0.175, center[2]));
+    for (const sign of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const h = (H * (i + 1)) / 3;
+        parts.push(box(1.4, h, 0.42, center[0], h / 2, center[2] + sign * (D / 2 + 0.25 + (2 - i) * 0.42)));
+      }
+    }
+  } else {
+    parts.push(
+      box(W * 0.36, 0.45, D * 0.34, center[0], H + 0.225, center[2] - D * 0.22),
+      box(3, wingH, D * 0.8, center[0] - (W / 2 + 2.9), wingH / 2, center[2] - D * 0.08),
+      box(3, wingH, D * 0.8, center[0] + (W / 2 + 2.9), wingH / 2, center[2] - D * 0.08)
+    );
+    for (const sign of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        const h = (H * (i + 1)) / 4;
+        parts.push(box(1.1, h, 0.42, center[0] + sign * (W / 2 + 0.75), h / 2, center[2] + D / 2 - 0.3 - i * 0.42));
+      }
     }
   }
+
+  if (runway) {
+    const front = center[2] + D / 2;
+    const stemZ = front + runway.length / 2;
+    parts.push(box(runway.width + 0.5, 0.34, runway.length + 0.4, center[0], 0.17, stemZ));
+    if (runway.tipWidth && runway.tipDepth) {
+      const tipZ = front + runway.length + runway.tipDepth / 2;
+      parts.push(box(runway.tipWidth + 0.6, 0.34, runway.tipDepth + 0.5, center[0], 0.17, tipZ));
+    }
+  }
+
   const merged = mergeGeometries(parts)!;
   parts.forEach(p => p.dispose());
   return paint(merged, new THREE.Color('#2b3062'), new THREE.Color('#161a38'), 0, H + 0.45);
@@ -269,24 +306,33 @@ export const STAGE_TRUSS_HEIGHT = 9;
  * towers, trusses, hung speakers, barriers. All boxes share one instanced mesh.
  */
 export function architecture(layout: VenueLayout) {
-  const { width: W, depth: D, height: H, center } = layout.stage;
+  const { width: W, depth: D, height: H, center, shape } = layout.stage;
   const front = center[2] + D / 2;
   const back = center[2] - D / 2;
-  const origin = new THREE.Vector3(0, 0, front);
+  const originArr = shellOrigin(layout);
+  const origin = new THREE.Vector3(originArr[0], 0, originArr[2]);
   const R = shellRadius(layout);
-  const span = 82 * DEG;
+  const span = shellSpan(layout);
   // The shell is cut away behind the audience, where the camera looks in from:
   // a low wall all round, canopy and columns only along the two sides.
-  const cutaway = 38 * DEG;
+  const cutaway = Math.min(span - 12 * DEG, 38 * DEG);
   const wallTop = tallestTier(layout) + 0.9;
   const canopyBottom = wallTop + 4.2;
 
-  const wall = paint(sectorGeometry(R + 0.4, R + 1, -span, span, wallTop).translate(0, 0, front), concrete, new THREE.Color(PALETTE.concreteDark), 0, wallTop);
+  const wall = paint(
+    sectorGeometry(R + 0.4, R + 1, -span, span, wallTop).translate(origin.x, 0, origin.z),
+    concrete,
+    new THREE.Color(PALETTE.concreteDark),
+    0,
+    wallTop
+  );
   const sides: [number, number][] = [
     [-span, -cutaway],
     [cutaway, span]
   ];
-  const canopyParts = sides.map(([a, b]) => sectorGeometry(R + 0.2, R + 4.6, a, b, 0.35, canopyBottom).translate(0, 0, front).toNonIndexed());
+  const canopyParts = sides.map(([a, b]) =>
+    sectorGeometry(R + 0.2, R + 4.6, a, b, 0.35, canopyBottom).translate(origin.x, 0, origin.z).toNonIndexed()
+  );
   const canopy = paint(
     mergeGeometries(canopyParts)!,
     new THREE.Color(PALETTE.concreteDark),
@@ -296,8 +342,10 @@ export function architecture(layout: VenueLayout) {
   );
   canopyParts.forEach(p => p.dispose());
   // Two quiet accent lines: wall coping in violet, canopy edge in electric blue.
-  const coping = sectorGeometry(R + 0.85, R + 1.02, -span, span, 0.05, wallTop).translate(0, 0, front).toNonIndexed();
-  const edges = sides.map(([a, b]) => sectorGeometry(R + 0.15, R + 0.3, a, b, 0.06, canopyBottom - 0.06).translate(0, 0, front).toNonIndexed());
+  const coping = sectorGeometry(R + 0.85, R + 1.02, -span, span, 0.05, wallTop).translate(origin.x, 0, origin.z).toNonIndexed();
+  const edges = sides.map(([a, b]) =>
+    sectorGeometry(R + 0.15, R + 0.3, a, b, 0.06, canopyBottom - 0.06).translate(origin.x, 0, origin.z).toNonIndexed()
+  );
   const firstCount = coping.getAttribute('position').count;
   const accents = mergeGeometries([coping, ...edges])!;
   [coping, ...edges].forEach(p => p.dispose());
@@ -329,19 +377,22 @@ export function architecture(layout: VenueLayout) {
   for (const z of [front - 0.3, back + 0.3, center[2]]) boxes.push({ position: [0, STAGE_TRUSS_HEIGHT, z], scale: [W + 1.4, 0.4, 0.4] });
   // Hung line-array speakers either side.
   for (const x of [-(tx + 1.4), tx + 1.4]) boxes.push({ position: [x, 6.4, front - 0.8], scale: [1.1, 3.4, 1.1] });
-  // Side screen frames.
-  for (const sign of [-1, 1]) boxes.push({ position: [sign * (tx + 3.4), 1.6, center[2] + 0.6], scale: [0.25, 3.2, 0.25] });
-  // Frame round the LED wall.
-  const led = ledWall(layout);
-  boxes.push(
-    { position: [led.x, led.y + led.height / 2 + 0.12, led.z - 0.05], scale: [led.width + 0.5, 0.24, 0.2] },
-    { position: [led.x, led.y - led.height / 2 - 0.12, led.z - 0.05], scale: [led.width + 0.5, 0.24, 0.2] },
-    { position: [led.x - led.width / 2 - 0.13, led.y, led.z - 0.05], scale: [0.24, led.height + 0.48, 0.2] },
-    { position: [led.x + led.width / 2 + 0.13, led.y, led.z - 0.05], scale: [0.24, led.height + 0.48, 0.2] }
-  );
+  if (shape !== 'center') {
+    // Side screen frames & back LED wall frame (omitted on 360° center stage so every angle stays unobstructed).
+    for (const sign of [-1, 1]) boxes.push({ position: [sign * (tx + 3.4), 1.6, center[2] + 0.6], scale: [0.25, 3.2, 0.25] });
+    const led = ledWall(layout);
+    boxes.push(
+      { position: [led.x, led.y + led.height / 2 + 0.12, led.z - 0.05], scale: [led.width + 0.5, 0.24, 0.2] },
+      { position: [led.x, led.y - led.height / 2 - 0.12, led.z - 0.05], scale: [led.width + 0.5, 0.24, 0.2] },
+      { position: [led.x - led.width / 2 - 0.13, led.y, led.z - 0.05], scale: [0.24, led.height + 0.48, 0.2] },
+      { position: [led.x + led.width / 2 + 0.13, led.y, led.z - 0.05], scale: [0.24, led.height + 0.48, 0.2] }
+    );
+  }
   // Crowd barrier in front of the stage and round each standing area.
   const rail = (x: number, z: number, w: number, d: number) => boxes.push({ position: [x, 0.55, z], scale: [w, 1.1, d] });
-  rail(0, front + 0.25, W + 3, 0.08);
+  if (shape !== 'center' && !layout.stage.runway) {
+    rail(0, front + 0.25, W + 3, 0.08);
+  }
   for (const zone of layout.zones) {
     if (zone.kind !== 'pit') continue;
     const [x, , z] = zone.center;

@@ -13,12 +13,14 @@ import { EventSalesSummary, ZoneSalesSummary } from '../../services/organizerSer
 import { formatPrice, formatPriceShort } from '../../services/eventService';
 import {
   PRICE_BAND_COLORS,
+  STAGE_THEMES,
   TierGeometry,
   Vec3,
   VenueLayout,
   ZoneGeometry,
   ZoneSummary,
-  buildVenueLayout
+  buildVenueLayout,
+  stageFootprintPoints
 } from '../../services/venue';
 import { SeatItem } from '../../types';
 
@@ -86,11 +88,7 @@ function zonePoints(z: ZoneGeometry): [number, number][] {
 }
 
 function computeViewBox(layout: VenueLayout): Box {
-  const { width, depth, center } = layout.stage;
-  const pts: [number, number][] = [
-    [center[0] - width / 2, center[2] - depth / 2],
-    [center[0] + width / 2, center[2] + depth / 2]
-  ];
+  const pts: [number, number][] = [...stageFootprintPoints(layout.stage)];
   layout.zones.forEach(z => pts.push(...zonePoints(z)));
   const xs = pts.map(p => p[0]);
   const ys = pts.map(p => p[1]);
@@ -157,8 +155,12 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
   const glowFilterId = useId();
 
   const zoneSummaries = useMemo(() => toZoneSummaries(summary.zones), [summary.zones]);
-  const layout = useMemo(() => buildVenueLayout(zoneSummaries, seats), [zoneSummaries, seats]);
+  const layout = useMemo(
+    () => buildVenueLayout(zoneSummaries, seats, summary.layoutConfig),
+    [zoneSummaries, seats, summary.layoutConfig]
+  );
   const viewBox = useMemo(() => computeViewBox(layout), [layout]);
+  const stageTheme = STAGE_THEMES[layout.stage.theme] ?? STAGE_THEMES.electric;
 
   const zoneMap = useMemo(() => new Map(summary.zones.map(z => [z.zoneId, z])), [summary.zones]);
   const summaryMap = useMemo(() => new Map(zoneSummaries.map(z => [z.id, z])), [zoneSummaries]);
@@ -214,10 +216,10 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
     ? layout.zones.find(g => g.zoneId === inspectedZone.zoneId)
     : undefined;
 
-  const stageFront: [number, number] = [
-    layout.stage.center[0],
-    layout.stage.center[2] + layout.stage.depth / 2
-  ];
+  const stageFront: [number, number] =
+    layout.stage.shape === 'center'
+      ? [layout.stage.center[0], layout.stage.center[2]]
+      : [layout.stage.center[0], layout.stage.center[2] + layout.stage.depth / 2];
 
   const inspectedDistanceM = inspectedGeo
     ? (() => {
@@ -367,29 +369,57 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
                 y={layout.stage.center[2] - layout.stage.depth / 2}
                 width={layout.stage.width}
                 height={layout.stage.depth}
-                rx={0.8}
+                rx={layout.stage.shape === 'center' ? 1.1 : 0.8}
                 fill={`url(#${stageGradId})`}
-                stroke="#9b7bff"
+                stroke={stageTheme.edge}
                 strokeWidth={0.28}
               />
-              <line
-                x1={layout.stage.center[0] - layout.stage.width / 2 + 1}
-                y1={stageFront[1]}
-                x2={layout.stage.center[0] + layout.stage.width / 2 - 1}
-                y2={stageFront[1]}
-                stroke="#ffe2a8"
-                strokeWidth={0.38}
-              />
+              {layout.stage.shape !== 'center' && (
+                <line
+                  x1={layout.stage.center[0] - layout.stage.width / 2 + 1}
+                  y1={layout.stage.center[2] + layout.stage.depth / 2}
+                  x2={layout.stage.center[0] + layout.stage.width / 2 - 1}
+                  y2={layout.stage.center[2] + layout.stage.depth / 2}
+                  stroke="#ffe2a8"
+                  strokeWidth={0.38}
+                />
+              )}
+              {layout.stage.runway && (
+                <>
+                  <rect
+                    x={layout.stage.center[0] - layout.stage.runway.width / 2}
+                    y={layout.stage.center[2] + layout.stage.depth / 2 - 0.1}
+                    width={layout.stage.runway.width}
+                    height={layout.stage.runway.length + 0.2}
+                    rx={0.4}
+                    fill={`url(#${stageGradId})`}
+                    stroke={stageTheme.edge}
+                    strokeWidth={0.22}
+                  />
+                  {layout.stage.runway.tipWidth && layout.stage.runway.tipDepth && (
+                    <rect
+                      x={layout.stage.center[0] - layout.stage.runway.tipWidth / 2}
+                      y={layout.stage.center[2] + layout.stage.depth / 2 + layout.stage.runway.length - 0.1}
+                      width={layout.stage.runway.tipWidth}
+                      height={layout.stage.runway.tipDepth}
+                      rx={0.5}
+                      fill={`url(#${stageGradId})`}
+                      stroke={stageTheme.edge}
+                      strokeWidth={0.24}
+                    />
+                  )}
+                </>
+              )}
               <text
                 x={layout.stage.center[0]}
                 y={layout.stage.center[2] + 0.5}
                 textAnchor="middle"
                 fill="#e7e9f5"
-                fontSize={1.55}
+                fontSize={1.45}
                 fontWeight={700}
-                letterSpacing={0.25}
+                letterSpacing={0.2}
               >
-                SÂN KHẤU
+                {layout.stage.label || 'SÂN KHẤU'}
               </text>
             </g>
 

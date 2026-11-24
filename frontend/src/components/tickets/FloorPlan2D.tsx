@@ -1,7 +1,17 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus, Scan } from 'lucide-react';
 import { SeatItem } from '../../types';
-import { SeatPlacement, TierGeometry, Vec3, VenueLayout, ZoneGeometry, ZoneSummary, zoneStats } from '../../services/venue';
+import {
+  STAGE_THEMES,
+  SeatPlacement,
+  TierGeometry,
+  Vec3,
+  VenueLayout,
+  ZoneGeometry,
+  ZoneSummary,
+  stageFootprintPoints,
+  zoneStats
+} from '../../services/venue';
 import { formatPriceShort } from '../../services/eventService';
 import { VenueOverlay } from './VenueOverlay';
 
@@ -152,11 +162,9 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
   const stats = useMemo(() => zoneStats(seats), [seats]);
 
   const stage = stageBox(layout);
+  const theme = STAGE_THEMES[layout.stage.theme] ?? STAGE_THEMES.electric;
   const overview = useMemo(() => {
-    const pts: [number, number][] = [
-      [stage.x, stage.y],
-      [stage.x + stage.w, stage.y + stage.h]
-    ];
+    const pts: [number, number][] = [...stageFootprintPoints(layout.stage)];
     layout.zones.forEach(z => pts.push(...zonePoints(z)));
     return boxOf(pts, 2.4);
   }, [layout]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -359,18 +367,75 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
             <path d="M4 0H0V4" fill="none" stroke="rgba(120,130,200,0.08)" strokeWidth="0.05" />
           </pattern>
           <linearGradient id="fp-led" x1="0" x2="1">
-            <stop offset="0" stopColor="#3d7bff" />
-            <stop offset="0.5" stopColor="#8b5cf6" />
-            <stop offset="1" stopColor="#e040a0" />
+            <stop offset="0" stopColor={theme.ledStops[0]} />
+            <stop offset="0.5" stopColor={theme.ledStops[1]} />
+            <stop offset="1" stopColor={theme.ledStops[2]} />
           </linearGradient>
         </defs>
 
         <rect x={overview.x - overview.w} y={overview.y - overview.h} width={overview.w * 3} height={overview.h * 3} fill="url(#fp-grid)" />
 
-        {/* Stage: deck, LED wall along the back, lit edge facing the audience. */}
-        <rect x={stage.x} y={stage.y} width={stage.w} height={stage.h} rx={0.3} fill="#1b1f40" />
-        <rect x={stage.x + stage.w * 0.1} y={stage.y + 0.15} width={stage.w * 0.8} height={0.3} fill="url(#fp-led)" />
-        <line x1={stage.x} y1={stage.y + stage.h} x2={stage.x + stage.w} y2={stage.y + stage.h} stroke={ELECTRIC} strokeWidth={0.12} />
+        {/* Stage: main deck, optional runway/thrust B-stage, LED fascia & themed lit edge. */}
+        <rect
+          x={stage.x}
+          y={stage.y}
+          width={stage.w}
+          height={stage.h}
+          rx={layout.stage.shape === 'center' ? 1.1 : 0.35}
+          fill="#1b1f40"
+          stroke={layout.stage.shape === 'center' ? theme.edge : 'none'}
+          strokeWidth={layout.stage.shape === 'center' ? 0.18 : 0}
+        />
+        {layout.stage.shape === 'center' ? (
+          <rect
+            x={stage.x + 0.9}
+            y={stage.y + 0.9}
+            width={Math.max(1, stage.w - 1.8)}
+            height={Math.max(1, stage.h - 1.8)}
+            rx={0.6}
+            fill="none"
+            stroke="url(#fp-led)"
+            strokeWidth={0.22}
+          />
+        ) : (
+          <>
+            <rect x={stage.x + stage.w * 0.1} y={stage.y + 0.15} width={stage.w * 0.8} height={0.32} fill="url(#fp-led)" />
+            <line
+              x1={stage.x}
+              y1={stage.y + stage.h}
+              x2={stage.x + stage.w}
+              y2={stage.y + stage.h}
+              stroke={theme.edge || ELECTRIC}
+              strokeWidth={0.14}
+            />
+          </>
+        )}
+        {layout.stage.runway && (
+          <g>
+            <rect
+              x={layout.stage.center[0] - layout.stage.runway.width / 2}
+              y={stage.y + stage.h - 0.1}
+              width={layout.stage.runway.width}
+              height={layout.stage.runway.length + 0.2}
+              rx={0.25}
+              fill="#1b1f40"
+              stroke={theme.edge}
+              strokeWidth={0.11}
+            />
+            {layout.stage.runway.tipWidth && layout.stage.runway.tipDepth && (
+              <rect
+                x={layout.stage.center[0] - layout.stage.runway.tipWidth / 2}
+                y={stage.y + stage.h + layout.stage.runway.length - 0.1}
+                width={layout.stage.runway.tipWidth}
+                height={layout.stage.runway.tipDepth}
+                rx={0.35}
+                fill="#1b1f40"
+                stroke={theme.edge}
+                strokeWidth={0.14}
+              />
+            )}
+          </g>
+        )}
 
         {layout.zones.map(z => {
           const zone = zoneById.get(z.zoneId);
@@ -430,7 +495,7 @@ export const FloorPlan2D: React.FC<FloorPlan2DProps> = ({
           fontSize={13}
           className="fill-[#c9cdf5] font-display font-semibold [font-stretch:120%]"
         >
-          Sân khấu
+          {layout.stage.label || 'Sân khấu'}
         </text>
         {layout.zones.map(z => {
           const zone = zoneById.get(z.zoneId);

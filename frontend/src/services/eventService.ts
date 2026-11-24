@@ -38,6 +38,7 @@ export async function fetchEventsFromAPI(): Promise<EventItem[]> {
       priceStart: typeof ev.priceFrom === 'number' ? ev.priceFrom : 0,
       genre: ev.genre || '',
       description: ev.description || '',
+      layoutConfig: ev.layoutConfig && typeof ev.layoutConfig === 'object' ? ev.layoutConfig : undefined,
       // Zones (tiers) come from the event detail endpoint; see loadEventDetail.
       ticketTiers: []
     };
@@ -109,11 +110,12 @@ export async function apiFetchEventDetail(identifier: string): Promise<EventItem
           : DEFAULT_MAX_TICKETS_PER_USER,
       genre: ev.genre || '',
       description: ev.description || '',
+      layoutConfig: ev.layoutConfig && typeof ev.layoutConfig === 'object' ? ev.layoutConfig : undefined,
       ticketTiers: zones.map((z: any) => ({
         id: z.zoneId,
         code: z.zoneCode,
         name: z.zoneName,
-        kind: zoneKindOf(z.zoneName || ''),
+        kind: z.zoneKind === 'standing' || z.zoneKind === 'seated' ? z.zoneKind : zoneKindOf(z.zoneName || ''),
         capacity: z.capacity,
         description: `Khu vực ${z.zoneName} (${z.zoneCode})${z.floor ? ` - ${z.floor}` : ''}`,
         price: z.basePrice,

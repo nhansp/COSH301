@@ -11,6 +11,250 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createEvent = `-- name: CreateEvent :one
+INSERT INTO events (
+    organizer_id, venue_id, name, slug, description, genre, image_url, image_credit,
+    city, starts_at, ends_at, status, max_tickets_per_user, waiting_room_enabled
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING id, organizer_id, venue_id, name, slug, description, genre, image_url, city, starts_at, ends_at, sales_starts_at, sales_ends_at, status, max_tickets_per_user, waiting_room_enabled, waiting_room_capacity, created_at, updated_at, image_credit
+`
+
+type CreateEventParams struct {
+	OrganizerID        pgtype.UUID        `json:"organizer_id"`
+	VenueID            pgtype.UUID        `json:"venue_id"`
+	Name               string             `json:"name"`
+	Slug               string             `json:"slug"`
+	Description        pgtype.Text        `json:"description"`
+	Genre              pgtype.Text        `json:"genre"`
+	ImageUrl           pgtype.Text        `json:"image_url"`
+	ImageCredit        pgtype.Text        `json:"image_credit"`
+	City               pgtype.Text        `json:"city"`
+	StartsAt           pgtype.Timestamptz `json:"starts_at"`
+	EndsAt             pgtype.Timestamptz `json:"ends_at"`
+	Status             EventStatus        `json:"status"`
+	MaxTicketsPerUser  int32              `json:"max_tickets_per_user"`
+	WaitingRoomEnabled bool               `json:"waiting_room_enabled"`
+}
+
+func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event, error) {
+	row := q.db.QueryRow(ctx, createEvent,
+		arg.OrganizerID,
+		arg.VenueID,
+		arg.Name,
+		arg.Slug,
+		arg.Description,
+		arg.Genre,
+		arg.ImageUrl,
+		arg.ImageCredit,
+		arg.City,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.Status,
+		arg.MaxTicketsPerUser,
+		arg.WaitingRoomEnabled,
+	)
+	var i Event
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizerID,
+		&i.VenueID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.Genre,
+		&i.ImageUrl,
+		&i.City,
+		&i.StartsAt,
+		&i.EndsAt,
+		&i.SalesStartsAt,
+		&i.SalesEndsAt,
+		&i.Status,
+		&i.MaxTicketsPerUser,
+		&i.WaitingRoomEnabled,
+		&i.WaitingRoomCapacity,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ImageCredit,
+	)
+	return i, err
+}
+
+const createEventSeat = `-- name: CreateEventSeat :exec
+INSERT INTO event_seats (event_id, seat_id, status, current_price)
+VALUES ($1, $2, 'AVAILABLE', $3)
+`
+
+type CreateEventSeatParams struct {
+	EventID      pgtype.UUID    `json:"event_id"`
+	SeatID       pgtype.UUID    `json:"seat_id"`
+	CurrentPrice pgtype.Numeric `json:"current_price"`
+}
+
+func (q *Queries) CreateEventSeat(ctx context.Context, arg CreateEventSeatParams) error {
+	_, err := q.db.Exec(ctx, createEventSeat, arg.EventID, arg.SeatID, arg.CurrentPrice)
+	return err
+}
+
+const createEventZone = `-- name: CreateEventZone :one
+INSERT INTO event_zones (event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled, created_at, updated_at
+`
+
+type CreateEventZoneParams struct {
+	EventID                 pgtype.UUID    `json:"event_id"`
+	ZoneID                  pgtype.UUID    `json:"zone_id"`
+	BasePrice               pgtype.Numeric `json:"base_price"`
+	FloorPrice              pgtype.Numeric `json:"floor_price"`
+	CeilingPrice            pgtype.Numeric `json:"ceiling_price"`
+	IsDynamicPricingEnabled bool           `json:"is_dynamic_pricing_enabled"`
+}
+
+func (q *Queries) CreateEventZone(ctx context.Context, arg CreateEventZoneParams) (EventZone, error) {
+	row := q.db.QueryRow(ctx, createEventZone,
+		arg.EventID,
+		arg.ZoneID,
+		arg.BasePrice,
+		arg.FloorPrice,
+		arg.CeilingPrice,
+		arg.IsDynamicPricingEnabled,
+	)
+	var i EventZone
+	err := row.Scan(
+		&i.ID,
+		&i.EventID,
+		&i.ZoneID,
+		&i.BasePrice,
+		&i.FloorPrice,
+		&i.CeilingPrice,
+		&i.IsDynamicPricingEnabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createSeat = `-- name: CreateSeat :one
+INSERT INTO seats (zone_id, row_label, seat_number, seat_label, x_position, y_position)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, zone_id, row_label, seat_number, seat_label, x_position, y_position, is_active, created_at
+`
+
+type CreateSeatParams struct {
+	ZoneID     pgtype.UUID    `json:"zone_id"`
+	RowLabel   pgtype.Text    `json:"row_label"`
+	SeatNumber pgtype.Text    `json:"seat_number"`
+	SeatLabel  string         `json:"seat_label"`
+	XPosition  pgtype.Numeric `json:"x_position"`
+	YPosition  pgtype.Numeric `json:"y_position"`
+}
+
+func (q *Queries) CreateSeat(ctx context.Context, arg CreateSeatParams) (Seat, error) {
+	row := q.db.QueryRow(ctx, createSeat,
+		arg.ZoneID,
+		arg.RowLabel,
+		arg.SeatNumber,
+		arg.SeatLabel,
+		arg.XPosition,
+		arg.YPosition,
+	)
+	var i Seat
+	err := row.Scan(
+		&i.ID,
+		&i.ZoneID,
+		&i.RowLabel,
+		&i.SeatNumber,
+		&i.SeatLabel,
+		&i.XPosition,
+		&i.YPosition,
+		&i.IsActive,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createVenue = `-- name: CreateVenue :one
+INSERT INTO venues (name, address, timezone, layout_config)
+VALUES ($1, $2, $3, $4)
+RETURNING id, name, address, timezone, created_at, layout_config
+`
+
+type CreateVenueParams struct {
+	Name         string      `json:"name"`
+	Address      pgtype.Text `json:"address"`
+	Timezone     string      `json:"timezone"`
+	LayoutConfig []byte      `json:"layout_config"`
+}
+
+func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue, error) {
+	row := q.db.QueryRow(ctx, createVenue,
+		arg.Name,
+		arg.Address,
+		arg.Timezone,
+		arg.LayoutConfig,
+	)
+	var i Venue
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Address,
+		&i.Timezone,
+		&i.CreatedAt,
+		&i.LayoutConfig,
+	)
+	return i, err
+}
+
+const createVenueZone = `-- name: CreateVenueZone :one
+INSERT INTO venue_zones (venue_id, code, name, floor, capacity, zone_kind)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, venue_id, code, name, floor, capacity, created_at, zone_kind
+`
+
+type CreateVenueZoneParams struct {
+	VenueID  pgtype.UUID `json:"venue_id"`
+	Code     string      `json:"code"`
+	Name     string      `json:"name"`
+	Floor    pgtype.Text `json:"floor"`
+	Capacity int32       `json:"capacity"`
+	ZoneKind string      `json:"zone_kind"`
+}
+
+func (q *Queries) CreateVenueZone(ctx context.Context, arg CreateVenueZoneParams) (VenueZone, error) {
+	row := q.db.QueryRow(ctx, createVenueZone,
+		arg.VenueID,
+		arg.Code,
+		arg.Name,
+		arg.Floor,
+		arg.Capacity,
+		arg.ZoneKind,
+	)
+	var i VenueZone
+	err := row.Scan(
+		&i.ID,
+		&i.VenueID,
+		&i.Code,
+		&i.Name,
+		&i.Floor,
+		&i.Capacity,
+		&i.CreatedAt,
+		&i.ZoneKind,
+	)
+	return i, err
+}
+
+const eventSlugExists = `-- name: EventSlugExists :one
+SELECT EXISTS (SELECT 1 FROM events WHERE slug = $1)
+`
+
+func (q *Queries) EventSlugExists(ctx context.Context, slug string) (bool, error) {
+	row := q.db.QueryRow(ctx, eventSlugExists, slug)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getEventOrganizer = `-- name: GetEventOrganizer :one
 SELECT organizer_id FROM events WHERE id = $1
 `
@@ -187,4 +431,24 @@ func (q *Queries) UpdateEventZonePricing(ctx context.Context, arg UpdateEventZon
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateVenueLayoutConfigByEvent = `-- name: UpdateVenueLayoutConfigByEvent :one
+UPDATE venues v
+SET layout_config = $2
+FROM events e
+WHERE e.venue_id = v.id AND e.id = $1
+RETURNING v.layout_config
+`
+
+type UpdateVenueLayoutConfigByEventParams struct {
+	ID           pgtype.UUID `json:"id"`
+	LayoutConfig []byte      `json:"layout_config"`
+}
+
+func (q *Queries) UpdateVenueLayoutConfigByEvent(ctx context.Context, arg UpdateVenueLayoutConfigByEventParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, updateVenueLayoutConfigByEvent, arg.ID, arg.LayoutConfig)
+	var layout_config []byte
+	err := row.Scan(&layout_config)
+	return layout_config, err
 }

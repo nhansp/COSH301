@@ -1,5 +1,32 @@
 export type ZoneKind = 'seated' | 'standing';
 
+export type StageShape = 'standard' | 'thrust' | 'catwalk' | 'center';
+export type LayoutStyle = 'horseshoe' | 'theater' | 'amphitheater' | 'arena360';
+export type StageTheme = 'electric' | 'sunset' | 'emerald' | 'gold';
+
+export interface ZoneStyleConfig {
+  color?: string;
+  rows?: number;
+  seatsPerRow?: number;
+}
+
+export interface StageLayoutConfig {
+  stageShape?: StageShape;
+  layoutStyle?: LayoutStyle;
+  stageTheme?: StageTheme;
+  stageLabel?: string;
+  stageWidth?: number;
+  stageDepth?: number;
+  stageHeight?: number;
+  catwalkLength?: number;
+  catwalkWidth?: number;
+  tierSpanDeg?: number;
+  zonesPerRing?: number;
+  pitWidth?: number;
+  pitDepth?: number;
+  zoneStyles?: Record<string, ZoneStyleConfig>;
+}
+
 export interface TicketTier {
   id: string;
   /** Zone code from the API, e.g. VIP or GA1. */
@@ -31,6 +58,7 @@ export interface EventItem {
   genre: string;
   ticketTiers: TicketTier[];
   description: string;
+  layoutConfig?: StageLayoutConfig;
   /** Only present once the event detail has loaded. */
   maxTicketsPerUser?: number;
 }

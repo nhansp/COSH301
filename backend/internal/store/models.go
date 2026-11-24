@@ -680,11 +680,12 @@ type User struct {
 }
 
 type Venue struct {
-	ID        pgtype.UUID        `json:"id"`
-	Name      string             `json:"name"`
-	Address   pgtype.Text        `json:"address"`
-	Timezone  string             `json:"timezone"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID           pgtype.UUID        `json:"id"`
+	Name         string             `json:"name"`
+	Address      pgtype.Text        `json:"address"`
+	Timezone     string             `json:"timezone"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	LayoutConfig []byte             `json:"layout_config"`
 }
 
 type VenueZone struct {
@@ -695,4 +696,5 @@ type VenueZone struct {
 	Floor     pgtype.Text        `json:"floor"`
 	Capacity  int32              `json:"capacity"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ZoneKind  string             `json:"zone_kind"`
 }

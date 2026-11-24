@@ -105,11 +105,18 @@ export const TicketSelectionPage: React.FC = () => {
     });
   }, [isOrganizer, event, mine, inventory.loadState, inventory.expiresAt]);
 
-  const zones = useMemo(() => summarizeZones(event?.ticketTiers ?? [], seats), [event?.ticketTiers, seats]);
+  const layoutKey = useMemo(() => JSON.stringify(event?.layoutConfig ?? null), [event?.layoutConfig]);
+  const zones = useMemo(
+    () => summarizeZones(event?.ticketTiers ?? [], seats, event?.layoutConfig),
+    [event?.ticketTiers, seats, layoutKey] // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const zoneById = useMemo(() => new Map(zones.map(z => [z.id, z])), [zones]);
-  // Geometry depends on the seat list, not on seat states, so it is not rebuilt on every hold.
+  // Geometry depends on the seat list and venue layout config, not on seat states, so it is not rebuilt on every hold.
   const seatShape = seats.map(s => s.id).join();
-  const layout = useMemo(() => buildVenueLayout(zones, seats), [zones.length, seatShape]); // eslint-disable-line react-hooks/exhaustive-deps
+  const layout = useMemo(
+    () => buildVenueLayout(zones, seats, event?.layoutConfig),
+    [zones.length, seatShape, layoutKey] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const heldByZone = useMemo(() => {
     const counts = new Map<string, number>();

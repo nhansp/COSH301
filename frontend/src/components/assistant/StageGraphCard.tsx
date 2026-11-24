@@ -8,7 +8,7 @@ import {
   ZoneTelemetry
 } from '../../services/assistantService';
 import { formatPrice, formatPriceShort } from '../../services/eventService';
-import { TierGeometry, Vec3, VenueLayout, ZoneGeometry, buildVenueLayout } from '../../services/venue';
+import { TierGeometry, Vec3, VenueLayout, ZoneGeometry, buildVenueLayout, stageFootprintPoints } from '../../services/venue';
 
 type Box = { x: number; y: number; w: number; h: number };
 
@@ -43,11 +43,7 @@ function zonePoints(z: ZoneGeometry): [number, number][] {
 }
 
 function computeViewBox(layout: VenueLayout): Box {
-  const { width, depth, center } = layout.stage;
-  const pts: [number, number][] = [
-    [center[0] - width / 2, center[2] - depth / 2],
-    [center[0] + width / 2, center[2] + depth / 2]
-  ];
+  const pts: [number, number][] = [...stageFootprintPoints(layout.stage)];
   layout.zones.forEach(z => pts.push(...zonePoints(z)));
   const xs = pts.map(p => p[0]);
   const ys = pts.map(p => p[1]);
@@ -98,8 +94,8 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
   );
 
   const layout = useMemo(
-    () => buildVenueLayout(current.zoneSummaries, current.seats),
-    [current.zoneSummaries, current.seats]
+    () => buildVenueLayout(current.zoneSummaries, current.seats, current.event.layoutConfig),
+    [current.zoneSummaries, current.seats, current.event.layoutConfig]
   );
   const viewBox = useMemo(() => computeViewBox(layout), [layout]);
 

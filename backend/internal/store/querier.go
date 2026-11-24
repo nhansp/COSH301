@@ -18,18 +18,25 @@ type Querier interface {
 	CountRecentOTPs(ctx context.Context, arg CountRecentOTPsParams) (CountRecentOTPsRow, error)
 	CountUserHeldAndBoughtTickets(ctx context.Context, arg CountUserHeldAndBoughtTicketsParams) (int32, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
+	CreateEvent(ctx context.Context, arg CreateEventParams) (Event, error)
+	CreateEventSeat(ctx context.Context, arg CreateEventSeatParams) error
+	CreateEventZone(ctx context.Context, arg CreateEventZoneParams) (EventZone, error)
 	CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerification, error)
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
 	CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrderItem, error)
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
+	CreateSeat(ctx context.Context, arg CreateSeatParams) (Seat, error)
 	CreateSeatHold(ctx context.Context, arg CreateSeatHoldParams) (SeatHold, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateTicket(ctx context.Context, arg CreateTicketParams) (Ticket, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue, error)
+	CreateVenueZone(ctx context.Context, arg CreateVenueZoneParams) (VenueZone, error)
 	DeleteSession(ctx context.Context, tokenHash string) error
 	DeleteUserSessions(ctx context.Context, userID pgtype.UUID) error
 	EventExists(ctx context.Context, id pgtype.UUID) (bool, error)
 	EventSeatExists(ctx context.Context, arg EventSeatExistsParams) (bool, error)
+	EventSlugExists(ctx context.Context, slug string) (bool, error)
 	ExpireStaleSeatHolds(ctx context.Context) ([]ExpireStaleSeatHoldsRow, error)
 	// FindOwnedEventSeats resolves a seat reference (UUID or label) among the seats
 	// of an event that the user currently holds or has a ticket for.
@@ -87,6 +94,7 @@ type Querier interface {
 	UpdateEventZonePricing(ctx context.Context, arg UpdateEventZonePricingParams) (EventZone, error)
 	UpdatePaymentResult(ctx context.Context, arg UpdatePaymentResultParams) (Payment, error)
 	UpdateUserLastLogin(ctx context.Context, id pgtype.UUID) error
+	UpdateVenueLayoutConfigByEvent(ctx context.Context, arg UpdateVenueLayoutConfigByEventParams) ([]byte, error)
 	VoidUserSeatTicket(ctx context.Context, arg VoidUserSeatTicketParams) (int64, error)
 }
 

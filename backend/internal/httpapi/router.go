@@ -74,6 +74,10 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	// 6. Organizer console (FR-08)
 	mux.HandleFunc("GET /api/organizer/events", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireRole(authHandler, organizerRoles, organizerHandler.HandleListEvents)))
+	mux.HandleFunc("POST /api/organizer/events", RequireFeature(fm, config.FlagOrganizerConsole,
+		RequireRole(authHandler, organizerRoles, organizerHandler.HandleCreateEvent)))
+	mux.HandleFunc("PUT /api/organizer/events/{id}/layout", RequireFeature(fm, config.FlagOrganizerConsole,
+		RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateEventLayout)))
 	mux.HandleFunc("GET /api/organizer/sales-overview", RequireFeature(fm, config.FlagOrganizerConsole,
 		RequireRole(authHandler, organizerRoles, organizerHandler.HandleSalesOverview)))
 	mux.HandleFunc("GET /api/organizer/events/{id}/sales-summary", RequireFeature(fm, config.FlagOrganizerConsole,

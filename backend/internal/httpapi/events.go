@@ -39,24 +39,29 @@ func (h *EventHandler) HandleEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type EventSummaryDTO struct {
-		ID           string `json:"id"`
-		Name         string `json:"title"`
-		Slug         string `json:"slug"`
-		Description  string `json:"description"`
-		Genre        string `json:"genre"`
-		City         string `json:"city"`
-		ImageURL     string `json:"imageUrl"`
-		ImageCredit  string `json:"imageCredit"`
-		VenueName    string `json:"venue"`
-		VenueAddress string `json:"address"`
-		StartsAt     string `json:"date"`
-		EndsAt       string `json:"endsAt"`
-		Status       string `json:"status"`
-		PriceFrom    int64  `json:"priceFrom"`
+		ID           string          `json:"id"`
+		Name         string          `json:"title"`
+		Slug         string          `json:"slug"`
+		Description  string          `json:"description"`
+		Genre        string          `json:"genre"`
+		City         string          `json:"city"`
+		ImageURL     string          `json:"imageUrl"`
+		ImageCredit  string          `json:"imageCredit"`
+		VenueName    string          `json:"venue"`
+		VenueAddress string          `json:"address"`
+		LayoutConfig json.RawMessage `json:"layoutConfig,omitempty"`
+		StartsAt     string          `json:"date"`
+		EndsAt       string          `json:"endsAt"`
+		Status       string          `json:"status"`
+		PriceFrom    int64           `json:"priceFrom"`
 	}
 
 	dtos := make([]EventSummaryDTO, 0, len(events))
 	for _, e := range events {
+		var layoutRaw json.RawMessage
+		if len(e.VenueLayoutConfig) > 0 && string(e.VenueLayoutConfig) != "{}" && json.Valid(e.VenueLayoutConfig) {
+			layoutRaw = json.RawMessage(e.VenueLayoutConfig)
+		}
 		dtos = append(dtos, EventSummaryDTO{
 			ID:           store.UUIDToString(e.ID),
 			Name:         e.Name,
@@ -68,6 +73,7 @@ func (h *EventHandler) HandleEvents(w http.ResponseWriter, r *http.Request) {
 			ImageCredit:  e.ImageCredit.String,
 			VenueName:    e.VenueName,
 			VenueAddress: e.VenueAddress.String,
+			LayoutConfig: layoutRaw,
 			StartsAt:     e.StartsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
 			EndsAt:       e.EndsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
 			Status:       string(e.Status),

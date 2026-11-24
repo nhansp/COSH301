@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"eventticketing/internal/store"
@@ -28,6 +29,7 @@ type EventDetailDTO struct {
 	VenueName          string              `json:"venueName"`
 	VenueAddress       string              `json:"venueAddress"`
 	VenueTimezone      string              `json:"venueTimezone"`
+	LayoutConfig       json.RawMessage     `json:"layoutConfig,omitempty"`
 	StartsAt           string              `json:"startsAt"`
 	EndsAt             string              `json:"endsAt"`
 	Status             string              `json:"status"`
@@ -40,12 +42,25 @@ type EventZonePriceDTO struct {
 	ZoneID                  string `json:"zoneId"`
 	ZoneCode                string `json:"zoneCode"`
 	ZoneName                string `json:"zoneName"`
+	ZoneKind                string `json:"zoneKind"`
 	Floor                   string `json:"floor"`
 	Capacity                int32  `json:"capacity"`
 	BasePrice               int64  `json:"basePrice"`
 	FloorPrice              int64  `json:"floorPrice"`
 	CeilingPrice            int64  `json:"ceilingPrice"`
 	IsDynamicPricingEnabled bool   `json:"isDynamicPricingEnabled"`
+}
+
+func rawLayoutConfig(raw []byte) json.RawMessage {
+	if len(raw) == 0 || string(raw) == "{}" || string(raw) == "null" {
+		return nil
+	}
+	if !json.Valid(raw) {
+		return nil
+	}
+	cp := make([]byte, len(raw))
+	copy(cp, raw)
+	return json.RawMessage(cp)
 }
 
 func (s *EventService) ListEvents(ctx context.Context) ([]store.ListPublishedEventsRow, error) {
@@ -60,6 +75,7 @@ func (s *EventService) buildEventDetailDTO(
 	venueName string,
 	venueAddress pgtype.Text,
 	venueTimezone string,
+	venueLayoutConfig []byte,
 	startsAt, endsAt pgtype.Timestamptz,
 	status string,
 	maxTickets int32,
@@ -75,11 +91,20 @@ func (s *EventService) buildEventDetailDTO(
 		basePrice, _ := z.BasePrice.Int64Value()
 		floorPrice, _ := z.FloorPrice.Int64Value()
 		ceilPrice, _ := z.CeilingPrice.Int64Value()
+		kind := z.ZoneKind
+		if kind != "standing" && kind != "seated" {
+			if isStandingZoneName(z.ZoneName) {
+				kind = "standing"
+			} else {
+				kind = "seated"
+			}
+		}
 
 		zoneDTOs = append(zoneDTOs, EventZonePriceDTO{
 			ZoneID:                  store.UUIDToString(z.ZoneID),
 			ZoneCode:                z.Code,
 			ZoneName:                z.ZoneName,
+			ZoneKind:                kind,
 			Floor:                   z.Floor.String,
 			Capacity:                z.Capacity,
 			BasePrice:               basePrice.Int64,
@@ -101,6 +126,7 @@ func (s *EventService) buildEventDetailDTO(
 		VenueName:          venueName,
 		VenueAddress:       venueAddress.String,
 		VenueTimezone:      venueTimezone,
+		LayoutConfig:       rawLayoutConfig(venueLayoutConfig),
 		StartsAt:           startsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
 		EndsAt:             endsAt.Time.Format("2006-01-02T15:04:05Z07:00"),
 		Status:             status,
@@ -117,7 +143,7 @@ func (s *EventService) GetEventDetail(ctx context.Context, identifier string) (*
 	if uid, err := store.StringToUUID(identifier); err == nil {
 		e, err := s.queries.GetEventByID(ctx, uid)
 		if err == nil {
-			return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.ImageCredit, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
+			return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.ImageCredit, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.VenueLayoutConfig, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
 		}
 	}
 
@@ -125,7 +151,7 @@ func (s *EventService) GetEventDetail(ctx context.Context, identifier string) (*
 	if err != nil {
 		return nil, fmt.Errorf("event not found: %w", err)
 	}
-	return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.ImageCredit, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
+	return s.buildEventDetailDTO(ctx, e.ID, e.Name, e.Slug, e.Description, e.Genre, e.ImageUrl, e.ImageCredit, e.City, e.VenueName, e.VenueAddress, e.VenueTimezone, e.VenueLayoutConfig, e.StartsAt, e.EndsAt, string(e.Status), e.MaxTicketsPerUser, e.WaitingRoomEnabled)
 }
 
 // ResolveEventID resolves an existing event's UUID or slug to its UUID.
