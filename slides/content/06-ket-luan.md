@@ -46,7 +46,7 @@ NOTES:
 Hướng phát triển: hoàn thành Sprint 3 đến Sprint 5 theo bảng cờ tính năng.
 
 === id=thanks layout=title speaker=huy time=10 title="Cảm ơn"
-<div class="eyebrow">Nhóm 1</div>
+<div class="eyebrow"><span class="mark"></span>Nhóm 1 · COSH301 Concerts</div>
 # Cảm ơn cô và các bạn đã lắng nghe
 Mời cô và các bạn xem phần demo.
 <div class="meta">

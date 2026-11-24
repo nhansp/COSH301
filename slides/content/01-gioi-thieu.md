@@ -4,7 +4,7 @@ Speakers and slide order follow "PHÂN CÔNG TRÌNH BÀY" in docs/presentation-s
 -->
 
 === id=title layout=title speaker=huy time=15 title="EventTicketing"
-<div class="eyebrow">Nhóm 1 · Phân tích và thiết kế hệ thống</div>
+<div class="eyebrow"><span class="mark"></span>Nhóm 1 · Phân tích và thiết kế hệ thống</div>
 # EventTicketing
 Hệ thống đặt vé trực tuyến cho sự kiện
 <div class="meta">

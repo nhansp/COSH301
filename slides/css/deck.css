@@ -276,3 +276,7 @@ body.chips .badge, html.chips .badge { right: 380px; }
 @media (prefers-reduced-motion: reduce) {
     .slide { transition: none; transform: none; }
 }
+
+/* the COSH301 mark: a stage disc with the coral followspot, as on the website */
+.mark { position: relative; display: inline-block; width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--paper); vertical-align: -0.5em; margin-right: 0.6em; }
+.mark::after { content: ""; position: absolute; top: 20%; right: 18%; width: 36%; height: 36%; border-radius: 50%; background: var(--coral); }
