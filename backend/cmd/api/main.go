@@ -14,12 +14,20 @@ import (
 	"eventticketing/internal/httpapi"
 	"eventticketing/internal/service"
 	"eventticketing/internal/store"
+	"eventticketing/internal/vnpay"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
 	cfg := config.Load()
 	log.Printf("Starting EventTicketing API on port %d [env: %s, profile: %s]", cfg.Port, cfg.AppEnv, cfg.Features.Profile())
+
+	// Payments never start without merchant credentials.
+	if cfg.Features.IsEnabled(config.FlagPayments) {
+		if err := cfg.VNPay.Validate(); err != nil {
+			log.Fatalf("Feature %q is on but VNPay is not configured: %v", config.FlagPayments, err)
+		}
+	}
 
 	// Run migrations
 	if err := store.RunMigrations(cfg.DatabaseURL); err != nil {
@@ -51,7 +59,13 @@ func main() {
 	seatService := service.NewSeatService(dbPool, queries, cfg.Features.IsEnabled(config.FlagTicketLimit))
 	organizerService := service.NewOrganizerService(dbPool, queries)
 	realtimeHub := service.NewRealtimeHub(dbPool)
-	holdReaper := service.NewHoldReaper(seatService, 5*time.Second)
+	paymentService := service.NewPaymentService(dbPool, queries, vnpay.Client{
+		TmnCode:    cfg.VNPay.TmnCode,
+		HashSecret: cfg.VNPay.HashSecret,
+		PayURL:     cfg.VNPay.PayURL,
+		ReturnURL:  cfg.VNPay.ReturnURL,
+	})
+	holdReaper := service.NewHoldReaper(seatService, paymentService, 5*time.Second)
 
 	// Start background workers
 	realtimeHub.StartListener(ctx)
@@ -70,6 +84,7 @@ func main() {
 		RealtimeHub:  realtimeHub,
 		Organizer:    organizerService,
 		Tickets:      service.NewTicketService(dbPool, queries),
+		Payments:     paymentService,
 	})
 
 	server := &http.Server{

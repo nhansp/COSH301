@@ -20,6 +20,7 @@ type RouterDependencies struct {
 	RealtimeHub  *service.RealtimeHub
 	Organizer    *service.OrganizerService
 	Tickets      *service.TicketService
+	Payments     *service.PaymentService
 }
 
 func NewRouter(deps RouterDependencies) http.Handler {
@@ -35,6 +36,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	seatHandler := NewSeatHandler(deps.SeatService, deps.AuthService, deps.EventService)
 	streamHandler := NewStreamHandler(deps.RealtimeHub, deps.EventService)
 	ticketHandler := NewTicketHandler(deps.Tickets, deps.EventService)
+	paymentHandler := NewPaymentHandler(deps.Payments, deps.EventService)
 	anyRole := []store.UserRole{store.UserRoleCUSTOMER, store.UserRoleORGANIZER, store.UserRoleADMIN}
 
 	// 1. System Endpoints
@@ -77,6 +79,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		RequireFeature(fm, config.FlagZonePricing, RequireRole(authHandler, organizerRoles, organizerHandler.HandleUpdateZonePricing))))
 
 	// 7. Tickets exist only once payment is on; audit logs belong to the organizer console.
+	mux.HandleFunc("GET /api/tickets", RequireFeature(fm, config.FlagPayments,
+		RequireRole(authHandler, anyRole, paymentHandler.HandleMyTickets)))
 	mux.HandleFunc("POST /api/tickets/cancel", RequireFeature(fm, config.FlagPayments,
 		RequireRole(authHandler, anyRole, ticketHandler.HandleCancelTicket)))
 	mux.HandleFunc("GET /api/tickets/cancelled", RequireFeature(fm, config.FlagPayments,
@@ -87,6 +91,13 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		mux.HandleFunc("POST /api/tickets/reset-demo", RequireFeature(fm, config.FlagSeatHold,
 			RequireRole(authHandler, anyRole, ticketHandler.HandleResetDemoTickets)))
 	}
+
+	// 8. VNPay payment. The IPN and return endpoints are called without a session:
+	// VNPay's signature is what authenticates them.
+	mux.HandleFunc("POST /api/payments/vnpay/create", RequireFeature(fm, config.FlagPayments,
+		RequireRole(authHandler, anyRole, paymentHandler.HandleCreateVNPay)))
+	mux.HandleFunc("GET /api/payments/vnpay/ipn", RequireFeature(fm, config.FlagPayments, paymentHandler.HandleVNPayIPN))
+	mux.HandleFunc("GET /api/payments/vnpay/return", RequireFeature(fm, config.FlagPayments, paymentHandler.HandleVNPayReturn))
 
 	// Wrap with middlewares
 	handler := LoggingMiddleware(mux)
