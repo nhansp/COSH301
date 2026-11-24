@@ -1,0 +1,31 @@
+{
+  "placeholder": true,
+  "video": "e2e.mp4",
+  "duration": 103.7,
+  "chapters": [
+    { "id": "home", "title": "Trang chủ", "start": 0.0, "end": 8.0, "speaker": "phuc",
+      "caption": "Danh sách sự kiện lấy từ API, giá thấp nhất tính từ giá khu trong database." },
+    { "id": "login", "title": "Đăng nhập bằng OTP", "start": 8.0, "end": 30.0, "speaker": "nhan",
+      "caption": "Khán giả A và B đăng nhập. Mã OTP hiện trên màn hình, dùng được 5 phút, sai 5 lần thì khóa." },
+    { "id": "open-zone", "title": "Mở sơ đồ ghế", "start": 30.0, "end": 40.0, "speaker": "nhan",
+      "caption": "Trang chọn vé mở luồng SSE. Mỗi khu có sơ đồ ghế riêng." },
+    { "id": "hold-a1", "title": "A giữ ghế A1, B thấy ngay", "start": 40.0, "end": 50.0, "speaker": "dung",
+      "caption": "Giữ ghế trong một giao dịch, hạn 300 giây. Ghế đổi màu ở trình duyệt B, không cần F5." },
+    { "id": "refused", "title": "B bị từ chối", "start": 50.0, "end": 57.0, "speaker": "dung",
+      "caption": "Ghế A1 đang có người giữ, B nhận thông báo và chọn ghế khác." },
+    { "id": "holds-page", "title": "Trang ghế đang giữ", "start": 57.0, "end": 62.0, "speaker": "huy",
+      "caption": "Danh sách đọc từ server qua GET /api/holds, kèm đồng hồ đếm ngược." },
+    { "id": "release", "title": "A trả ghế", "start": 62.0, "end": 70.0, "speaker": "huy",
+      "caption": "Ghế về trạng thái trống và đổi màu ở trình duyệt B." },
+    { "id": "b-hold-release", "title": "B giữ rồi trả ghế", "start": 70.0, "end": 80.0, "speaker": "huy",
+      "caption": "Sau khi A trả ghế, B giữ được A1 rồi trả lại." },
+    { "id": "organizer-login", "title": "Ban Tổ chức đăng nhập", "start": 80.0, "end": 88.0, "speaker": "phuc",
+      "caption": "Ban Tổ chức mở Quản lý sự kiện và chọn concert vừa demo." },
+    { "id": "invalid-price", "title": "Giá không hợp lệ bị từ chối", "start": 88.0, "end": 94.0, "speaker": "dung",
+      "caption": "Giá cơ bản phải nằm giữa giá sàn và giá trần." },
+    { "id": "valid-price", "title": "Lưu giá hợp lệ", "start": 94.0, "end": 100.0, "speaker": "dung",
+      "caption": "Đổi giá cơ bản ghi một dòng vào price_changes, ghế đang giữ giữ nguyên giá cũ." },
+    { "id": "b-sees-price", "title": "B thấy giá mới", "start": 100.0, "end": 103.7, "speaker": "dung",
+      "caption": "Giá mới tới trình duyệt B." }
+  ]
+}
