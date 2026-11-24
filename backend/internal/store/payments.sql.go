@@ -273,6 +273,7 @@ func (q *Queries) ListOrderHoldIDs(ctx context.Context, orderID pgtype.UUID) ([]
 const listUserTickets = `-- name: ListUserTickets :many
 SELECT t.id, t.ticket_code, t.status, t.issued_at,
        e.id AS event_id, e.slug AS event_slug, e.name AS event_name, e.starts_at, v.name AS venue_name,
+       e.image_url, e.image_credit,
        s.seat_label, vz.name AS zone_name, oi.price, o.order_code
 FROM tickets t
 JOIN orders o ON o.id = t.order_id
@@ -286,19 +287,21 @@ ORDER BY e.starts_at, t.issued_at, s.seat_label
 `
 
 type ListUserTicketsRow struct {
-	ID         pgtype.UUID        `json:"id"`
-	TicketCode string             `json:"ticket_code"`
-	Status     TicketStatus       `json:"status"`
-	IssuedAt   pgtype.Timestamptz `json:"issued_at"`
-	EventID    pgtype.UUID        `json:"event_id"`
-	EventSlug  string             `json:"event_slug"`
-	EventName  string             `json:"event_name"`
-	StartsAt   pgtype.Timestamptz `json:"starts_at"`
-	VenueName  string             `json:"venue_name"`
-	SeatLabel  string             `json:"seat_label"`
-	ZoneName   string             `json:"zone_name"`
-	Price      pgtype.Numeric     `json:"price"`
-	OrderCode  string             `json:"order_code"`
+	ID          pgtype.UUID        `json:"id"`
+	TicketCode  string             `json:"ticket_code"`
+	Status      TicketStatus       `json:"status"`
+	IssuedAt    pgtype.Timestamptz `json:"issued_at"`
+	EventID     pgtype.UUID        `json:"event_id"`
+	EventSlug   string             `json:"event_slug"`
+	EventName   string             `json:"event_name"`
+	StartsAt    pgtype.Timestamptz `json:"starts_at"`
+	VenueName   string             `json:"venue_name"`
+	ImageUrl    pgtype.Text        `json:"image_url"`
+	ImageCredit pgtype.Text        `json:"image_credit"`
+	SeatLabel   string             `json:"seat_label"`
+	ZoneName    string             `json:"zone_name"`
+	Price       pgtype.Numeric     `json:"price"`
+	OrderCode   string             `json:"order_code"`
 }
 
 func (q *Queries) ListUserTickets(ctx context.Context, userID pgtype.UUID) ([]ListUserTicketsRow, error) {
@@ -320,6 +323,8 @@ func (q *Queries) ListUserTickets(ctx context.Context, userID pgtype.UUID) ([]Li
 			&i.EventName,
 			&i.StartsAt,
 			&i.VenueName,
+			&i.ImageUrl,
+			&i.ImageCredit,
 			&i.SeatLabel,
 			&i.ZoneName,
 			&i.Price,

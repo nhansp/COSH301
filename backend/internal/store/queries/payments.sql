@@ -113,6 +113,7 @@ WHERE p.payment_code = $1;
 -- name: ListUserTickets :many
 SELECT t.id, t.ticket_code, t.status, t.issued_at,
        e.id AS event_id, e.slug AS event_slug, e.name AS event_name, e.starts_at, v.name AS venue_name,
+       e.image_url, e.image_credit,
        s.seat_label, vz.name AS zone_name, oi.price, o.order_code
 FROM tickets t
 JOIN orders o ON o.id = t.order_id

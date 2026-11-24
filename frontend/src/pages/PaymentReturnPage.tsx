@@ -5,6 +5,7 @@ import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { PageShell } from '../components/layout/PageShell';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ImageCredit } from '../components/ImageCredit';
 import { eventDate } from '../components/events/EventCard';
 import { formatPrice } from '../services/eventService';
 import { apiFetchMyTickets, apiVerifyVNPayReturn, failureMessage, PaymentOutcome } from '../services/paymentService';
@@ -187,23 +188,40 @@ const Paid: React.FC<{ outcome: PaymentOutcome }> = ({ outcome }) => {
       {tickets === null ? (
         <div aria-busy="true" className="skeleton mt-8 h-40 w-full rounded-card" />
       ) : event && when ? (
-        <article className="mt-8 rounded-card bg-kumo-base p-5 ring ring-kumo-line sm:p-7">
-          <h2 className="type-display text-xl sm:text-2xl">{event.eventName}</h2>
-          <p className="mt-1 text-kumo-subtle">
-            {when.full}, {when.time} · {event.venueName}
-          </p>
-          <ul className="mt-2 divide-y divide-kumo-hairline">
-            {tickets.map(ticket => (
-              <li key={ticket.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 py-4">
-                <div className="min-w-0 flex-1">
-                  <p className="type-figure text-2xl text-kumo-strong">{ticket.seatLabel}</p>
-                  <p className="text-sm text-kumo-subtle">{ticket.zoneName}</p>
-                </div>
-                <p className="text-sm text-kumo-subtle">Mã vé {ticket.ticketCode}</p>
-                <span className="type-figure w-32 text-right text-lg text-kumo-strong">{formatPrice(ticket.price)}</span>
-              </li>
-            ))}
-          </ul>
+        <article className="mt-8 overflow-hidden rounded-card bg-kumo-base ring ring-kumo-line">
+          {event.imageUrl && (
+            <Link to={`/event/${event.eventId}`} className="block aspect-[16/7] overflow-hidden bg-kumo-recessed">
+              <img
+                src={event.imageUrl}
+                alt={event.eventName}
+                referrerPolicy="no-referrer"
+                className="size-full object-cover object-[center_30%]"
+              />
+            </Link>
+          )}
+          <div className="p-5 sm:p-7">
+            <h2 className="type-display text-xl sm:text-2xl">
+              <Link to={`/event/${event.eventId}`} className="underline-offset-[0.14em] hover:underline">
+                {event.eventName}
+              </Link>
+            </h2>
+            <p className="mt-1 text-kumo-subtle">
+              {when.full}, {when.time} · {event.venueName}
+            </p>
+            <ul className="mt-2 divide-y divide-kumo-hairline">
+              {tickets.map(ticket => (
+                <li key={ticket.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 py-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="type-figure text-2xl text-kumo-strong">{ticket.seatLabel}</p>
+                    <p className="text-sm text-kumo-subtle">{ticket.zoneName}</p>
+                  </div>
+                  <p className="text-sm text-kumo-subtle">Mã vé {ticket.ticketCode}</p>
+                  <span className="type-figure w-32 text-right text-lg text-kumo-strong">{formatPrice(ticket.price)}</span>
+                </li>
+              ))}
+            </ul>
+            <ImageCredit credit={event.imageCredit} className="mt-3 text-kumo-subtle" />
+          </div>
         </article>
       ) : (
         <p className="mt-6 text-kumo-subtle">Đã phát hành {outcome.ticketCount} vé. Vé nằm ở mục Vé của tôi.</p>

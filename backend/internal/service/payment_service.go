@@ -473,19 +473,21 @@ func (s *PaymentService) ExpireStaleOrders(ctx context.Context) (int64, error) {
 }
 
 type MyTicket struct {
-	ID         string `json:"id"`
-	TicketCode string `json:"ticketCode"`
-	Status     string `json:"status"`
-	IssuedAt   string `json:"issuedAt"`
-	OrderCode  string `json:"orderCode"`
-	EventID    string `json:"eventId"`
-	EventSlug  string `json:"eventSlug"`
-	EventName  string `json:"eventName"`
-	StartsAt   string `json:"startsAt"`
-	VenueName  string `json:"venueName"`
-	SeatLabel  string `json:"seatLabel"`
-	ZoneName   string `json:"zoneName"`
-	Price      int64  `json:"price"`
+	ID          string `json:"id"`
+	TicketCode  string `json:"ticketCode"`
+	Status      string `json:"status"`
+	IssuedAt    string `json:"issuedAt"`
+	OrderCode   string `json:"orderCode"`
+	EventID     string `json:"eventId"`
+	EventSlug   string `json:"eventSlug"`
+	EventName   string `json:"eventName"`
+	StartsAt    string `json:"startsAt"`
+	VenueName   string `json:"venueName"`
+	ImageURL    string `json:"imageUrl,omitempty"`
+	ImageCredit string `json:"imageCredit,omitempty"`
+	SeatLabel   string `json:"seatLabel"`
+	ZoneName    string `json:"zoneName"`
+	Price       int64  `json:"price"`
 }
 
 // ListMyTickets returns the user's issued tickets, soonest event first.
@@ -497,19 +499,21 @@ func (s *PaymentService) ListMyTickets(ctx context.Context, userID pgtype.UUID) 
 	tickets := make([]MyTicket, 0, len(rows))
 	for _, r := range rows {
 		tickets = append(tickets, MyTicket{
-			ID:         store.UUIDToString(r.ID),
-			TicketCode: r.TicketCode,
-			Status:     string(r.Status),
-			IssuedAt:   r.IssuedAt.Time.Format(time.RFC3339),
-			OrderCode:  r.OrderCode,
-			EventID:    store.UUIDToString(r.EventID),
-			EventSlug:  r.EventSlug,
-			EventName:  r.EventName,
-			StartsAt:   r.StartsAt.Time.Format(time.RFC3339),
-			VenueName:  r.VenueName,
-			SeatLabel:  r.SeatLabel,
-			ZoneName:   r.ZoneName,
-			Price:      fromNumeric(r.Price),
+			ID:          store.UUIDToString(r.ID),
+			TicketCode:  r.TicketCode,
+			Status:      string(r.Status),
+			IssuedAt:    r.IssuedAt.Time.Format(time.RFC3339),
+			OrderCode:   r.OrderCode,
+			EventID:     store.UUIDToString(r.EventID),
+			EventSlug:   r.EventSlug,
+			EventName:   r.EventName,
+			StartsAt:    r.StartsAt.Time.Format(time.RFC3339),
+			VenueName:   r.VenueName,
+			ImageURL:    r.ImageUrl.String,
+			ImageCredit: r.ImageCredit.String,
+			SeatLabel:   r.SeatLabel,
+			ZoneName:    r.ZoneName,
+			Price:       fromNumeric(r.Price),
 		})
 	}
 	return tickets, nil
