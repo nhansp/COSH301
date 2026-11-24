@@ -107,8 +107,9 @@ class OtpService : Service() {
         )
         val notification = Notification.Builder(this, CHANNEL_CODE)
             .setSmallIcon(R.drawable.ic_stat_otp)
-            .setContentTitle("Mã đăng nhập COSH301: $code")
-            .setContentText("Nhập mã này trên trang web. Mã có hiệu lực 5 phút.")
+            // The code leads the title so a heads-up banner never truncates it.
+            .setContentTitle("OTP: $code")
+            .setContentText("Mã đăng nhập COSH301, hiệu lực 5 phút. Nhập mã này trên trang web.")
             .setCategory(Notification.CATEGORY_MESSAGE)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setTimeoutAfter(CODE_TTL_MS)
