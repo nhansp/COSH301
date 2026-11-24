@@ -245,8 +245,19 @@ export const AssistantWidget: React.FC = () => {
     return null;
   }
 
+  const isTicketSelection = /\/events\/[^/]+\/tickets/.test(location.pathname);
+
   return (
-    <div style={{ zIndex: 45 }} className="fixed right-4 bottom-4 sm:right-6 sm:bottom-6 print:hidden">
+    <div
+      style={{ zIndex: 45 }}
+      className={`fixed print:hidden ${
+        isOpen
+          ? 'right-3 bottom-3 sm:right-5 sm:bottom-5'
+          : isTicketSelection
+            ? 'right-0 bottom-24 lg:bottom-4'
+            : 'right-0 bottom-4'
+      }`}
+    >
       {isOpen ? (
         <section
           role="dialog"
@@ -461,12 +472,15 @@ export const AssistantWidget: React.FC = () => {
             setTimeout(() => inputRef.current?.focus(), 60);
           }}
           aria-label={isOrganizer ? 'Mở Trợ lý Sân khấu' : 'Mở Trợ lý Sự kiện'}
-          className="group flex h-12 items-center gap-2.5 rounded-full bg-kumo-contrast pr-4 pl-3.5 text-sm font-semibold text-kumo-inverse shadow-[var(--shadow-pop)] ring ring-kumo-line transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+          title={isOrganizer ? 'Trợ lý Sân khấu' : 'Trợ lý Sự kiện'}
+          className="group flex h-10 items-center rounded-l-full bg-kumo-contrast/80 py-1.5 pr-2 pl-2 text-xs font-semibold text-kumo-inverse opacity-70 shadow-[var(--shadow-pop)] ring ring-kumo-line backdrop-blur-md transition-all duration-200 hover:bg-kumo-contrast hover:pr-3.5 hover:pl-2.5 hover:opacity-100 focus-visible:bg-kumo-contrast focus-visible:pr-3.5 focus-visible:pl-2.5 focus-visible:opacity-100 active:scale-[0.98]"
         >
-          <span className="grid size-7 place-items-center rounded-full bg-violet text-midnight">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-violet text-midnight">
             {isOrganizer ? <LayoutGrid className="size-3.5" /> : <Sparkles className="size-3.5" />}
           </span>
-          <span>{isOrganizer ? 'Trợ lý Sân khấu' : 'Trợ lý Sự kiện'}</span>
+          <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover:ml-2 group-hover:max-w-[140px] group-hover:opacity-100 group-focus-visible:ml-2 group-focus-visible:max-w-[140px] group-focus-visible:opacity-100">
+            {isOrganizer ? 'Trợ lý Sân khấu' : 'Trợ lý Sự kiện'}
+          </span>
         </button>
       )}
     </div>
