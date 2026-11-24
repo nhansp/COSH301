@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, MapPin, Save, AlertCircle, CheckCircle2, LayoutGrid, BarChart3 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
 import { useFeatures } from '../context/FeatureContext';
 import { formatPrice } from '../services/eventService';
+import { invalidateAssistantCache, openAssistant } from '../services/assistantService';
 import {
   OrganizerEvent,
   OrganizerZone,
@@ -178,8 +179,10 @@ export const OrganizerPage: React.FC = () => {
     }
   };
 
-  const handleSaved = (zoneId: string, pricing: ZonePricing) =>
+  const handleSaved = (zoneId: string, pricing: ZonePricing) => {
     setZones(prev => prev.map(z => (z.zoneId === zoneId ? { ...z, ...pricing } : z)));
+    invalidateAssistantCache();
+  };
 
   if (featuresLoading) {
     return (
@@ -257,9 +260,29 @@ export const OrganizerPage: React.FC = () => {
               </p>
             ) : (
               <>
-                <h2 id="organizer-zones" className="text-sm font-medium text-kumo-subtle">
-                  Khu vực: <span className="text-kumo-default">{selected.name}</span>
-                </h2>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 id="organizer-zones" className="text-sm font-medium text-kumo-subtle">
+                    Khu vực: <span className="text-kumo-default">{selected.name}</span>
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openAssistant({ eventId: selected.id, mode: 'sales_analysis' })}
+                      className="btn btn-secondary btn-sm h-9 text-xs"
+                    >
+                      <BarChart3 className="size-3.5 text-violet-ink" />
+                      <span>Phân tích bán vé</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAssistant({ eventId: selected.id, mode: 'stage_graph', stageTab: 'map' })}
+                      className="btn btn-secondary btn-sm h-9 text-xs"
+                    >
+                      <LayoutGrid className="size-3.5 text-violet-ink" />
+                      <span>Trực quan hoá biểu đồ sân khấu</span>
+                    </button>
+                  </div>
+                </div>
                 {zones.map(zone => (
                   <ZoneRow
                     key={`${selected.id}-${zone.zoneId}`}

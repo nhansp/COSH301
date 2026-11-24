@@ -12,6 +12,7 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import { MyTicketsPage } from './pages/MyTicketsPage';
 import { OrganizerPage } from './pages/OrganizerPage';
 import { TicketSelectionPage } from './pages/TicketSelectionPage';
+import { AssistantWidget } from './components/assistant/AssistantWidget';
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
               {/* Fallback Route */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            <AssistantWidget />
           </EventProvider>
         </AuthProvider>
         </FeatureProvider>

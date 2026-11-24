@@ -23,14 +23,69 @@ export interface OrganizerZone extends ZonePricing {
   isDynamicPricingEnabled: boolean;
 }
 
+export interface ZoneSalesSummary {
+  zoneId: string;
+  zoneCode: string;
+  zoneName: string;
+  kind: 'seated' | 'standing';
+  capacity: number;
+  sold: number;
+  held: number;
+  available: number;
+  fillRate: number;
+  basePrice: number;
+  floorPrice: number;
+  ceilingPrice: number;
+  isDynamicPricingEnabled: boolean;
+  realizedRevenue: number;
+  heldPipelineRevenue: number;
+  potentialRevenue: number;
+  priceHeadroomPct: number;
+}
+
+export interface EventSalesSummary {
+  eventId: string;
+  eventName: string;
+  slug: string;
+  city: string;
+  venueName: string;
+  startsAt: string;
+  totalCapacity: number;
+  soldCount: number;
+  heldCount: number;
+  availableCount: number;
+  fillRate: number;
+  realizedRevenue: number;
+  heldPipelineRevenue: number;
+  potentialRevenue: number;
+  remainingRevenue: number;
+  standingFillRate: number;
+  seatedFillRate: number;
+  hotZones: string[];
+  slowZones: string[];
+  zones: ZoneSalesSummary[];
+}
+
+export async function apiFetchEventSalesSummary(eventId: string): Promise<EventSalesSummary | null> {
+  try {
+    const res = await fetch(`/api/organizer/events/${encodeURIComponent(eventId)}/sales-summary`, {
+      credentials: 'include',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function apiFetchOrganizerEvents(): Promise<OrganizerEvent[]> {
-  const res = await fetch('/api/organizer/events');
+  const res = await fetch('/api/organizer/events', { credentials: 'include' });
   if (!res.ok) throw new Error(String(res.status));
   return (await res.json()) ?? [];
 }
 
 export async function apiFetchEventZones(eventId: string): Promise<OrganizerZone[]> {
-  const res = await fetch(`/api/events/${eventId}`);
+  const res = await fetch(`/api/events/${eventId}`, { credentials: 'include' });
   if (!res.ok) throw new Error(String(res.status));
   const ev = await res.json();
   return ev.zones ?? [];
@@ -46,6 +101,7 @@ export async function apiUpdateZonePricing(
     const res = await fetch(`/api/organizer/events/${eventId}/zones/${zoneId}/pricing`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(pricing),
     });
     if (res.ok) return null;

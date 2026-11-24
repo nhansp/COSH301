@@ -12,7 +12,7 @@ export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
   const navigate = useNavigate();
-  const { isAuthenticated, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
+  const { isAuthenticated, loginDemo, sendPhoneOtp, verifyPhoneOtp, sendEmailOtp, verifyEmailOtp } = useAuth();
   const { getEventById, events } = useEvents();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
 
@@ -147,7 +147,8 @@ export const LoginPage: React.FC = () => {
     try {
       let success = false;
       if (authMethod === 'phone') {
-        const fullPhone = `${countryCode} ${phoneNumber.trim()}`;
+        const cleanNumber = phoneNumber.trim().replace(/^0+/, '');
+        const fullPhone = `${countryCode} ${cleanNumber}`;
         success = await verifyPhoneOtp(fullPhone, code);
       } else {
         success = await verifyEmailOtp(email.trim(), code);
@@ -159,7 +160,7 @@ export const LoginPage: React.FC = () => {
           navigate(redirectUrl, { replace: true });
         }, 600);
       } else {
-        setErrorMsg('Mã OTP không chính xác. Mã thử nghiệm hợp lệ là: 123456');
+        setErrorMsg('Mã OTP không chính xác hoặc đã hết hạn. Vui lòng kiểm tra lại.');
       }
     } catch (err: any) {
       setErrorMsg('Đã có lỗi xảy ra khi xác thực OTP.');
@@ -168,17 +169,31 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Fast demo test filler
-  const handleQuickDemoLogin = async () => {
-    const demoPhone = '0987654321';
-    setPhoneNumber(demoPhone);
-    setAuthMethod('phone');
-    setIsSending(true);
-    await new Promise(r => setTimeout(r, 300));
-    setOtpSent(true);
-    setOtpValues(['1', '2', '3', '4', '5', '6']);
-    setIsSending(false);
-    await handleVerifyOtp('123456');
+  // Fast demo test login backed by a real server session
+  const handleQuickDemoLogin = async (role: 'CUSTOMER' | 'ORGANIZER' = 'CUSTOMER') => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setIsVerifying(true);
+    try {
+      const success = await loginDemo(role);
+      if (success) {
+        setSuccessMsg(
+          role === 'ORGANIZER'
+            ? 'Đăng nhập Ban Tổ Chức thành công! Đang chuyển hướng...'
+            : 'Đăng nhập thử thành công! Đang chuyển hướng...'
+        );
+        const nextUrl = role === 'ORGANIZER' && redirectUrl === '/' ? '/organizer' : redirectUrl;
+        setTimeout(() => {
+          navigate(nextUrl, { replace: true });
+        }, 400);
+      } else {
+        setErrorMsg('Không thể đăng nhập thử. Vui lòng dùng mã OTP.');
+      }
+    } catch {
+      setErrorMsg('Không thể kết nối máy chủ đăng nhập.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const inputClass = 'field min-w-0';
@@ -467,17 +482,29 @@ export const LoginPage: React.FC = () => {
           )}
 
           {/* Quick Demo Test Helper Banner */}
-          <div className="mt-6 pt-5 border-t border-kumo-hairline">
-            <button
-              onClick={handleQuickDemoLogin}
-              className="btn btn-secondary w-full"
-            >
-              <Sparkles className="w-4 h-4 text-kumo-warning" />
-              <span>Đăng nhập thử nhanh (Demo 1-Click)</span>
-            </button>
-            <p className="text-xs text-kumo-subtle mt-2 text-center">
-              Mã OTP thử nghiệm định sẵn:{' '}
-              <strong className="font-medium text-kumo-default tabular-nums">123456</strong>
+          <div className="mt-6 pt-5 border-t border-kumo-hairline space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('CUSTOMER')}
+                disabled={isVerifying}
+                className="btn btn-secondary w-full text-sm"
+              >
+                <Sparkles className="w-4 h-4 text-kumo-warning shrink-0" />
+                <span>Demo Khán giả</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin('ORGANIZER')}
+                disabled={isVerifying}
+                className="btn btn-secondary w-full text-sm"
+              >
+                <ShieldCheck className="w-4 h-4 text-violet-ink shrink-0" />
+                <span>Demo Ban Tổ Chức</span>
+              </button>
+            </div>
+            <p className="text-xs text-kumo-subtle text-center">
+              Tạo phiên đăng nhập thử trên máy chủ mà không cần nhập mã OTP.
             </p>
           </div>
         </div>

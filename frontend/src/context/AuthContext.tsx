@@ -6,6 +6,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   bookings: Booking[];
+  loginDemo: (role?: UserRole) => Promise<boolean>;
   sendPhoneOtp: (phoneNumber: string) => Promise<{ success: boolean; demoCode: string; message: string }>;
   verifyPhoneOtp: (phoneNumber: string, code: string) => Promise<boolean>;
   sendEmailOtp: (email: string) => Promise<{ success: boolean; demoCode: string; message: string }>;
@@ -81,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error loading stored bookings:', e);
     }
 
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
         if (isMounted && data?.user) setUser(userFromApi(data.user));
@@ -98,32 +99,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const saveUserSession = (newUser: User | null) => setUser(newUser);
 
-  const sendPhoneOtp = async (phoneNumber: string) => {
+  const otpRequestError = (code?: string) => {
+    switch (code) {
+      case 'otp_rate_limited':
+        return 'Bạn vừa yêu cầu mã OTP. Vui lòng chờ 60 giây rồi thử lại.';
+      case 'invalid_destination':
+        return 'Số điện thoại hoặc địa chỉ email không hợp lệ.';
+      case 'feature_disabled':
+        return 'Tính năng đăng nhập OTP hiện đang tắt.';
+      default:
+        return 'Không thể gửi mã OTP tới máy chủ. Vui lòng thử lại.';
+    }
+  };
+
+  const loginDemo = async (role: UserRole = 'CUSTOMER'): Promise<boolean> => {
     try {
-      const res = await fetch('/api/auth/otp/request', {
+      const res = await fetch('/api/auth/demo-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: phoneNumber, channel: 'SMS' }),
+        credentials: 'include',
+        body: JSON.stringify({ role }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        const demoCode = data.mock_code || '123456';
-        return {
-          success: true,
-          demoCode,
-          message: `Mã OTP đã được gửi đến số ${phoneNumber}. Mã thử nghiệm là ${demoCode}`
-        };
-      }
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data?.user) return false;
+      saveUserSession(userFromApi(data.user));
+      return true;
     } catch {
-      // API unreachable, use local simulation
+      return false;
     }
+  };
 
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const demoCode = '123456';
+  const sendPhoneOtp = async (phoneNumber: string) => {
+    const res = await fetch('/api/auth/otp/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ destination: phoneNumber, channel: 'SMS' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(otpRequestError(data.error));
+    }
+    const demoCode: string = data.demoCode || data.mock_code || '';
     return {
       success: true,
       demoCode,
-      message: `Mã OTP đã được gửi đến số ${phoneNumber}. Mã thử nghiệm là ${demoCode}`
+      message: demoCode
+        ? `Mã OTP đã được gửi đến số ${phoneNumber}. Mã thử nghiệm là ${demoCode}`
+        : `Mã OTP đã được gửi đến số ${phoneNumber}.`
     };
   };
 
@@ -132,59 +156,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ destination: phoneNumber, code }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        saveUserSession(userFromApi(data.user));
-        return true;
-      }
-    } catch {
-      // Fallback to local
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 600));
-    if (code.trim().length === 6) {
-      const newUser: User = {
-        id: `usr_${Date.now()}`,
-        name: `User ${phoneNumber.slice(-4) || 'VIP'}`,
-        phone: phoneNumber,
-        avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${phoneNumber}`,
-        authProvider: 'phone',
-        createdAt: new Date().toISOString()
-      };
-      saveUserSession(newUser);
+      if (!res.ok) return false;
+      const data = await res.json();
+      saveUserSession(userFromApi(data.user));
       return true;
+    } catch {
+      return false;
     }
-    return false;
   };
 
   const sendEmailOtp = async (email: string) => {
-    try {
-      const res = await fetch('/api/auth/otp/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination: email, channel: 'EMAIL' }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const demoCode = data.mock_code || '123456';
-        return {
-          success: true,
-          demoCode,
-          message: `Mã xác thực đã được gửi về email ${email}. Mã thử nghiệm là ${demoCode}`
-        };
-      }
-    } catch {
-      // Fallback
+    const res = await fetch('/api/auth/otp/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ destination: email, channel: 'EMAIL' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(otpRequestError(data.error));
     }
-
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const demoCode = '123456';
+    const demoCode: string = data.demoCode || data.mock_code || '';
     return {
       success: true,
       demoCode,
-      message: `Mã xác thực đã được gửi về email ${email}. Mã thử nghiệm là ${demoCode}`
+      message: demoCode
+        ? `Mã xác thực đã được gửi về email ${email}. Mã thử nghiệm là ${demoCode}`
+        : `Mã xác thực đã được gửi về email ${email}.`
     };
   };
 
@@ -193,38 +194,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch('/api/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ destination: email, code }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        saveUserSession(userFromApi(data.user));
-        return true;
-      }
-    } catch {
-      // Fallback
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 600));
-    if (code.trim().length === 6) {
-      const namePart = email.split('@')[0];
-      const capitalized = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-      const newUser: User = {
-        id: `usr_${Date.now()}`,
-        name: capitalized,
-        email: email,
-        avatar: `https://api.dicebear.com/7.x/fun-emoji/svg?seed=${email}`,
-        authProvider: 'email',
-        createdAt: new Date().toISOString()
-      };
-      saveUserSession(newUser);
+      if (!res.ok) return false;
+      const data = await res.json();
+      saveUserSession(userFromApi(data.user));
       return true;
+    } catch {
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     try {
-      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     } catch {}
     saveUserSession(null);
   };
@@ -285,9 +269,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const cancelBooking = (bookingId: string) => {
+    const target = bookings.find(b => b.id === bookingId);
     const updated = bookings.map(b => (b.id === bookingId ? { ...b, status: 'cancelled' as const } : b));
     setBookings(updated);
     localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(updated));
+
+    if (target) {
+      fetch('/api/tickets/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          bookingId: target.id,
+          bookingCode: target.bookingCode,
+          eventId: target.eventId,
+          reason: 'Khách hàng xác nhận hủy vé trên ứng dụng',
+          seats: target.selectedSeats || [],
+          concert: {
+            id: target.eventId,
+            name: target.eventTitle,
+            title: target.eventTitle,
+            date: target.eventDate,
+            time: target.eventTime,
+            venue: target.venue,
+            city: target.city,
+            imageUrl: target.imageUrl,
+          },
+          ticketDetails: {
+            eventTitle: target.eventTitle,
+            eventDate: target.eventDate,
+            eventTime: target.eventTime,
+            venue: target.venue,
+            city: target.city,
+            tierName: target.tierName,
+            tierId: target.tierId,
+            quantity: target.quantity,
+            totalAmount: target.totalAmount,
+            currency: target.currency,
+            attendeeName: target.attendeeName,
+            attendeeEmail: target.attendeeEmail,
+            attendeePhone: target.attendeePhone,
+            paymentMethod: target.paymentMethod,
+            purchasedAt: target.purchasedAt,
+          },
+        }),
+      }).catch(err => console.error('Failed to sync ticket cancellation with server:', err));
+    }
   };
 
   const ticketsBookedFor = (eventId: string) => {
@@ -304,6 +331,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         bookings,
+        loginDemo,
         sendPhoneOtp,
         verifyPhoneOtp,
         sendEmailOtp,
