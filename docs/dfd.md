@@ -7,11 +7,14 @@ DFD của **EventTicketing** gồm bốn phần:
 4. Bảng ánh xạ kho dữ liệu sang bảng PostgreSQL.
 
 Tác nhân và luồng lấy từ mục 2 và mục 4 của [`design/README.md`](design/README.md).
-Kho dữ liệu là các bảng trong [`00001_initial_schema.sql`](../backend/internal/store/migrations/00001_initial_schema.sql), xem [`erd.md`](erd.md).
+Kho dữ liệu là các bảng trong [`00001_initial_schema.sql`](../backend/internal/store/migrations/00001_initial_schema.sql) và [`00005_otp_app_deliveries.sql`](../backend/internal/store/migrations/00005_otp_app_deliveries.sql), xem [`erd.md`](erd.md).
 Hệ thống chỉ dùng PostgreSQL, không có Redis.
 
 DFD mô tả hệ thống thiết kế cho cả năm Sprint.
 Tiến trình nào chưa có code thì ghi trong cột "Sprint" của mục 5.
+
+> **Ghi chú cho người phụ trách DFD (Nguyễn Đức Phúc):** báo cáo và tài liệu này đang khác nhau về số tiến trình, và chưa ai chọn bên nào.
+> Chi tiết ở mục 7. Tài liệu này chưa đổi số tiến trình, chỉ cập nhật số bảng của kho dữ liệu.
 
 Quy ước:
 - Hình tròn là tiến trình, hình trụ là kho dữ liệu, hình chữ nhật là tác nhân ngoài.
@@ -19,6 +22,7 @@ Quy ước:
 - Mũi tên hai chiều (`<-->`) là tiến trình vừa đọc vừa ghi kho.
 - Mũi tên một chiều vào kho là chỉ ghi, ra khỏi kho là chỉ đọc.
 - Bộ hẹn giờ trong api (`HoldReaper`, tính giá, chụp số liệu) là một phần của hệ thống, không phải tác nhân ngoài.
+- Tác nhân "App SMS Gateway" là tên trong thiết kế. Bản chạy dùng app Android `COSH301 OTP` để giao mã OTP của số điện thoại (xem mục 7).
 
 ---
 
@@ -100,7 +104,7 @@ flowchart TB
 
     D1[("D1 users")]
     D2[("D2 sessions")]
-    D3[("D3 otp_verifications")]
+    D3[("D3 otp_verifications, otp_app_deliveries")]
     D4[("D4 venues, venue_zones, seats")]
     D5[("D5 events, event_zones")]
     D6[("D6 event_seats")]
@@ -234,7 +238,7 @@ flowchart LR
 
     D1[("D1 users")]
     D2[("D2 sessions")]
-    D3[("D3 otp_verifications")]
+    D3[("D3 otp_verifications, otp_app_deliveries")]
 
     ACT -->|"SĐT hoặc email, mã OTP"| P11
     P11 -->|"token Turnstile"| TS
@@ -407,13 +411,13 @@ Mức 1 của 1.0, 4.0 và 5.0 giữ nguyên các luồng ra vào tiến trình 
 
 Mỗi kho ứng với một hoặc vài bảng thật.
 Tên bảng viết đúng như trong migration.
-17 kho phủ 23 bảng, bảng nào cũng thuộc một kho.
+17 kho phủ 24 bảng, bảng nào cũng thuộc một kho.
 
 | Kho | Bảng PostgreSQL | Tiến trình dùng | Sprint |
 |---|---|---|:---:|
 | D1 | `users` | 1.0, 9.0 | 2 |
 | D2 | `sessions` | 1.0 | 2 |
-| D3 | `otp_verifications` | 1.0 | 2 |
+| D3 | `otp_verifications`, `otp_app_deliveries` | 1.0 | 2 |
 | D4 | `venues`, `venue_zones`, `seats` | 2.0 | 2 |
 | D5 | `events`, `event_zones` | 2.0, 3.0, 4.0, 7.0 | 2 |
 | D6 | `event_seats` | 2.0, 4.0, 5.0, 7.0 | 2 |
@@ -430,8 +434,9 @@ Tên bảng viết đúng như trong migration.
 | D17 | `sales_snapshots` | 8.0 | 5 |
 
 Ghi chú:
-- Cột Sprint là Sprint đầu tiên có tiến trình ghi vào kho. Bảng nào cũng đã có trong migration từ đầu.
-- Code Sprint 2 chưa ghi `audit_logs`. Bảng này nhận nhật ký giao dịch và thao tác phân quyền từ Sprint 4.
+- Cột Sprint là Sprint đầu tiên có tiến trình ghi vào kho. Bảng nào cũng đã có trong migration, `otp_app_deliveries` từ migration `00005`.
+- Code hiện ghi `audit_logs` cho thao tác hủy vé và đặt lại dữ liệu demo (`TicketService`). Nhật ký giao dịch và thao tác phân quyền chưa ghi.
+- `feedback_responses` (khảo sát người dùng thử, migration `00009`) không thuộc kho nào, vì không phải dữ liệu nghiệp vụ của luồng mua vé. Xem [`testing.md`](testing.md).
 - `price_changes` và `audit_logs` có trigger chặn sửa và xóa (NFR-12), nên tiến trình chỉ thêm dòng mới.
 - Phòng chờ dùng bảng `queue_entries`, không dùng Redis. Bảng này cũng là nguồn cho tiến trình 4.2 kiểm tra người dùng đã được vào mua chưa.
 - Realtime dùng `LISTEN/NOTIFY` của PostgreSQL, không có kho riêng.
@@ -449,3 +454,60 @@ Ghi chú:
 | 7.0 | FR-20, FR-22, FR-23 | 5 | `price_log`, `dynamic_pricing`, `promo_suggestions` |
 | 8.0 | FR-19, FR-20, FR-21 | 5 | `ceo_dashboard`, `price_log`, `reports_export` |
 | 9.0 | phân quyền theo `users.role` | 2 | luôn bật |
+
+Hiện trạng code theo tiến trình:
+
+| Tiến trình | Hiện trạng |
+|---|---|
+| 1.0 | Đã làm, trừ Turnstile và gửi qua SMTP. Mã của SĐT giao cho app Android |
+| 2.0 | Một phần: danh sách sự kiện, đặt giá khu vực, ghi `price_changes`. Chưa tạo địa điểm, khu vực, sự kiện |
+| 3.0 | Chưa làm |
+| 4.0 | Đã làm. Bước kiểm tra hạn mức (4.2) chạy khi cờ `ticket_limit` bật |
+| 5.0 | Một phần: 5.1 đến 5.4 chạy với VNPay sandbox. 5.5 chỉ đánh dấu `refund_required`, chưa hoàn tiền. 5.6 xem danh sách vé, chưa có QR. Chưa gửi email |
+| 6.0 | Chưa làm |
+| 7.0 | Làm riêng, xem [`dynamic-pricing.md`](dynamic-pricing.md) |
+| 8.0 | Chưa làm |
+| 9.0 | Chưa làm |
+
+---
+
+## 7. Điểm cần người phụ trách DFD quyết định
+
+Mục này liệt kê chỗ DFD trong repo khác báo cáo hoặc khác code.
+Mỗi điểm cần Nguyễn Đức Phúc quyết định cách sửa. Tài liệu này không tự chọn.
+
+### 7.1 Số tiến trình ở mức 0
+
+| Nguồn | Số tiến trình mức 0 | Số kho dữ liệu |
+|---|:---:|:---:|
+| Hình DFD mức 0 trong báo cáo | 7 | chưa đối chiếu |
+| `docs/dfd.md` (mục 2) | 9 | 17 |
+| Slide "DFD mức 0" (`slides/content/04-mo-hinh.md`) | 9 | 17 |
+
+Chưa rõ hai tiến trình nào trong 9 tiến trình ở mục 2 được gộp để thành 7 trong hình của báo cáo.
+Cần chọn một trong hai hướng:
+- giữ 9 tiến trình và sửa hình trong báo cáo;
+- gộp về 7 tiến trình, rồi sửa mục 2, mục 3, mục 4 và mục 6 của tài liệu này, cùng slide.
+
+Khi gộp, mức 1 của các tiến trình 1.0, 4.0 và 5.0 cũng phải đánh số lại nếu số hiệu thay đổi.
+
+### 7.2 Quan hệ với 13 use case
+
+| Use case | Tiến trình |
+|---|---|
+| UC-01 | 1.0 |
+| UC-02, UC-07 | 2.0 |
+| UC-03 | 3.0 |
+| UC-04 | 4.0 |
+| UC-05, UC-06 | 5.0 |
+| UC-08 | 7.0 |
+| UC-09, UC-10 | 8.0 |
+| UC-11, UC-12 | 6.0 |
+| UC-13 | 8.0 (nhật ký), 9.0 (phân quyền) |
+
+### 7.3 Chỗ khác với code
+
+- Tác nhân "App SMS Gateway" trong hình thực tế là app Android `COSH301 OTP`. Luồng "mã OTP qua SMS" của tiến trình 1.0 đi tới app này.
+- Tác nhân "Cổng thanh toán MoMo, VNPAY": code chỉ có VNPay, chưa có MoMo.
+- Luồng "lệnh hoàn tiền" của tiến trình 5.0 chưa có code. Hiện chỉ đánh dấu `payments.refund_required`.
+- Luồng "email vé" và "token Turnstile" chưa có code.
