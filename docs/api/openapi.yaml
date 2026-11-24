@@ -23,6 +23,8 @@ tags:
   - name: events
   - name: seats
   - name: organizer
+  - name: pricing
+  - name: recommendations
   - name: tickets
 
 paths:
@@ -499,6 +501,93 @@ paths:
         '404':
           $ref: '#/components/responses/FeatureDisabled'
 
+  /api/organizer/events/{id}:
+    get:
+      tags: [organizer]
+      summary: Thông tin sự kiện để BTC xem và sửa (FR-08)
+      description: Kèm tồn kho từng khu vực và cờ `venueShared` khi địa điểm dùng chung với sự kiện khác.
+      operationId: getOrganizerEvent
+      x-feature: [organizer_console]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '200':
+          description: Sự kiện
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizerEventDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          description: '`event_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [organizer]
+      summary: Sửa thông tin sự kiện (FR-08)
+      description: |
+        Sửa đúng sự kiện này, không tạo bản ghi mới; `slug` giữ nguyên.
+        Tên và địa chỉ địa điểm chỉ sửa được khi không sự kiện nào khác dùng địa điểm đó.
+        Mỗi lần lưu ghi một dòng `EVENT_UPDATED` vào `audit_logs`.
+        Trang sự kiện của khán giả đọc thông tin mới ngay.
+      operationId: updateOrganizerEvent
+      x-feature: [organizer_console]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventInfo'
+      responses:
+        '200':
+          description: Đã lưu, kèm thông tin mới
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizerEventDetail'
+        '400':
+          description: '`invalid_payload`, hoặc `invalid_event_field` kèm `field` là trường bị từ chối'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  field:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          description: '`event_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`venue_shared`: địa điểm dùng chung, không đổi tên hoặc địa chỉ ở đây được'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /api/organizer/events/{id}/zones/{zoneId}/pricing:
     put:
       tags: [organizer]
@@ -507,6 +596,8 @@ paths:
         Điều kiện: 0 ≤ `floorPrice` ≤ `basePrice` ≤ `ceilingPrice`.
         Đổi `basePrice` thì mọi ghế còn trống trong khu vực nhận giá mới,
         và một dòng `MANUAL` được ghi vào `price_changes`.
+        Luồng SSE gửi `zone_repriced`.
+        Lưu giá cũng là duyệt giá sàn, giá trần cho chế độ định giá Tự động.
       operationId: updateZonePricing
       x-feature: [organizer_console, zone_pricing]
       x-roles: [ORGANIZER, ADMIN]
@@ -550,6 +641,486 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: '`event_not_found`, `zone_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/events/{id}/pricing:
+    get:
+      tags: [pricing]
+      summary: Tổng quan định giá động của một sự kiện (FR-22)
+      description: |
+        Phân tích lại ngay lúc gọi, không đổi giá.
+        Mỗi khu vực có giá đang bán, khoảng đã duyệt, tồn kho, tốc độ bán,
+        đề xuất của AI và đề xuất đang chờ duyệt.
+        Kèm số lượt xem, giữ ghế, vé bán theo giờ trong 48 giờ qua.
+      operationId: getPricingOverview
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '200':
+          description: Tổng quan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/organizer/events/{id}/pricing/settings:
+    put:
+      tags: [pricing]
+      summary: Chọn chế độ định giá của sự kiện
+      description: |
+        Tắt: `enabled=false`. Thủ công có đề xuất: `enabled=true, autoAdjust=false`.
+        Tự động: `enabled=true, autoAdjust=true`; mọi khu vực tham gia phải đã duyệt giá sàn, giá trần.
+        Bật cho sự kiện chưa có khu vực nào tham gia thì mọi khu vực cùng tham gia.
+        Tắt hoặc chuyển sang Tự động thì các đề xuất đang chờ hết hạn.
+      operationId: updatePricingSettings
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingSettings'
+      responses:
+        '200':
+          description: Đã lưu, kèm tổng quan mới
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingOverview'
+        '400':
+          description: '`invalid_payload` hoặc `invalid_pricing_settings`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+        '409':
+          description: '`bounds_not_approved`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/events/{id}/zones/{zoneId}/dynamic-pricing:
+    put:
+      tags: [pricing]
+      summary: Cho một khu vực tham gia định giá động hoặc không
+      operationId: setZoneIncluded
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+        - name: zoneId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [included]
+              properties:
+                included:
+                  type: boolean
+      responses:
+        '204':
+          description: Đã lưu
+        '400':
+          description: '`invalid_payload`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+        '409':
+          description: '`bounds_not_approved`: đang Tự động mà khu vực chưa duyệt giá sàn, giá trần'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/events/{id}/pricing/analyze:
+    post:
+      tags: [pricing]
+      summary: Chạy job định giá cho sự kiện ngay
+      description: Giống một lần chạy định kỳ, theo chế độ hiện tại. Trả tổng quan sau khi chạy.
+      operationId: analyzePricing
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '200':
+          description: Tổng quan sau khi chạy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/organizer/events/{id}/pricing/history:
+    get:
+      tags: [pricing]
+      summary: Nhật ký giá của sự kiện, mới nhất trước (FR-20)
+      operationId: listPriceHistory
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Các lần đổi giá
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriceChange'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/organizer/events/{id}/pricing/alerts:
+    get:
+      tags: [pricing]
+      summary: Thông báo định giá của sự kiện, mới nhất trước
+      operationId: listPricingAlerts
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Thông báo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PricingAlert'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/organizer/events/{id}/pricing/alerts/read:
+    post:
+      tags: [pricing]
+      summary: Đánh dấu mọi thông báo của sự kiện là đã đọc
+      operationId: readAllPricingAlerts
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '204':
+          description: Đã đánh dấu
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/organizer/pricing/alerts/{id}/read:
+    post:
+      tags: [pricing]
+      summary: Đánh dấu một thông báo là đã đọc
+      operationId: readPricingAlert
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Đã đánh dấu
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          description: '`alert_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/events/{id}/pricing/stream:
+    get:
+      tags: [pricing]
+      summary: Luồng SSE cho trang định giá của BTC
+      description: |
+        Mỗi sự kiện SSE `update` mang một `SeatUpdate` có `type` là `pricing_alert` hoặc `pricing_update`.
+        Trang BTC tải lại tổng quan khi nhận.
+        Luồng SSE công khai `GET /api/events/{id}/stream` không bao giờ nhận các tin này.
+      operationId: streamPricing
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '200':
+          description: Luồng `text/event-stream`
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotEventOrganizer'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/organizer/events/{id}/pricing/suggestions:
+    get:
+      tags: [pricing]
+      summary: Đề xuất giá đang chờ duyệt của một sự kiện (FR-22)
+      description: |
+        Job định giá chạy 5 phút một lần và chỉ tính khu vực có `is_dynamic_pricing_enabled`.
+        Mỗi khu vực có tối đa một đề xuất `PENDING`.
+        Lần chạy sau cập nhật đề xuất đó bằng số liệu mới.
+      operationId: listPriceSuggestions
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '200':
+          description: Danh sách đề xuất, xếp theo mã khu vực
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriceSuggestion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` hoặc `not_event_organizer`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`event_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/suggestions/{id}/approve:
+    post:
+      tags: [pricing]
+      summary: Duyệt đề xuất giá (FR-22, W-01)
+      description: |
+        Giá cơ bản của khu vực đổi sang giá đề xuất.
+        Mọi ghế `AVAILABLE` trong khu vực nhận giá mới, ghế `HELD` giữ giá cũ.
+        Một dòng `SUGGESTION` được ghi vào `price_changes`, kèm lý do của đề xuất.
+        Luồng SSE gửi `zone_repriced`.
+        Trả `409 suggestion_stale` khi giá cơ bản đã đổi sau lúc tạo đề xuất,
+        hoặc khi giá đề xuất nằm ngoài giá sàn, giá trần hiện tại.
+      operationId: approvePriceSuggestion
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/SuggestionId'
+      responses:
+        '200':
+          description: Đã duyệt, kèm giá cơ bản mới
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewedSuggestion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` hoặc `not_event_organizer`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`suggestion_not_found`, `zone_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`suggestion_not_pending` hoặc `suggestion_stale`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/organizer/suggestions/{id}/reject:
+    post:
+      tags: [pricing]
+      summary: Từ chối đề xuất giá (FR-22)
+      description: Đề xuất chuyển sang `REJECTED`, giá không đổi.
+      operationId: rejectPriceSuggestion
+      x-feature: [organizer_console, dynamic_pricing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/SuggestionId'
+      responses:
+        '200':
+          description: Đã từ chối
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewedSuggestion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: '`forbidden` hoặc `not_event_organizer`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: '`suggestion_not_found` hoặc `feature_disabled`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`suggestion_not_pending`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/recommendations/events:
+    get:
+      tags: [recommendations]
+      summary: Gợi ý sự kiện
+      description: |
+        Đã đăng nhập: gợi ý theo lượt xem, giữ ghế và vé đã mua.
+        Chưa đăng nhập hoặc chưa có lịch sử: các sự kiện đang được quan tâm nhất.
+        Bỏ qua sự kiện đã mua vé và sự kiện hết ghế.
+      operationId: listRecommendations
+      x-feature: [recommendations]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 6
+            maximum: 24
+      responses:
+        '200':
+          description: Gợi ý, xếp theo điểm
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecommendedEvent'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/events/{id}/views:
+    post:
+      tags: [recommendations]
+      summary: Ghi một lượt xem sự kiện của người đang đăng nhập
+      description: Mỗi người, mỗi sự kiện tính một lần mỗi 30 phút.
+      operationId: recordEventView
+      x-feature: [recommendations]
+      x-roles: [CUSTOMER, ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EventRef'
+      responses:
+        '204':
+          description: Đã ghi
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: '`event_not_found` hoặc `feature_disabled`'
           content:
             application/json:
               schema:
@@ -715,8 +1286,29 @@ components:
       description: UUID hoặc slug của sự kiện
       schema:
         type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        maximum: 500
+    SuggestionId:
+      name: id
+      in: path
+      required: true
+      description: UUID của đề xuất giá
+      schema:
+        type: string
+        format: uuid
 
   responses:
+    NotEventOrganizer:
+      description: '`forbidden` (sai vai trò) hoặc `not_event_organizer` (không phải BTC của sự kiện)'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     Error:
       description: Lỗi, mã nằm trong trường `error`
       content:
@@ -954,13 +1546,20 @@ components:
       properties:
         type:
           type: string
-          enum: [seat_held, seat_released, seat_expired]
+          enum: [seat_held, seat_released, seat_expired, zone_repriced]
+          description: |
+            `zone_repriced` không có `seatId` và `status`.
+            Trình duyệt tải lại sơ đồ ghế để lấy giá mới.
         eventId:
           type: string
           format: uuid
         seatId:
           type: string
           format: uuid
+        zoneId:
+          type: string
+          format: uuid
+          description: Chỉ có ở `zone_repriced`
         status:
           type: string
           enum: [AVAILABLE, HELD, SOLD]
@@ -987,6 +1586,129 @@ components:
           type: string
         venueName:
           type: string
+        endsAt:
+          type: string
+          format: date-time
+        genre:
+          type: string
+        city:
+          type: string
+        venueAddress:
+          type: string
+        unreadAlerts:
+          type: integer
+          description: Thông báo định giá chưa đọc
+        capacity:
+          type: integer
+        available:
+          type: integer
+        held:
+          type: integer
+        sold:
+          type: integer
+
+    EventInfo:
+      type: object
+      required: [name, startsAt, endsAt, status, maxTicketsPerUser, venueName]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 10000
+        genre:
+          type: string
+          maxLength: 100
+        imageUrl:
+          type: string
+          description: Trống, đường dẫn bắt đầu bằng `/`, hoặc URL http(s)
+        imageCredit:
+          type: string
+          maxLength: 500
+        city:
+          type: string
+          maxLength: 100
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+          description: Sau `startsAt`
+        salesStartsAt:
+          type: string
+          format: date-time
+          nullable: true
+        salesEndsAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Sau `salesStartsAt`, không sau `endsAt`
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        maxTicketsPerUser:
+          type: integer
+          minimum: 1
+          maximum: 20
+        venueName:
+          type: string
+          maxLength: 200
+        venueAddress:
+          type: string
+          maxLength: 500
+
+    ZoneInventory:
+      type: object
+      properties:
+        zoneId:
+          type: string
+          format: uuid
+        zoneCode:
+          type: string
+        zoneName:
+          type: string
+        floor:
+          type: string
+        basePrice:
+          type: integer
+          format: int64
+        floorPrice:
+          type: integer
+          format: int64
+        ceilingPrice:
+          type: integer
+          format: int64
+        dynamicPricing:
+          type: boolean
+        capacity:
+          type: integer
+        available:
+          type: integer
+        held:
+          type: integer
+        sold:
+          type: integer
+
+    OrganizerEventDetail:
+      allOf:
+        - $ref: '#/components/schemas/EventInfo'
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            slug:
+              type: string
+            venueShared:
+              type: boolean
+            updatedAt:
+              type: string
+              format: date-time
+            zones:
+              type: array
+              items:
+                $ref: '#/components/schemas/ZoneInventory'
 
     ZonePricing:
       type: object
@@ -1002,6 +1724,382 @@ components:
         ceilingPrice:
           type: integer
           format: int64
+
+    PriceSuggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        zoneId:
+          type: string
+          format: uuid
+        zoneCode:
+          type: string
+        zoneName:
+          type: string
+        currentPrice:
+          type: integer
+          format: int64
+          description: Giá cơ bản lúc tạo đề xuất (VND)
+        suggestedPrice:
+          type: integer
+          format: int64
+        reason:
+          type: string
+        metrics:
+          $ref: '#/components/schemas/PricingRecommendation'
+        createdAt:
+          type: string
+          format: date-time
+
+    ReviewedSuggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [APPROVED, REJECTED]
+        basePrice:
+          type: integer
+          format: int64
+          description: Giá cơ bản mới, chỉ có khi duyệt
+
+    PricingSettings:
+      type: object
+      required: [enabled, autoAdjust, maxStepPct, cooldownMinutes]
+      properties:
+        enabled:
+          type: boolean
+        autoAdjust:
+          type: boolean
+          description: Chế độ Tự động; cần `enabled`
+        maxStepPct:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: Bước đổi giá tối đa mỗi lần (%)
+        cooldownMinutes:
+          type: integer
+          minimum: 5
+          maximum: 1440
+          description: Thời gian chờ tối thiểu giữa hai lần đổi giá của một khu vực
+
+    PricingRecommendation:
+      type: object
+      description: Kết quả mô hình nhu cầu cho một khu vực (docs/dynamic-pricing.md, mục 4)
+      properties:
+        action:
+          type: string
+          enum: [INCREASE, DECREASE, MAINTAIN]
+        price:
+          type: integer
+          format: int64
+          description: Giá đề xuất; bằng giá hiện tại khi `MAINTAIN`
+        rangeLow:
+          type: integer
+          format: int64
+        rangeHigh:
+          type: integer
+          format: int64
+        suggestedFloor:
+          type: integer
+          format: int64
+        suggestedCeiling:
+          type: integer
+          format: int64
+        demandIndex:
+          type: number
+          description: 1 là đúng kế hoạch
+        demandLevel:
+          type: string
+          enum: [LOW, ON_TRACK, HIGH]
+        performance:
+          type: number
+          description: Tỷ lệ đã bán chia tỷ lệ kỳ vọng
+        actualShare:
+          type: number
+        expectedShare:
+          type: number
+        velocity:
+          type: number
+          description: Vé/giờ ước tính
+        requiredVelocity:
+          type: number
+          description: Vé/giờ cần để hết ghế trước giờ đóng bán
+        conversion:
+          type: number
+        confidence:
+          type: number
+        insufficientData:
+          type: boolean
+        salesClosed:
+          type: boolean
+        soldOut:
+          type: boolean
+        atFloor:
+          type: boolean
+        atCeiling:
+          type: boolean
+        factors:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                enum: [pace, trajectory, queue, held, interest]
+              value:
+                type: number
+              effect:
+                type: number
+                description: Đóng góp vào log chỉ số nhu cầu; dương là đẩy giá lên
+              text:
+                type: string
+        explanation:
+          type: string
+
+    ZonePricingView:
+      type: object
+      properties:
+        zoneId:
+          type: string
+          format: uuid
+        zoneCode:
+          type: string
+        zoneName:
+          type: string
+        included:
+          type: boolean
+        basePrice:
+          type: integer
+          format: int64
+          description: Giá đang bán
+        floorPrice:
+          type: integer
+          format: int64
+        ceilingPrice:
+          type: integer
+          format: int64
+        listPrice:
+          type: integer
+          format: int64
+          description: Giá trước lần đổi đầu tiên
+        boundsApprovedAt:
+          type: string
+          format: date-time
+        capacity:
+          type: integer
+        available:
+          type: integer
+        held:
+          type: integer
+        sold:
+          type: integer
+        holds1h:
+          type: integer
+        holds24h:
+          type: integer
+        sales24h:
+          type: integer
+        lastChangeAt:
+          type: string
+          format: date-time
+        autoBlockedBy:
+          type: string
+          enum: [cooldown, reversal_guard, insufficient_data, maintain, bounds_not_approved]
+          description: Vì sao chế độ Tự động chưa áp dụng đề xuất
+        recommendation:
+          $ref: '#/components/schemas/PricingRecommendation'
+        pending:
+          $ref: '#/components/schemas/PriceSuggestion'
+
+    PricingOverview:
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventName:
+          type: string
+        mode:
+          type: string
+          enum: [OFF, MANUAL, AUTO]
+        enabled:
+          type: boolean
+        autoAdjust:
+          type: boolean
+        maxStepPct:
+          type: integer
+        cooldownMinutes:
+          type: integer
+        salesOpenAt:
+          type: string
+          format: date-time
+        salesCloseAt:
+          type: string
+          format: date-time
+        paymentsLive:
+          type: boolean
+        unreadAlerts:
+          type: integer
+        analyzedAt:
+          type: string
+          format: date-time
+        zones:
+          type: array
+          items:
+            $ref: '#/components/schemas/ZonePricingView'
+        demand:
+          type: array
+          description: Theo giờ, 48 giờ qua
+          items:
+            type: object
+            properties:
+              at:
+                type: string
+                format: date-time
+              holds:
+                type: integer
+              sales:
+                type: integer
+              views:
+                type: integer
+
+    PriceChange:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        zoneId:
+          type: string
+          format: uuid
+        zoneCode:
+          type: string
+        zoneName:
+          type: string
+        oldPrice:
+          type: integer
+          format: int64
+        newPrice:
+          type: integer
+          format: int64
+        trigger:
+          type: string
+          enum: [MANUAL, SUGGESTION, AUTO]
+        details:
+          type: string
+        changedBy:
+          type: string
+          format: uuid
+          description: Trống khi hệ thống tự đổi
+        changedByName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PricingAlert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        zoneId:
+          type: string
+          format: uuid
+        zoneCode:
+          type: string
+        zoneName:
+          type: string
+        kind:
+          type: string
+          enum: [SELLING_FAST, SELLING_SLOW, RECOMMENDATION, AUTO_ADJUSTED, AT_CEILING, AT_FLOOR, INSUFFICIENT_DATA, BOUNDS_NOT_APPROVED]
+        message:
+          type: string
+        data:
+          type: object
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    RecommendedEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        genre:
+          type: string
+        city:
+          type: string
+        imageUrl:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        venueName:
+          type: string
+        priceFrom:
+          type: integer
+          format: int64
+        score:
+          type: number
+          description: Điểm xếp hạng, 0–100
+        fit:
+          type: number
+          description: Độ hợp với người dùng, 0–100; quyết định tầng
+        tier:
+          type: string
+          enum: [TOP_PICK, TRENDING, DISCOVERY, MORE, POPULAR]
+        personalized:
+          type: boolean
+        popularity:
+          type: number
+        criteria:
+          type: object
+          properties:
+            affinity:
+              type: number
+            budget:
+              type: number
+            geo:
+              type: number
+            availability:
+              type: number
+            fill:
+              type: number
+        bestZone:
+          type: object
+          properties:
+            zoneId:
+              type: string
+              format: uuid
+            zoneCode:
+              type: string
+            zoneName:
+              type: string
+            price:
+              type: integer
+              format: int64
+            available:
+              type: integer
+        reasons:
+          type: array
+          items:
+            type: string
 
     CancelTicketRequest:
       type: object

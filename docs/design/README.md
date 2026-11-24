@@ -35,8 +35,9 @@ Khi cờ tắt:
 | `ceo_dashboard` | FR-19 | 5 | Dashboard doanh thu |
 | `price_log` | FR-20, NFR-12 | 5 | Trang xem nhật ký giá |
 | `reports_export` | FR-21 | 5 | Xuất báo cáo CSV/XLSX |
-| `dynamic_pricing` | FR-22, W-01 | 5 | Đề xuất giá, BTC duyệt |
+| `dynamic_pricing` | FR-22, W-01 | 5 | Đề xuất giá; BTC duyệt, hoặc tự động trong khoảng BTC đã duyệt |
 | `promo_suggestions` | FR-23 | 5 | Gợi ý khuyến mãi |
+| `recommendations` | — | 5 | Gợi ý sự kiện theo hành vi người dùng |
 
 FR-02 (danh sách sự kiện) luôn bật.
 Nhật ký giá luôn ghi, cờ `price_log` chỉ ẩn/hiện trang xem.
@@ -162,10 +163,12 @@ Mọi image Docker đều ghim phiên bản cụ thể.
 6. Đặt giá từng khu vực: giá cơ bản, giá sàn, giá trần.
    Điều kiện: sàn ≤ cơ bản ≤ trần.
 7. Mở bán, tạm dừng, kết thúc bán.
-8. Xem đề xuất giá: giá mới, lý do, số liệu dẫn tới đề xuất.
-9. Duyệt hoặc từ chối đề xuất.
+8. Chọn chế độ định giá cho từng sự kiện: Tắt (mặc định), Thủ công có đề xuất, hoặc Tự động.
+9. Chế độ Thủ công: xem đề xuất giá (giá mới, lý do, số liệu), rồi duyệt hoặc bỏ qua.
    Chỉ khi duyệt, giá các ghế chưa bán trong khu vực mới thay đổi.
-   Mọi lần đổi giá đều ghi vào `price_changes`.
+10. Chế độ Tự động: duyệt giá sàn, giá trần của từng khu vực trước khi bật.
+    Hệ thống tự đổi giá trong khoảng đó, mỗi lần một bước, có thời gian chờ.
+11. Mọi lần đổi giá đều ghi vào `price_changes`, kèm nguồn (`MANUAL`, `SUGGESTION`, `AUTO`) và lý do.
 
 ### 4.3 CEO
 
@@ -218,6 +221,11 @@ Thay đổi so với ERD Sprint 1:
 | `events` | Thêm `genre`, `image_url`, `city` | Dữ liệu cho trang chủ |
 | `events` | Thêm `waiting_room_enabled`, `waiting_room_capacity` | Cấu hình phòng chờ |
 | `price_suggestions` | Bảng mới | Đề xuất giá chờ BTC duyệt (W-01) |
+| `event_pricing_settings` | Bảng mới | Chế độ định giá của từng sự kiện |
+| `event_zones` | Thêm `bounds_approved_at`, `bounds_approved_by` | BTC đã duyệt giá sàn, giá trần |
+| `price_changes` | Thêm `details` | Lý do của lần đổi giá |
+| `zone_demand_state`, `pricing_alerts` | Bảng mới | Chỉ số nhu cầu đã làm mượt, thông báo cho BTC |
+| `event_views` | Bảng mới | Lượt xem, dữ liệu cho gợi ý sự kiện |
 | `price_changes`, `audit_logs` | Trigger chặn sửa và xóa | Nhật ký không thể sửa (NFR-12) |
 
 Sơ đồ ERD sinh trực tiếp từ database đang chạy.
@@ -271,7 +279,10 @@ Kết quả:
 - luôn nằm trong khoảng [giá sàn, giá trần];
 - lệch dưới 5% so với giá hiện tại thì bỏ qua.
 
-Hệ thống không bao giờ tự đổi giá. BTC phải duyệt.
+Định giá mặc định tắt cho mọi sự kiện.
+Chế độ Thủ công không bao giờ tự đổi giá: BTC phải duyệt.
+Chế độ Tự động chỉ chạy khi BTC tự bật và đã duyệt giá sàn, giá trần của từng khu vực.
+Chi tiết mô hình ở `docs/dynamic-pricing.md`.
 
 ### Phòng chờ (FR-09)
 
@@ -310,6 +321,9 @@ Hệ thống không bao giờ tự đổi giá. BTC phải duyệt.
 | | `/api/organizer/events/{id}/pricing/…` |
 | | `POST /api/organizer/suggestions/{id}/approve` |
 | | `POST /api/organizer/suggestions/{id}/reject` |
+| | `/api/organizer/pricing/alerts/…` |
+| Gợi ý | `GET /api/recommendations/events` |
+| | `POST /api/events/{id}/views` |
 | Soát vé | `GET /api/gate/events/{id}/manifest` |
 | | `POST /api/gate/checkins` |
 | | `POST /api/gate/sync` |
@@ -336,7 +350,7 @@ Hệ thống không bao giờ tự đổi giá. BTC phải duyệt.
 | File | Nội dung |
 |---|---|
 | `spec.md` | FR, NFR và trạng thái từng yêu cầu |
-| `dynamic-pricing.md` | Bài toán và thiết kế Định giá động |
+| `dynamic-pricing.md` | Định giá động và Gợi ý sự kiện |
 | `use-cases.md` | Sơ đồ và đặc tả Use Case |
 | `dfd.md` | DFD mức ngữ cảnh, mức 0, mức 1 |
 | `erd.md` | ERD sinh từ database |
