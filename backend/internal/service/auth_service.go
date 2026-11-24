@@ -237,22 +237,47 @@ func (s *AuthService) VerifyOTP(ctx context.Context, destination, code, ipAddres
 	return rawToken, &user, nil
 }
 
-// DemoLogin signs in a new customer account without OTP. Each visitor gets
-// their own account, so one visitor's holds or demo reset never touch another's.
-func (s *AuthService) DemoLogin(ctx context.Context, ipAddress, userAgent string) (string, *store.User, error) {
-	token, err := GenerateToken()
-	if err != nil {
-		return "", nil, err
-	}
-	user, err := s.queries.CreateUser(ctx, store.CreateUserParams{
-		Role:            store.UserRoleCUSTOMER,
-		Status:          store.UserStatusACTIVE,
-		Email:           pgtype.Text{String: "demo-" + token[:12] + "@demo.invalid", Valid: true},
-		FullName:        pgtype.Text{String: "Khán giả demo", Valid: true},
-		EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-	})
-	if err != nil {
-		return "", nil, fmt.Errorf("create demo user: %w", err)
+// DemoLogin signs in a demo account without OTP (development/demo mode only).
+// Customer demo logins create an isolated account per visitor; organizer demo logins
+// reuse the seeded organizer account so they can manage events.
+func (s *AuthService) DemoLogin(ctx context.Context, role, ipAddress, userAgent string) (string, *store.User, error) {
+	var user store.User
+	var err error
+
+	if strings.EqualFold(strings.TrimSpace(role), "ORGANIZER") {
+		const orgEmail = "btc@cosh301.nhansp.id.vn"
+		user, err = s.findUser(ctx, orgEmail, "EMAIL")
+		if errors.Is(err, pgx.ErrNoRows) {
+			user, err = s.queries.CreateUser(ctx, store.CreateUserParams{
+				Role:            store.UserRoleORGANIZER,
+				Status:          store.UserStatusACTIVE,
+				Email:           pgtype.Text{String: orgEmail, Valid: true},
+				FullName:        pgtype.Text{String: "Ban Tổ chức", Valid: true},
+				EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+			})
+			if err != nil {
+				return "", nil, fmt.Errorf("create demo organizer: %w", err)
+			}
+		} else if err != nil {
+			return "", nil, fmt.Errorf("lookup demo organizer: %w", err)
+		} else if user.Status != store.UserStatusACTIVE {
+			return "", nil, ErrAccountInactive
+		}
+	} else {
+		token, genErr := GenerateToken()
+		if genErr != nil {
+			return "", nil, genErr
+		}
+		user, err = s.queries.CreateUser(ctx, store.CreateUserParams{
+			Role:            store.UserRoleCUSTOMER,
+			Status:          store.UserStatusACTIVE,
+			Email:           pgtype.Text{String: "demo-" + token[:12] + "@demo.invalid", Valid: true},
+			FullName:        pgtype.Text{String: "Khán giả demo", Valid: true},
+			EmailVerifiedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		})
+		if err != nil {
+			return "", nil, fmt.Errorf("create demo user: %w", err)
+		}
 	}
 
 	if err := s.queries.UpdateUserLastLogin(ctx, user.ID); err != nil {

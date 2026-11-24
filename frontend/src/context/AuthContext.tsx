@@ -10,7 +10,7 @@ interface AuthContextType {
   /** Signs in with a login code. Succeeds only when the server opened a session. */
   verifyOtp: (destination: string, code: string) => Promise<OtpResult>;
   /** One-click demo account; only call it when `/api/features` reports `demoLogin`. */
-  demoLogin: () => Promise<OtpResult>;
+  demoLogin: (role?: 'CUSTOMER' | 'ORGANIZER') => Promise<OtpResult>;
   /** Drops the signed-in user after the server reports the session is gone. */
   sessionExpired: () => void;
   logout: () => void;
@@ -118,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const verifyOtp = (destination: string, code: string) => signIn('/api/auth/otp/verify', { destination, code });
-  const demoLogin = () => signIn('/api/auth/demo-login', {});
+  const demoLogin = (role: 'CUSTOMER' | 'ORGANIZER' = 'CUSTOMER') => signIn('/api/auth/demo-login', { role });
   const sessionExpired = () => setUser(null);
 
   const logout = () => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Phone, Mail, ArrowLeft, Sparkles, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
+import { Phone, Mail, ArrowLeft, Sparkles, ShieldCheck, AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEvents } from '../context/EventContext';
 import { useFeatures } from '../context/FeatureContext';
@@ -12,7 +12,7 @@ export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
   const navigate = useNavigate();
-  const { isAuthenticated, requestOtp, verifyOtp, demoLogin } = useAuth();
+  const { user, isAuthenticated, requestOtp, verifyOtp, demoLogin } = useAuth();
   const { getEventById, events } = useEvents();
   const { isEnabled, demoLogin: demoLoginEnabled, isLoading: featuresLoading } = useFeatures();
 
@@ -48,9 +48,11 @@ export const LoginPage: React.FC = () => {
   // If already authenticated, redirect immediately
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(redirectUrl, { replace: true });
+      const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
+      const target = isOrganizer && redirectUrl === '/' ? '/organizer' : redirectUrl;
+      navigate(target, { replace: true });
     }
-  }, [isAuthenticated, navigate, redirectUrl]);
+  }, [isAuthenticated, user?.role, navigate, redirectUrl]);
 
   // Countdown timer for OTP resend
   useEffect(() => {
@@ -146,10 +148,10 @@ export const LoginPage: React.FC = () => {
     else setErrorMsg(res.error ?? null);
   };
 
-  const handleQuickDemoLogin = async () => {
+  const handleQuickDemoLogin = async (role: 'CUSTOMER' | 'ORGANIZER' = 'CUSTOMER') => {
     setErrorMsg(null);
     setIsSending(true);
-    const res = await demoLogin();
+    const res = await demoLogin(role);
     setIsSending(false);
     if (!res.ok) setErrorMsg(res.error ?? null);
   };
@@ -434,17 +436,28 @@ export const LoginPage: React.FC = () => {
           )}
 
           {demoLoginEnabled && (
-            <div className="mt-6 pt-5 border-t border-kumo-hairline">
-              <button
-                type="button"
-                onClick={handleQuickDemoLogin}
-                disabled={isSending}
-                className="btn btn-secondary w-full"
-              >
-                <Sparkles className="w-4 h-4 text-kumo-warning" />
-                <span>Đăng nhập thử nhanh (Demo 1-Click)</span>
-              </button>
-              <p className="text-xs text-kumo-subtle mt-2 text-center">Chỉ có ở máy chủ thử nghiệm, dùng tài khoản khán giả mẫu.</p>
+            <div className="mt-6 pt-5 border-t border-kumo-hairline space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickDemoLogin('CUSTOMER')}
+                  disabled={isSending}
+                  className="btn btn-secondary w-full text-sm"
+                >
+                  <Sparkles className="w-4 h-4 text-kumo-warning shrink-0" />
+                  <span>Demo Khán giả</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickDemoLogin('ORGANIZER')}
+                  disabled={isSending}
+                  className="btn btn-secondary w-full text-sm"
+                >
+                  <ShieldCheck className="w-4 h-4 text-violet-ink shrink-0" />
+                  <span>Demo Ban Tổ Chức</span>
+                </button>
+              </div>
+              <p className="text-xs text-kumo-subtle text-center">Chỉ có ở máy chủ thử nghiệm, tạo phiên đăng nhập trực tiếp không cần OTP.</p>
             </div>
           )}
         </div>
