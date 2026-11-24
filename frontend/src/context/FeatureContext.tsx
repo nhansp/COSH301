@@ -7,7 +7,8 @@ export type FeatureFlag =
   | 'zone_pricing'
   | 'organizer_console'
   | 'ticket_limit'
-  | 'payments';
+  | 'payments'
+  | 'chatbot';
 
 interface FeatureContextType {
   isLoading: boolean;
