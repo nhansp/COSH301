@@ -2,9 +2,9 @@
 
 **Đề tài:** Thiết kế hệ thống đặt vé trực tuyến cho sự kiện (EventTicketing)
 **Học phần:** Phân tích và thiết kế hệ thống · Giảng viên hướng dẫn: TS. Phạm Thị Kim Dung
-**Thời lượng:** khoảng 16 phút trình bày và 5 phút demo, sau đó là phần hỏi đáp.
+**Thời lượng:** khoảng 17 phút trình bày và 5 phút demo, sau đó là phần hỏi đáp.
 
-Kịch bản đi theo đúng thứ tự slide trong thư mục `slides/`.
+Kịch bản đi theo đúng thứ tự 27 slide trong thư mục `slides/`.
 Mỗi slide ghi người trình bày, thời lượng và lời nói gợi ý.
 Không cần đọc thuộc lòng, chỉ cần nói đủ ý.
 
@@ -14,11 +14,11 @@ Không cần đọc thuộc lòng, chỉ cần nói đủ ý.
 
 | Người trình bày | Slide | Demo | Câu hỏi phụ trách |
 |---|---|---|---|
-| Vũ Đức Huy | 1, 13 – 16, 20, 26 | Trợ lý ảo, nhật ký giá | Câu 1, 2, 7 |
+| Vũ Đức Huy | 1, 13 – 16, 20, 27 | Trợ lý ảo, nhật ký giá | Câu 1, 2, 7 |
 | Lê Đức Anh | 2, 3, 11, 21 | — | — |
 | Đinh Tiến Thành | 4, 5, 6, 24 | Khảo sát người dùng | — |
 | Trần Trung Nhân | 7 – 10 | Khách hàng, ứng dụng OTP, thanh toán | Câu 4, 5, 6, 8 |
-| Nguyễn Đức Phúc | 12, 19, 22, 25 | — | — |
+| Nguyễn Đức Phúc | 12, 19, 22, 25, 26 | — | — |
 | Nguyễn Anh Dũng | 17, 18, 23 | Ban Tổ chức, kiểm thử tải, định giá động | Câu 3 |
 
 ## Điều khiển slide
@@ -116,10 +116,13 @@ Không cần đọc thuộc lòng, chỉ cần nói đủ ý.
 **Slide 24 – Kiểm thử người dùng** · Đinh Tiến Thành · 40 giây
 > Với kiểm thử người dùng, nhóm mời 5 đến 8 bạn trong lớp làm bốn nhiệm vụ: đăng nhập, giữ ghế, thanh toán thử và xem vé. Sau đó các bạn điền phiếu SUS ngay trong ứng dụng; Ban Tổ chức xem được điểm SUS, tỉ lệ hoàn thành và góp ý. Kết quả sẽ được cập nhật vào báo cáo sau buổi kiểm thử.
 
-**Slide 25 – Hạn chế và bài học** · Nguyễn Đức Phúc · 45 giây
+**Slide 25 – Kế hoạch và tiến độ theo sprint** · Nguyễn Đức Phúc · 40 giây
+> Dự án chia năm sprint trong 12 tuần, ước lượng 472 giờ công. Sprint 1 và Sprint 2 đã xong. Nhóm làm sớm một số phần của các sprint sau: trợ lý ảo của Sprint 3 và thanh toán VNPay ở môi trường thử của Sprint 4. Sprint 5 gồm soát vé, bảng doanh thu và báo cáo, hiện chưa làm. Bảng phân rã công việc và giờ công từng người có trong bảng 14 và bảng 15 của báo cáo.
+
+**Slide 26 – Hạn chế và bài học** · Nguyễn Đức Phúc · 45 giây
 > Hệ thống còn một số hạn chế: chưa có SMS thật, thanh toán ở môi trường thử và chưa hoàn tiền tự động, chưa có soát vé và bảng doanh thu, và chỉ chạy trên một máy ảo. Bài học lớn nhất của nhóm là tận dụng tốt PostgreSQL giúp hệ thống vừa đơn giản vừa an toàn, phân lớp BCE giúp dễ kiểm thử, và cờ tính năng giúp nghiệm thu từng sprint.
 
-**Slide 26 – Cảm ơn** · Vũ Đức Huy · 10 giây
+**Slide 27 – Cảm ơn** · Vũ Đức Huy · 10 giây
 > Phần trình bày của nhóm đến đây là hết. Em cảm ơn cô và các bạn đã lắng nghe, mời cô xem phần demo.
 
 ---

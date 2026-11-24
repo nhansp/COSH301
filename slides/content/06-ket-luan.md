@@ -29,6 +29,20 @@ Nếu được hỏi về lần đo đầu ra 3 người thắng: ba người đ
 NOTES:
 Nhóm không đưa số liệu khi chưa có người dùng thật tham gia. Kế hoạch chi tiết ở docs/testing.md.
 
+=== id=sprints layout=default speaker=phuc time=40 kicker="Kết luận"
+## Kế hoạch và tiến độ theo sprint
+| Sprint | Nội dung chính | Hiện trạng |
+|---|---|---|
+| 1 (2 tuần) | Khảo sát, đặc tả yêu cầu, DFD, ERD, giao diện mẫu | [[ok:Xong]] |
+| 2 (3 tuần) | Giữ ghế, chống bán trùng, sơ đồ ghế thời gian thực, OTP, giá khu, định giá động | [[ok:Xong]] |
+| 3 (2 tuần) | Phòng chờ ảo, chặn bot, giới hạn vé, trợ lý ảo | [[wip:Một phần]] trợ lý ảo đã chạy |
+| 4 (2 tuần) | Thanh toán, vé điện tử, đối soát hoàn tiền | [[wip:Một phần]] VNPay môi trường thử |
+| 5 (3 tuần) | Soát vé, bảng doanh thu, báo cáo | [[todo:Chưa làm]] |
+
+Tổng cộng 12 tuần, ước lượng 472 giờ công cho 6 thành viên.
+NOTES:
+Bảng phân rã công việc Sprint 2 (T01 đến T14) và phân bổ giờ công từng người nằm ở bảng 14 và bảng 15 của báo cáo. Phần làm sớm hơn kế hoạch: định giá động, trợ lý ảo và thanh toán VNPay.
+
 === id=limits layout=default speaker=phuc time=45 kicker="Kết luận"
 ## Hạn chế và bài học
 |||
