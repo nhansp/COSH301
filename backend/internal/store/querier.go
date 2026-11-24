@@ -24,6 +24,7 @@ type Querier interface {
 	CountUserHeldAndBoughtTickets(ctx context.Context, arg CountUserHeldAndBoughtTicketsParams) (int32, error)
 	CountWaitingQueue(ctx context.Context, eventID pgtype.UUID) (int32, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
+	CreateFeedback(ctx context.Context, arg CreateFeedbackParams) (FeedbackResponse, error)
 	CreateOTP(ctx context.Context, arg CreateOTPParams) (OtpVerification, error)
 	CreateOTPAppDelivery(ctx context.Context, arg CreateOTPAppDeliveryParams) error
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
@@ -87,6 +88,7 @@ type Querier interface {
 	ListAuditLogsByEvent(ctx context.Context, arg ListAuditLogsByEventParams) ([]AuditLog, error)
 	ListAuditLogsByUser(ctx context.Context, arg ListAuditLogsByUserParams) ([]AuditLog, error)
 	ListEventZonesWithPrices(ctx context.Context, eventID pgtype.UUID) ([]ListEventZonesWithPricesRow, error)
+	ListFeedback(ctx context.Context) ([]FeedbackResponse, error)
 	ListMyActiveHolds(ctx context.Context, userID pgtype.UUID) ([]ListMyActiveHoldsRow, error)
 	ListOrderHoldIDs(ctx context.Context, orderID pgtype.UUID) ([]pgtype.UUID, error)
 	ListOrganizerEvents(ctx context.Context, arg ListOrganizerEventsParams) ([]ListOrganizerEventsRow, error)

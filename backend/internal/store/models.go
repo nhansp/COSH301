@@ -485,6 +485,33 @@ type EventZone struct {
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 }
 
+type FeedbackResponse struct {
+	ID         pgtype.UUID        `json:"id"`
+	TesterRole string             `json:"tester_role"`
+	TesterName pgtype.Text        `json:"tester_name"`
+	Device     pgtype.Text        `json:"device"`
+	SusQ1      int16              `json:"sus_q1"`
+	SusQ2      int16              `json:"sus_q2"`
+	SusQ3      int16              `json:"sus_q3"`
+	SusQ4      int16              `json:"sus_q4"`
+	SusQ5      int16              `json:"sus_q5"`
+	SusQ6      int16              `json:"sus_q6"`
+	SusQ7      int16              `json:"sus_q7"`
+	SusQ8      int16              `json:"sus_q8"`
+	SusQ9      int16              `json:"sus_q9"`
+	SusQ10     int16              `json:"sus_q10"`
+	TaskLogin  bool               `json:"task_login"`
+	TaskHold   bool               `json:"task_hold"`
+	TaskPay    bool               `json:"task_pay"`
+	TaskTicket bool               `json:"task_ticket"`
+	TimeLogin  pgtype.Int4        `json:"time_login"`
+	TimeHold   pgtype.Int4        `json:"time_hold"`
+	TimePay    pgtype.Int4        `json:"time_pay"`
+	TimeTicket pgtype.Int4        `json:"time_ticket"`
+	Comment    pgtype.Text        `json:"comment"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type GateDevice struct {
 	ID           pgtype.UUID        `json:"id"`
 	VenueID      pgtype.UUID        `json:"venue_id"`

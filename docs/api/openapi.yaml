@@ -26,6 +26,7 @@ tags:
   - name: tickets
   - name: payments
   - name: assistant
+  - name: feedback
 
 paths:
   /api/health:
@@ -1253,6 +1254,95 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/feedback:
+    post:
+      tags: [feedback]
+      summary: Gửi phản hồi kiểm thử với người dùng (thang SUS, các bước đã làm, góp ý)
+      description: |
+        Không cần đăng nhập. Mỗi IP gửi tối đa 20 lần mỗi giờ, quá thì trả `429 rate_limited`.
+        Mười câu SUS bắt buộc, mỗi câu từ 1 đến 5. Thời gian từng bước (giây) và góp ý có thể bỏ trống.
+        Server không lưu IP và không gắn phản hồi với tài khoản.
+      operationId: submitFeedback
+      x-feature: [user_testing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackInput'
+      responses:
+        '201':
+          description: Đã lưu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  susScore:
+                    type: number
+                    description: Điểm SUS của phản hồi, từ 0 đến 100
+        '400':
+          description: '`invalid_payload`, hoặc `invalid_feedback` kèm trường `field` là tên trường sai'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+        '429':
+          $ref: '#/components/responses/Error'
+
+  /api/feedback/summary:
+    get:
+      tags: [feedback]
+      summary: Tổng hợp kết quả khảo sát (điểm SUS, tỷ lệ hoàn thành, góp ý gần đây)
+      operationId: feedbackSummary
+      x-feature: [user_testing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      responses:
+        '200':
+          description: Chưa có phản hồi nào thì `sus` là `null` và `itemMeans` rỗng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedbackSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
+  /api/feedback/export.csv:
+    get:
+      tags: [feedback]
+      summary: Tải toàn bộ phản hồi dạng CSV (UTF-8 có BOM)
+      operationId: feedbackExport
+      x-feature: [user_testing]
+      x-roles: [ORGANIZER, ADMIN]
+      security:
+        - sessionCookie: []
+        - bearer: []
+      responses:
+        '200':
+          description: Mỗi dòng là một phản hồi, kèm cột `sus_score`
+          content:
+            text/csv:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/FeatureDisabled'
+
 components:
   securitySchemes:
     sessionCookie:
@@ -1326,6 +1416,90 @@ components:
             $ref: '#/components/schemas/Error'
 
   schemas:
+    FeedbackInput:
+      type: object
+      required: [testerRole, sus]
+      properties:
+        testerRole:
+          type: string
+          enum: [AUDIENCE, ORGANIZER]
+        testerName:
+          type: string
+          maxLength: 100
+        device:
+          type: string
+          enum: ['', PHONE, TABLET, LAPTOP]
+        sus:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items:
+            type: integer
+            minimum: 1
+            maximum: 5
+        tasks:
+          type: object
+          properties:
+            login: {type: boolean}
+            hold: {type: boolean}
+            pay: {type: boolean}
+            ticket: {type: boolean}
+        timesSec:
+          type: object
+          description: Số giây từng bước, từ 0 đến 3600, hoặc `null`
+          properties:
+            login: {type: integer, nullable: true}
+            hold: {type: integer, nullable: true}
+            pay: {type: integer, nullable: true}
+            ticket: {type: integer, nullable: true}
+        comment:
+          type: string
+          maxLength: 2000
+    FeedbackSummary:
+      type: object
+      properties:
+        count:
+          type: integer
+        byRole:
+          type: object
+          additionalProperties:
+            type: integer
+        sus:
+          nullable: true
+          type: object
+          properties:
+            mean: {type: number}
+            median: {type: number}
+            min: {type: number}
+            max: {type: number}
+        itemMeans:
+          type: array
+          items:
+            type: number
+        tasks:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                enum: [login, hold, pay, ticket]
+              done: {type: integer}
+              total: {type: integer}
+              rate: {type: number}
+              timedCount: {type: integer}
+              meanSeconds: {type: number, nullable: true}
+        recent:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string, format: uuid}
+              createdAt: {type: string, format: date-time}
+              testerRole: {type: string}
+              testerName: {type: string}
+              score: {type: number}
+              comment: {type: string}
     OtpAppPhone:
       type: object
       required: [phone]
