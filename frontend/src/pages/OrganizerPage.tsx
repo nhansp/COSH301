@@ -10,7 +10,6 @@ import {
   RefreshCw,
   SlidersHorizontal,
   Plus,
-  Wand2,
   ExternalLink,
   X
 } from 'lucide-react';
@@ -18,11 +17,9 @@ import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { Footer } from '../components/Footer';
 import { EventSalesDashboard, PortfolioSalesBanner } from '../components/organizer/OrganizerSalesDashboard';
-import { StageLayoutEditorPanel } from '../components/organizer/StageLayoutEditorPanel';
 import { useFeatures } from '../context/FeatureContext';
-import { useEvents } from '../context/EventContext';
 import { formatPrice, apiFetchSeats } from '../services/eventService';
-import { SeatItem, StageLayoutConfig } from '../types';
+import { SeatItem } from '../types';
 import { invalidateAssistantCache, openAssistant } from '../services/assistantService';
 import {
   CreatedOrganizerEvent,
@@ -182,7 +179,6 @@ export const OrganizerPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isEnabled, isLoading: featuresLoading } = useFeatures();
-  const { refreshEvents } = useEvents();
   const incomingCreated = (location.state as { createdEvent?: CreatedOrganizerEvent } | null)?.createdEvent ?? null;
   const initialCreatedIdRef = useRef<string | null>(incomingCreated?.id ?? null);
 
@@ -191,7 +187,7 @@ export const OrganizerPage: React.FC = () => {
   const [selected, setSelected] = useState<OrganizerEvent | null>(null);
   const [zones, setZones] = useState<OrganizerZone[]>([]);
   const [eventSeats, setEventSeats] = useState<SeatItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'layout' | 'pricing'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing'>('dashboard');
   const [createdBanner, setCreatedBanner] = useState<CreatedOrganizerEvent | null>(incomingCreated);
   const [focusedZoneId, setFocusedZoneId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -289,24 +285,6 @@ export const OrganizerPage: React.FC = () => {
   const handleSaved = (zoneId: string, pricing: ZonePricing) => {
     setZones(prev => prev.map(z => (z.zoneId === zoneId ? { ...z, ...pricing } : z)));
     invalidateAssistantCache();
-    loadOverview();
-  };
-
-  const handleLayoutSaved = (nextConfig: StageLayoutConfig) => {
-    if (selected) {
-      setOverview(prev =>
-        prev
-          ? {
-              ...prev,
-              events: prev.events.map(ev =>
-                ev.eventId === selected.id ? { ...ev, layoutConfig: nextConfig } : ev
-              )
-            }
-          : prev
-      );
-    }
-    invalidateAssistantCache();
-    refreshEvents();
     loadOverview();
   };
 
@@ -478,20 +456,6 @@ export const OrganizerPage: React.FC = () => {
                       <button
                         type="button"
                         role="tab"
-                        aria-selected={activeTab === 'layout'}
-                        onClick={() => setActiveTab('layout')}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                          activeTab === 'layout'
-                            ? 'bg-kumo-contrast text-kumo-inverse'
-                            : 'text-kumo-subtle hover:text-kumo-strong'
-                        }`}
-                      >
-                        <Wand2 className="size-3.5" />
-                        <span>Thiết kế sân khấu</span>
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
                         aria-selected={activeTab === 'pricing'}
                         onClick={() => setActiveTab('pricing')}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
@@ -525,12 +489,6 @@ export const OrganizerPage: React.FC = () => {
                       setActiveTab('pricing');
                     }}
                     onInspectPricing={handleInspectZonePricing}
-                  />
-                ) : activeTab === 'layout' && selectedSummary ? (
-                  <StageLayoutEditorPanel
-                    summary={selectedSummary}
-                    seats={eventSeats}
-                    onSaved={handleLayoutSaved}
                   />
                 ) : (
                   zones.map(zone => (
