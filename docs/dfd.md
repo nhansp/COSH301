@@ -423,9 +423,9 @@ Tên bảng viết đúng như trong migration.
 | D10 | `payments` | 5.0 | 4 |
 | D11 | `tickets` | 4.0, 5.0, 6.0 | 4 |
 | D12 | `gate_devices`, `checkins` | 6.0 | 5 |
-| D13 | `price_suggestions` | 7.0 | 5 |
+| D13 | `price_suggestions` | 7.0 | 2 |
 | D14 | `price_changes` | 2.0, 7.0, 8.0 | 2 |
-| D15 | `promotions`, `promotion_usages` | 7.0 | 5 |
+| D15 | `promotions`, `promotion_usages` | 7.0 | 2 |
 | D16 | `audit_logs` | 2.0, 9.0 | 4 |
 | D17 | `sales_snapshots` | 8.0 | 5 |
 
@@ -444,8 +444,9 @@ Ghi chú:
 | 2.0 | FR-02, FR-08 | 2 | luôn bật, `zone_pricing`, `organizer_console` |
 | 3.0 | FR-09 | 3 | `waiting_room` |
 | 4.0 | FR-03, FR-05, FR-06, FR-07, FR-11 | 2, 3 | `seat_map_realtime`, `seat_hold`, `ticket_limit` |
-| 5.0 | FR-12, FR-13, FR-14, FR-15 | 3, 4 | `rotating_qr`, `payments`, `ticket_email`, `reconciliation` |
+| 5.0 | FR-12, FR-13, FR-14, FR-15 | 2, 4 | `rotating_qr`, `payments`, `ticket_email`, `reconciliation` |
 | 6.0 | FR-16, FR-17, FR-18 | 5 | `gate_checkin`, `offline_checkin` |
-| 7.0 | FR-20, FR-22, FR-23 | 5 | `price_log`, `dynamic_pricing`, `promo_suggestions` |
+| 7.0 | FR-20, FR-22, FR-23 | 2, 5 | `dynamic_pricing`, `promo_suggestions`, `price_log` |
 | 8.0 | FR-19, FR-20, FR-21 | 5 | `ceo_dashboard`, `price_log`, `reports_export` |
 | 9.0 | phân quyền theo `users.role` | 2 | luôn bật |
+| Trợ lý Chatbot | FR-24 | 3 | `chatbot` |

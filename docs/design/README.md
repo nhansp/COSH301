@@ -4,7 +4,7 @@ Tài liệu gốc cho code ở `backend/` và `frontend/`.
 Mọi sơ đồ (Use Case, DFD, ERD, Class, Sequence, Kiến trúc) đều lấy từ tài liệu này hoặc sinh từ code.
 Vì vậy các sơ đồ luôn khớp nhau.
 
-Mã yêu cầu giữ nguyên theo tài liệu SA (System design): FR-01 … FR-23, NFR-01 … NFR-13, W-01 … W-05.
+Mã yêu cầu giữ nguyên theo tài liệu SA (System design): FR-01 … FR-24, NFR-01 … NFR-13, W-01 … W-05.
 
 ## 1. Phạm vi và cờ tính năng
 
@@ -23,10 +23,13 @@ Khi cờ tắt:
 | `seat_hold` | FR-06, FR-07, NFR-03 | 2 | Giữ ghế 5 phút, chống bán trùng |
 | `zone_pricing` | FR-08 | 2 | Giá sàn, giá trần theo khu vực |
 | `organizer_console` | FR-08 | 2 | BTC quản lý sự kiện, địa điểm, khu vực |
+| `rotating_qr` | FR-12, NFR-08 | 2 | QR đổi mỗi 30 giây |
+| `dynamic_pricing` | FR-22, W-01 | 2 | Đề xuất giá, BTC duyệt |
+| `promo_suggestions` | FR-23 | 2 | Gợi ý khuyến mãi |
 | `waiting_room` | FR-09, NFR-09 | 3 | Phòng chờ ảo |
 | `bot_check` | FR-10, NFR-07 | 3 | Chặn bot bằng Cloudflare Turnstile |
 | `ticket_limit` | FR-11 | 3 | Giới hạn vé mỗi tài khoản |
-| `rotating_qr` | FR-12, NFR-08 | 3 | QR đổi mỗi 30 giây |
+| `chatbot` | FR-24 | 3 | Trợ lý Chatbot AI hỗ trợ khán giả và Ban Tổ chức |
 | `payments` | FR-13 | 4 | Thanh toán MoMo, VNPAY |
 | `ticket_email` | FR-14 | 4 | Gửi vé qua email |
 | `reconciliation` | FR-15, NFR-04 | 4 | Đối soát, hoàn tiền |
@@ -35,8 +38,6 @@ Khi cờ tắt:
 | `ceo_dashboard` | FR-19 | 5 | Dashboard doanh thu |
 | `price_log` | FR-20, NFR-12 | 5 | Trang xem nhật ký giá |
 | `reports_export` | FR-21 | 5 | Xuất báo cáo CSV/XLSX |
-| `dynamic_pricing` | FR-22, W-01 | 5 | Đề xuất giá, BTC duyệt |
-| `promo_suggestions` | FR-23 | 5 | Gợi ý khuyến mãi |
 
 FR-02 (danh sách sự kiện) luôn bật.
 Nhật ký giá luôn ghi, cờ `price_log` chỉ ẩn/hiện trang xem.
@@ -316,6 +317,7 @@ Hệ thống không bao giờ tự đổi giá. BTC phải duyệt.
 | CEO | `GET /api/dashboard/stream` |
 | | `GET /api/reports/sales.csv` |
 | | `GET /api/reports/sales.xlsx` |
+| Trợ lý Chatbot | `POST /api/assistant/chat` |
 
 Đặc tả đầy đủ nằm ở `docs/api/openapi.yaml`, viết cùng lúc với code.
 

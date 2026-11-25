@@ -73,9 +73,9 @@
 
 #### `[Slide 5: Đặc tả yêu cầu & Phân loại MoSCoW]`
 * **Lời thoại**:
-  > *"Hệ thống được bóc tách khoa học thành **23 Yêu cầu Chức năng (FR)**, **13 Yêu cầu Phi chức năng (NFR)**, **7 User Stories** theo cú pháp Given-When-Then và **17 Use Cases** tổng thể.*
+  > *"Hệ thống được bóc tách khoa học thành **24 Yêu cầu Chức năng (FR)**, **13 Yêu cầu Phi chức năng (NFR)**, **7 User Stories** theo cú pháp Given-When-Then và **17 Use Cases** tổng thể.*
   > 
-  > *Theo `docs/spec.md`, ở mốc Sprint 2 có **6 yêu cầu đã xong** (FR-02 đến FR-07), **4 yêu cầu đang làm** (FR-01, FR-08, FR-11, FR-20) và **13 yêu cầu chưa làm**. Hệ thống có 19 cờ tính năng, profile `sprint2` bật 5 cờ."*
+  > *Theo `docs/spec.md`, hệ thống có **20 cờ tính năng**, trong đó profile `sprint2` bật **8 cờ** (bổ sung `rotating_qr`, `dynamic_pricing`, `promo_suggestions`), còn `chatbot` (FR-24) được phân bổ vào Sprint 3."*
 
 #### `[Slide 6: Cam kết chất lượng định lượng (SLA)]`
 * **Lời thoại**:

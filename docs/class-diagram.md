@@ -1,8 +1,8 @@
 # Sơ đồ lớp theo BCE (Boundary — Control — Entity)
 
 Sơ đồ lớp của backend, chia theo BCE như bài B05.
-Mục 2 và 3 vẽ đúng code đang có, tức phạm vi Sprint 2.
-Mục 5 liệt kê các lớp dự kiến cho Sprint 3–5, chưa có trong code.
+Mục 2 và 3 vẽ đúng code đang có trong `backend/internal/`.
+Mục 5 liệt kê các lớp dự kiến chưa có trong code.
 
 ## 1. Phân lớp
 
@@ -40,6 +40,7 @@ classDiagram
     class SystemHandler {
         <<boundary>>
         -FeatureManager features
+        -bool demoLogin
         +HandleHealth(w, r)
         +HandleFeatures(w, r)
     }
@@ -50,6 +51,7 @@ classDiagram
         -bool cookieSecure
         +HandleRequestOTP(w, r)
         +HandleVerifyOTP(w, r)
+        +HandleDemoLogin(w, r)
         +HandleMe(w, r)
         +HandleLogout(w, r)
         -session(w, r) GetSessionByTokenHashRow, bool
@@ -69,6 +71,7 @@ classDiagram
         -EventService eventService
         +HandleEventSeats(w, r)
         +HandleHolds(w, r)
+        +HandleMyHolds(w, r, sess)
     }
 
     class StreamHandler {
@@ -83,8 +86,42 @@ classDiagram
         -OrganizerService organizer
         -EventService events
         +HandleListEvents(w, r, sess)
+        +HandleSalesOverview(w, r, sess)
+        +HandleEventSalesSummary(w, r, sess)
         +HandleUpdateZonePricing(w, r, sess)
         -writeErr(w, r, err)
+    }
+
+    class PaymentHandler {
+        <<boundary>>
+        -PaymentService payments
+        -EventService events
+        +HandleCreateOrder(w, r, sess)
+        +HandleListOrders(w, r, sess)
+        +HandleGetOrder(w, r, sess)
+        +HandleInitiatePayment(w, r, sess)
+        +HandlePaymentIPN(w, r)
+        +HandlePaymentReturn(w, r)
+    }
+
+    class TicketHandler {
+        <<boundary>>
+        -TicketService tickets
+        -EventService events
+        +HandleListMyTickets(w, r, sess)
+        +HandleGetTicketQR(w, r, sess)
+        +HandleVerifyTicketQR(w, r, sess)
+        +HandleCancelTicket(w, r, sess)
+        +HandleListUserCancelledTickets(w, r, sess)
+        +HandleListAuditLogs(w, r, sess)
+        +HandleResetDemoTickets(w, r, sess)
+    }
+
+    class AssistantHandler {
+        <<boundary>>
+        -AssistantService assistant
+        -AuthService auth
+        +HandleChat(w, r)
     }
 
     class AuthService {
@@ -93,6 +130,7 @@ classDiagram
         -Config cfg
         +RequestOTP(ctx, destination) OTPIssue
         +VerifyOTP(ctx, destination, code, ipAddress, userAgent) string, User
+        +DemoLogin(ctx, role, ipAddress, userAgent) string, User
         +GetUserByToken(ctx, rawToken) GetSessionByTokenHashRow
         +Logout(ctx, rawToken)
     }
@@ -116,6 +154,7 @@ classDiagram
         +HoldSeat(ctx, eventID, seatID, userID) SeatHold
         +ReleaseSeat(ctx, eventID, seatID, userID)
         +ExpireStaleHolds(ctx) List~ExpireStaleSeatHoldsRow~
+        +ListMyHolds(ctx, userID) List~MyHold~
     }
 
     class OrganizerService {
@@ -125,6 +164,48 @@ classDiagram
         +ListEvents(ctx, userID, isAdmin) List~OrganizerEventDTO~
         +AuthorizeEvent(ctx, eventID, userID, isAdmin)
         +UpdateZonePricing(ctx, eventID, zoneID, userID, p) ZonePricing
+        +GetEventSalesSummary(ctx, eventID) EventSalesSummaryDTO
+        +GetSalesOverview(ctx, userID, isAdmin) OrganizerSalesOverviewDTO
+    }
+
+    class PaymentService {
+        <<control>>
+        -Pool dbPool
+        -Queries queries
+        -string webhookSecret
+        -bool demoMode
+        +CreateOrder(ctx, userID, eventID, seatIDs, method) OrderDTO
+        +GetOrder(ctx, userID, orderID, isAdmin) OrderDTO
+        +ListOrders(ctx, userID) List~OrderDTO~
+        +InitiatePayment(ctx, userID, orderID, provider) PaymentSessionDTO
+        +ProcessIPN(ctx, provider, req) IPNResult
+        +SignIPN(provider, paymentCode, txnID, amount, result) string
+        +VerifyIPNSignature(provider, paymentCode, txnID, amount, result, sig) bool
+    }
+
+    class TicketService {
+        <<control>>
+        -Pool dbPool
+        -Queries queries
+        +ListMyTickets(ctx, userID) List~UserTicketDTO~
+        +GetFixedQR(ctx, ticketID, callerID, isStaff) TicketQRDTO
+        +VerifyTicketQR(ctx, payload) QRVerifyResult
+        +Cancel(ctx, userID, userEmail, eventID, req) CancelResult
+        +ListCancelled(ctx, userID) List~CancelledTicketItem~
+        +ListAuditLogs(ctx, userID, isAdmin) List~AuditItem~
+        +ResetDemo(ctx, userID)
+    }
+
+    class AssistantService {
+        <<control>>
+        -Config cfg
+        -EventService events
+        -OrganizerService organizer
+        -HttpClient client
+        +Chat(ctx, caller, req) AssistantChatResponse
+        -buildGroundedContext(ctx, caller, req) string
+        -callOllama(ctx, systemPrompt, userMsg) string
+        -callGemini(ctx, systemPrompt, userMsg) string
     }
 
     class RealtimeHub {
@@ -176,10 +257,22 @@ classDiagram
     class SeatHold {
         <<entity>>
     }
+    class Order {
+        <<entity>>
+    }
+    class OrderItem {
+        <<entity>>
+    }
+    class Payment {
+        <<entity>>
+    }
     class Ticket {
         <<entity>>
     }
     class PriceChange {
+        <<entity>>
+    }
+    class AuditLog {
         <<entity>>
     }
 
@@ -192,7 +285,15 @@ classDiagram
     StreamHandler --> EventService
     OrganizerHandler --> OrganizerService
     OrganizerHandler --> EventService
+    PaymentHandler --> PaymentService
+    PaymentHandler --> EventService
+    TicketHandler --> TicketService
+    TicketHandler --> EventService
+    AssistantHandler --> AssistantService
+    AssistantHandler --> AuthService
     HoldReaper --> SeatService : gọi định kỳ
+    AssistantService --> EventService : đọc sự kiện
+    AssistantService --> OrganizerService : tóm tắt doanh số
 
     AuthService ..> User : đọc, tạo, cập nhật
     AuthService ..> OtpVerification : tạo, xác minh
@@ -215,12 +316,30 @@ classDiagram
     OrganizerService ..> EventZone : cập nhật giá
     OrganizerService ..> EventSeat : đổi giá ghế trống
     OrganizerService ..> PriceChange : ghi nhật ký giá
+
+    PaymentService ..> Order : tạo, thanh toán, hoàn tiền
+    PaymentService ..> OrderItem : tạo, đọc
+    PaymentService ..> Payment : khởi tạo, xử lý IPN
+    PaymentService ..> SeatHold : chuyển sang đã bán
+    PaymentService ..> EventSeat : chuyển sang SOLD
+    PaymentService ..> Ticket : phát hành vé
+    PaymentService ..> AuditLog : ghi nhật ký
+
+    TicketService ..> Ticket : xem, tạo QR, hủy vé
+    TicketService ..> EventSeat : nhả ghế khi hủy
+    TicketService ..> SeatHold : giải phóng lượt giữ
+    TicketService ..> Event : kiểm tra sự kiện
+    TicketService ..> AuditLog : ghi và đọc nhật ký
 ```
 
 Cách các lớp phối hợp:
 - `SeatHandler` gọi `AuthService.GetUserByToken` để lấy người dùng, rồi gọi `SeatService`.
 - `OrganizerHandler` dùng `RequireRole`, nên chỉ `ORGANIZER` và `ADMIN` vào được.
   Trước khi đổi giá, handler gọi `OrganizerService.AuthorizeEvent` để kiểm tra người gọi là BTC của sự kiện.
+- `PaymentHandler` và `PaymentService` xử lý đơn hàng, khởi tạo phiên thanh toán và tiếp nhận IPN ký HMAC lũy quyền theo `(provider, provider_txn_id)`.
+  Khi IPN thành công, `PaymentService` chuyển ghế sang `SOLD`, phát hành `Ticket`, ghi `AuditLog` và phát `pg_notify` `seat_sold`.
+- `TicketHandler` và `TicketService` phục vụ danh sách vé của khán giả (`/api/me/tickets`), sinh/xác thực mã QR (`/api/tickets/{id}/qr`, `/api/tickets/verify-qr`), hủy vé và tra cứu `audit_logs`.
+- `AssistantHandler` lấy vai trò trực tiếp từ cookie phiên server qua `AuthService`, truyền vào `AssistantService` để truy vấn dữ liệu từ `EventService`/`OrganizerService` và tùy chọn diễn giải bằng Ollama/Gemini.
 - `SeatService` không gọi `RealtimeHub` trực tiếp.
   Service gửi `pg_notify` lên kênh `event_seats_channel`.
   `RealtimeHub` giữ một kết nối `LISTEN` riêng trên kênh này và chuyển tin tới các `StreamHandler` đang mở.
@@ -230,11 +349,6 @@ Cách các lớp phối hợp:
 - `HoldSeat` không dùng khóa advisory để chống bán trùng.
   Ghế chỉ chuyển sang `HELD` khi đang `AVAILABLE`.
   Partial unique index trên `seat_holds` là lớp chặn thứ hai.
-
-Ngoài các lớp trên, code còn có:
-- `TicketHandler` và `TicketService`: hủy vé (`POST /api/tickets/cancel`, `GET /api/tickets/cancelled`, cờ `payments`), xem `audit_logs` (`GET /api/tickets/audit-logs`, cờ `organizer_console`) và đặt lại dữ liệu demo (`POST /api/tickets/reset-demo`, chỉ khi `APP_ENV` khác `production`);
-- `AuthHandler.HandleDemoLogin` (`POST /api/auth/demo-login`, chỉ khi `APP_ENV` khác `production`);
-- `SeatHandler` có thêm `GET /api/holds`.
 
 ## 3. Thuộc tính các Entity đang dùng
 
@@ -400,11 +514,70 @@ classDiagram
         +Timestamptz CreatedAt
     }
 
+    class Order {
+        <<entity>>
+        +UUID ID
+        +UUID EventID
+        +UUID UserID
+        +string OrderCode
+        +OrderStatus Status
+        +Numeric TotalAmount
+        +Numeric DiscountAmount
+        +Numeric FinalAmount
+        +string Currency
+        +Text PaymentMethod
+        +Timestamptz ExpiresAt
+        +Timestamptz PaidAt
+        +Timestamptz CancelledAt
+        +Timestamptz CreatedAt
+        +Timestamptz UpdatedAt
+    }
+
+    class OrderItem {
+        <<entity>>
+        +UUID ID
+        +UUID OrderID
+        +UUID SeatID
+        +Numeric Price
+        +Timestamptz CreatedAt
+    }
+
+    class Payment {
+        <<entity>>
+        +UUID ID
+        +UUID OrderID
+        +string PaymentCode
+        +string Provider
+        +Text ProviderTxnID
+        +Numeric Amount
+        +PaymentStatus Status
+        +byte[] RawResponse
+        +Timestamptz CreatedAt
+        +Timestamptz UpdatedAt
+    }
+
+    class AuditLog {
+        <<entity>>
+        +int64 ID
+        +UUID ActorUserID
+        +UUID EventID
+        +string Action
+        +string EntityType
+        +UUID EntityID
+        +byte[] OldData
+        +byte[] NewData
+        +Text Reason
+        +Text RequestID
+        +Timestamptz CreatedAt
+    }
+
     User "1" -- "*" Session
     User "1" -- "*" Event : tổ chức
     User "1" -- "*" SeatHold
+    User "1" -- "*" Order
     User "1" -- "*" Ticket
     User "1" -- "*" PriceChange : đổi giá
+    User "1" -- "*" AuditLog : thực hiện
     Venue "1" -- "*" VenueZone
     Venue "1" -- "*" Event
     VenueZone "1" -- "*" Seat
@@ -413,15 +586,20 @@ classDiagram
     Event "1" -- "*" EventZone
     Event "1" -- "*" EventSeat
     Event "1" -- "*" SeatHold
+    Event "1" -- "*" Order
     Event "1" -- "*" Ticket
     Event "1" -- "*" PriceChange
+    Event "1" -- "*" AuditLog
     Seat "1" -- "*" EventSeat
     Seat "1" -- "*" SeatHold
+    Seat "1" -- "*" OrderItem
     Seat "1" -- "*" Ticket
+    Order "1" -- "*" OrderItem
+    Order "1" -- "*" Payment
+    Order "1" -- "*" Ticket
 ```
 
 `OtpVerification` không có khóa ngoại tới `User`, vì mã OTP được gửi trước khi có tài khoản.
-`Ticket.OrderID` trỏ tới `Order`, lớp này chưa có service nào dùng nên không vẽ ở đây.
 
 Các kiểu enum lấy từ `models.go`:
 
@@ -432,6 +610,8 @@ Các kiểu enum lấy từ `models.go`:
 | `EventStatus` | `DRAFT`, `ON_SALE`, `SOLD_OUT`, `PAUSED`, `ENDED`, `CANCELLED` |
 | `SeatStatus` | `AVAILABLE`, `HELD`, `SOLD`, `BLOCKED` |
 | `HoldStatus` | `ACTIVE`, `EXPIRED`, `RELEASED`, `CONVERTED` |
+| `OrderStatus` | `PENDING`, `PAID`, `EXPIRED`, `CANCELLED`, `REFUNDED` |
+| `PaymentStatus` | `INITIATED`, `PROCESSING`, `SUCCESS`, `FAILED`, `REFUNDED` |
 | `TicketStatus` | `ISSUED`, `ACTIVE`, `USED`, `REVOKED`, `VOID` |
 
 ## 4. Ánh xạ Entity với bảng
@@ -447,16 +627,16 @@ Dấu "—" nghĩa là chưa có code dùng, bảng chờ tính năng của cờ
 | `Session` | `sessions` | `AuthService` | `otp_login` |
 | `Venue` | `venues` | `EventService`, `OrganizerService` | `organizer_console` |
 | `VenueZone` | `venue_zones` | `EventService`, `SeatService` | `organizer_console` |
-| `Seat` | `seats` | `SeatService` | `seat_map_realtime` |
-| `Event` | `events` | `EventService`, `SeatService`, `OrganizerService` | FR-02, luôn bật |
+| `Seat` | `seats` | `SeatService`, `PaymentService` | `seat_map_realtime` |
+| `Event` | `events` | `EventService`, `SeatService`, `OrganizerService`, `PaymentService`, `TicketService` | FR-02, luôn bật |
 | `EventZone` | `event_zones` | `EventService`, `OrganizerService` | `zone_pricing` |
-| `EventSeat` | `event_seats` | `SeatService`, `OrganizerService` | `seat_map_realtime`, `seat_hold` |
-| `SeatHold` | `seat_holds` | `SeatService` | `seat_hold` |
+| `EventSeat` | `event_seats` | `SeatService`, `OrganizerService`, `PaymentService`, `TicketService` | `seat_map_realtime`, `seat_hold` |
+| `SeatHold` | `seat_holds` | `SeatService`, `PaymentService`, `TicketService` | `seat_hold` |
 | `PriceChange` | `price_changes` | `OrganizerService` | `zone_pricing`, `price_log` |
-| `Ticket` | `tickets` | `SeatService` (chỉ đếm) | `ticket_limit`, `payments`, `rotating_qr` |
-| `Order` | `orders` | — | `payments` |
-| `OrderItem` | `order_items` | — | `payments` |
-| `Payment` | `payments` | — | `payments`, `reconciliation` |
+| `Ticket` | `tickets` | `SeatService`, `PaymentService`, `TicketService` | `ticket_limit`, `payments`, `rotating_qr` |
+| `Order` | `orders` | `PaymentService` | `payments` |
+| `OrderItem` | `order_items` | `PaymentService` | `payments` |
+| `Payment` | `payments` | `PaymentService` | `payments`, `reconciliation` |
 | `QueueEntry` | `queue_entries` | — | `waiting_room` |
 | `GateDevice` | `gate_devices` | — | `gate_checkin` |
 | `Checkin` | `checkins` | — | `gate_checkin`, `offline_checkin` |
@@ -464,7 +644,7 @@ Dấu "—" nghĩa là chưa có code dùng, bảng chờ tính năng của cờ
 | `PriceSuggestion` | `price_suggestions` | — | `dynamic_pricing` |
 | `Promotion` | `promotions` | — | `promo_suggestions` |
 | `PromotionUsage` | `promotion_usages` | — | `promo_suggestions` |
-| `AuditLog` | `audit_logs` | — | chưa gắn cờ |
+| `AuditLog` | `audit_logs` | `PaymentService`, `TicketService` | `organizer_console`, `payments` |
 
 Bảng `price_changes` luôn được ghi khi giá cơ bản đổi.
 Cờ `price_log` chỉ ẩn hoặc hiện trang xem nhật ký.
@@ -480,9 +660,8 @@ Endpoint lấy từ mục 7 của [thiết kế](design/README.md).
 | Mở rộng `OrganizerHandler`, `OrganizerService` | `organizer_console` | `/api/organizer/venues/…`, `/api/organizer/events/…` | `venues`, `venue_zones`, `seats`, `events`, `event_seats` |
 | `QueueHandler`, `QueueService` | `waiting_room` | `POST /api/events/{id}/queue`, `GET /api/events/{id}/queue/me`; tác vụ cho người kế tiếp vào | `queue_entries` |
 | Middleware kiểm tra Turnstile | `bot_check` | Bọc `POST /api/auth/otp/request` | — |
-| `OrderHandler`, `OrderService` | `payments` | `POST /api/orders`, `GET /api/orders/{id}` | `orders`, `order_items`, `seat_holds` |
-| `PaymentHandler`, `PaymentService` | `payments`, `reconciliation` | `POST /api/orders/{id}/payments`, `GET /api/payments/{provider}/return`, `POST /api/payments/{provider}/ipn`; tác vụ đối soát | `payments`, `orders`, `tickets` |
-| Mở rộng `TicketHandler`, `TicketService` | `rotating_qr`, `ticket_email` | `GET /api/me/tickets`, `GET /api/tickets/{id}/qr` | `tickets` |
+| `ReconciliationWorker` | `reconciliation` | Tác vụ nền đối soát định kỳ và hoàn tiền tự động khi thanh toán sau khi hold hết hạn | `payments`, `orders`, `seat_holds` |
+| Mở rộng `TicketService` (xoay vòng TOTP 30s) | `rotating_qr` | Nâng cấp `GET /api/tickets/{id}/qr` sang QR xoay vòng 30 giây | `tickets` |
 | Lớp gửi OTP và vé qua SMTP, SMS Gateway | `otp_login`, `ticket_email` | Dùng trong `AuthService` và `TicketService` | — |
 | `GateHandler`, `GateCheckinService` | `gate_checkin`, `offline_checkin` | `GET /api/gate/events/{id}/manifest`, `POST /api/gate/checkins`, `POST /api/gate/sync` | `tickets`, `checkins`, `gate_devices` |
 | `DashboardHandler`, `DashboardService` | `ceo_dashboard`, `reports_export` | `GET /api/dashboard/stream`, `GET /api/reports/sales.csv`, `GET /api/reports/sales.xlsx`; tác vụ chụp số liệu | `sales_snapshots` |

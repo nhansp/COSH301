@@ -9,8 +9,8 @@ Thiết kế gốc: [`docs/design/README.md`](design/README.md). Đọc file nà
 | Mã | Việc | Người làm | File | Phụ thuộc |
 |---|---|---|---|---|
 | T01 | ERD sinh từ database mới | Huy (`vdhwy`) | `docs/erd.md` | T12 |
-| T02 | Sơ đồ lớp theo BCE | Huy (`vdhwy`) | `docs/class-diagram.md` | T12 |
-| T03 | Kế hoạch Sprint, WBS, ước lượng | Huy (`vdhwy`) | `docs/sprints.md` | — |
+| T02 | Sơ đồ lớp theo BCE | Dũng (`Lan-0924`) | `docs/class-diagram.md` | T12 |
+| T03 | Kế hoạch Sprint, WBS, ước lượng | Dũng (`Lan-0924`) | `docs/sprints.md` | — |
 | T04 | Sequence: giữ ghế 5 phút (FR-06) | Dũng (`Lan-0924`) | `docs/sequences/hold.md` | — |
 | T05 | Kiểm thử thủ công FR-06 theo US-03 | Thành (`Th4nhDT716`) | `docs/checks/fr-06.md` | T12 |
 | T06 | Sequence: chống bán trùng (FR-07) | Phúc (`phukzz`) | `docs/sequences/double-booking.md` | — |
@@ -60,7 +60,7 @@ Cần có: mô tả bài toán, mô hình giả định, dữ liệu đầu vào
 Bám mục 6 của thiết kế; muốn đổi quy tắc thì ghi lý do trong PR.
 
 **T09 — Đặc tả.**
-Liệt kê FR-01 … FR-23, NFR-01 … NFR-13 theo đúng mã trong tài liệu SA.
+Liệt kê FR-01 … FR-24, NFR-01 … NFR-13 theo đúng mã trong tài liệu SA.
 Mỗi yêu cầu ghi: cờ tính năng, Sprint, trạng thái (chưa làm / đang làm / xong).
 
 **T10 — Use Case.**

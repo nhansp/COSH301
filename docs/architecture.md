@@ -202,6 +202,7 @@ Cờ tắt thì:
 | `GET /api/tickets/audit-logs` | `organizer_console` |
 | `POST /api/tickets/cancel`, `GET /api/tickets/cancelled` | `payments` |
 | `POST /api/tickets/reset-demo` | `seat_hold`, chỉ khi `APP_ENV` khác `production` |
+| `POST /api/assistant/chat` | `chatbot` (Sprint 3) |
 
 Chưa làm, theo mục 7 của thiết kế:
 

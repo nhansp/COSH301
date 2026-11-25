@@ -265,7 +265,7 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
 ### UC-07: Xem vé và QR xoay vòng
 
 - **Tác nhân:** Khán giả.
-- **Cờ:** `rotating_qr` (Sprint 3).
+- **Cờ:** `rotating_qr` (Sprint 2).
 - **Tiền điều kiện:** khán giả đã đăng nhập và có vé (UC-06).
 - **Luồng chính:**
   1. Khán giả mở trang "Vé của tôi" (`GET /api/me/tickets`).
@@ -321,7 +321,7 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
 ### UC-10: Duyệt đề xuất giá
 
 - **Tác nhân:** Ban Tổ chức.
-- **Cờ:** `dynamic_pricing` (Sprint 5).
+- **Cờ:** `dynamic_pricing` (Sprint 2).
 - **Tiền điều kiện:** có đề xuất `PENDING` của sự kiện thuộc Ban Tổ chức.
 - **Luồng chính:**
   1. Cứ 5 phút, hệ thống tính giá đề xuất cho từng khu vực từ:
@@ -361,7 +361,7 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
 ### UC-12: Duyệt gợi ý khuyến mãi
 
 - **Tác nhân:** Ban Tổ chức.
-- **Cờ:** `promo_suggestions` (Sprint 5).
+- **Cờ:** `promo_suggestions` (Sprint 2).
 - **Tiền điều kiện:** có gợi ý khuyến mãi cho sự kiện của Ban Tổ chức.
 - **Luồng chính:**
   1. Hệ thống tạo gợi ý khuyến mãi cho sự kiện.
@@ -483,3 +483,4 @@ Cờ tắt thì giao diện ẩn tính năng và API trả `404 feature_disabled
 | FR-21 | `reports_export` | UC-14 |
 | FR-22 | `dynamic_pricing` | UC-10 |
 | FR-23 | `promo_suggestions` | UC-12 |
+| FR-24 | `chatbot` | Trợ lý Chatbot AI (`POST /api/assistant/chat`, Sprint 3) |

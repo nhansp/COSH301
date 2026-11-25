@@ -9,7 +9,7 @@ Trạng thái:
 - **Chưa làm**: chưa có code.
 
 Cờ của từng profile lấy từ `backend/internal/config/features.go`.
-Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`.
+Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`, `rotating_qr`, `dynamic_pricing`, `promo_suggestions`.
 
 ## 1. Yêu cầu chức năng
 
@@ -26,7 +26,7 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-09 | Phòng chờ ảo | `waiting_room` | 3 | Chưa làm | Đã có bảng `queue_entries` |
 | FR-10 | Chặn bot bằng Cloudflare Turnstile | `bot_check` | 3 | Chưa làm | |
 | FR-11 | Giới hạn vé mỗi tài khoản | `ticket_limit` | 3 | Đang làm | api đã khóa theo (người dùng, sự kiện) và đếm ghế giữ cộng vé đã mua. Chưa kiểm thử tải theo mục 8 của thiết kế |
-| FR-12 | QR đổi mỗi 30 giây | `rotating_qr` | 3 | Chưa làm | Đã có cột `tickets.qr_secret` |
+| FR-12 | QR đổi mỗi 30 giây | `rotating_qr` | 2 | Chưa làm | Đã có cột `tickets.qr_secret` |
 | FR-13 | Thanh toán MoMo, VNPAY | `payments` | 4 | Chưa làm | |
 | FR-14 | Gửi vé qua email | `ticket_email` | 4 | Chưa làm | |
 | FR-15 | Đối soát, hoàn tiền | `reconciliation` | 4 | Chưa làm | |
@@ -36,8 +36,9 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-19 | Dashboard doanh thu cho CEO | `ceo_dashboard` | 5 | Chưa làm | |
 | FR-20 | Nhật ký giá | `price_log` | 5 | Đang làm | Mỗi lần BTC đổi giá cơ bản đều ghi `price_changes`. Trigger chặn sửa và xóa. Chưa có trang xem |
 | FR-21 | Xuất báo cáo CSV/XLSX | `reports_export` | 5 | Chưa làm | |
-| FR-22 | Định giá động: đề xuất giá, BTC duyệt | `dynamic_pricing` | 5 | Chưa làm | Đã có bảng `price_suggestions` và giá sàn, giá trần theo khu vực (FR-08). Chưa có job tính đề xuất và endpoint duyệt. Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md) |
-| FR-23 | Gợi ý khuyến mãi | `promo_suggestions` | 5 | Chưa làm | |
+| FR-22 | Định giá động: đề xuất giá, BTC duyệt | `dynamic_pricing` | 2 | Chưa làm | Đã có bảng `price_suggestions` và giá sàn, giá trần theo khu vực (FR-08). Chưa có job tính đề xuất và endpoint duyệt. Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md) |
+| FR-23 | Gợi ý khuyến mãi | `promo_suggestions` | 2 | Chưa làm | Đã có bảng `promotions` và `promotion_usages`. Chưa có job đề xuất và endpoint duyệt |
+| FR-24 | Trợ lý Chatbot AI hỗ trợ khán giả và Ban Tổ chức | `chatbot` | 3 | Đang làm | Đã có `POST /api/assistant/chat`, `AssistantService` (hỗ trợ Ollama/Gemini hoặc fallback từ PostgreSQL) và `AssistantWidget.tsx`. Cờ `chatbot` thuộc profile `sprint3` |
 
 ## 2. Yêu cầu phi chức năng
 
@@ -76,7 +77,10 @@ Profile `sprint2` bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pr
 | FR-06 | `service/seat_service.go`, `service/hold_reaper.go` | [`sequences/hold.md`](sequences/hold.md), [`checks/fr-06.md`](checks/fr-06.md) |
 | FR-07, NFR-03 | `service/seat_service.go`, `store/queries/seats.sql` | [`sequences/double-booking.md`](sequences/double-booking.md) |
 | FR-08 | `service/organizer_service.go`, `httpapi/organizer.go` | [`api/openapi.yaml`](api/openapi.yaml) |
+| FR-12 | — (`tickets.qr_secret`) | [`design/README.md`](design/README.md) |
 | FR-22 | — | [`dynamic-pricing.md`](dynamic-pricing.md) |
+| FR-23 | — (`promotions`) | [`use-cases.md`](use-cases.md) |
+| FR-24 *(Sprint 3)* | `service/assistant_service.go`, `httpapi/assistant.go`, `frontend/src/components/assistant/` | [`design/README.md`](design/README.md) |
 
 Đường dẫn code tính từ `backend/internal/`, trừ dòng có `frontend/`.
 

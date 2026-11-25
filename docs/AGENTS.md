@@ -6,7 +6,7 @@ Read the repository root [`AGENTS.md`](../AGENTS.md) first. Its commit and codin
 
 - [`docs/design/README.md`](design/README.md) is the system design. Every document must agree with it.
 - [`docs/TASKS.md`](TASKS.md) says which task owns which file.
-- Requirement IDs (FR-01 … FR-23, NFR-01 … NFR-13, US-01 … US-07, W-01 … W-05) are fixed. Never renumber them or invent new ones.
+- Requirement IDs (FR-01 … FR-24, NFR-01 … NFR-13, US-01 … US-07, W-01 … W-05) are fixed. Never renumber them or invent new ones.
 - If the design looks wrong or incomplete, say so in the PR description. Do not silently change the design to fit a document.
 
 ## Scope

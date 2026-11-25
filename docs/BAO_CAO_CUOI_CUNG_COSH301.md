@@ -32,12 +32,12 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
 
 | STT | Họ và tên | Mã sinh viên | Nhiệm vụ chính trong dự án | Đóng góp | Điểm số | Chữ ký |
 |:---:|---|:---:|---|:---:|:---:|:---:|
-| 1 | **Vũ Đức Huy** | 2412960011 | Thiết kế ERD (23 bảng), Sơ đồ lớp BCE, Kế hoạch Sprint, giữ ghế và Realtime SSE Hub | 100% | | |
+| 1 | **Vũ Đức Huy** | 2412960011 | Thiết kế ERD (23 bảng), giữ ghế nguyên tử, Realtime SSE Hub, Trợ lý Chatbot AI | 100% | | |
 | 2 | **Trần Trung Nhân** | 2412960019 | Kiến trúc hệ thống, Backend Go, Frontend React, Sequence OTP & API Spec | 100% | | |
-| 3 | **Đinh Tiến Thành** | 2413960023 | Bóc tách bài toán nghiệp vụ, Bảng 23 FRs & 13 NFRs, Ma trận truy vết yêu cầu (Traceability Matrix), Kịch bản kiểm thử thủ công FR-06 | 100% | | |
+| 3 | **Đinh Tiến Thành** | 2413960023 | Bóc tách bài toán nghiệp vụ, Bảng 24 FRs & 13 NFRs, Ma trận truy vết yêu cầu (Traceability Matrix), Kịch bản kiểm thử thủ công FR-06 | 100% | | |
 | 4 | **Lê Đức Anh** | 2411960002 | Sơ đồ và Đặc tả Use Case, Kế hoạch kiểm thử người dùng và form khảo sát SUS (chưa thực hiện) | 100% | | |
 | 5 | **Nguyễn Đức Phúc** | 2413960020 | Sơ đồ luồng dữ liệu (DFD), Sơ đồ tuần tự Chống bán trùng ghế đa luồng | 100% | | |
-| 6 | **Nguyễn Anh Dũng** | 2413960006 | Bài toán và thiết kế Định giá động (FR-22), Sequence Giữ ghế 5:00 | 100% | | |
+| 6 | **Nguyễn Anh Dũng** | 2413960006 | Sơ đồ lớp BCE, Kế hoạch Sprint, Bài toán và thiết kế Định giá động (FR-22), Sequence Giữ ghế 5:00 | 100% | | |
 
 ### 2. Đánh giá của Giảng viên hướng dẫn
 
@@ -57,7 +57,7 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
   - [1.4. Danh sách các bên liên quan (Stakeholders)](#14-danh-sách-các-bên-liên-quan-stakeholders)
   - [1.5. Trạng thái triển khai](#15-trạng-thái-triển-khai)
 - [PHẦN 2. BÓC TÁCH VÀ ĐẶC TẢ YÊU CẦU HỆ THỐNG](#phần-2-bóc-tách-và-đặc-tả-yêu-cầu-hệ-thống)
-  - [2.1. Yêu cầu Chức năng (23 FRs phân bổ 5 Sprint)](#21-yêu-cầu-chức-năng-23-frs-phân-bổ-5-sprint)
+  - [2.1. Yêu cầu Chức năng (24 FRs phân bổ 5 Sprint)](#21-yêu-cầu-chức-năng-24-frs-phân-bổ-5-sprint)
   - [2.2. Yêu cầu Phi chức năng (13 NFRs gắn SLA định lượng)](#22-yêu-cầu-phi-chức-năng-13-nfrs-gắn-sla-định-lượng)
   - [2.3. User Stories và Tiêu chí chấp nhận (Given-When-Then)](#23-user-stories-và-tiêu-chí-chấp-nhận-given-when-then)
   - [2.4. Phân loại ưu tiên MoSCoW và Lộ trình MVP](#24-phân-loại-ưu-tiên-moscow-và-lộ-trình-mvp)
@@ -82,7 +82,7 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
   - [5.5. Tích hợp Cổng thanh toán trực tuyến và Tự động đối soát/hoàn tiền](#55-tích-hợp-cổng-thanh-toán-trực-tuyến-và-tự-động-đối-soáthoàn-tiền)
 - [PHẦN 6. KẾ HOẠCH TRIỂN KHAI, KIỂM THỬ VÀ ĐÁNH GIÁ THỰC TẾ](#phần-6-kế-hoạch-triển-khai-kiểm-thử-và-đánh-giá-thực-tế)
   - [6.1. Phân bổ các Yêu cầu Chức năng (FR) theo 5 Sprint của dự án](#61-phân-bổ-các-yêu-cầu-chức-năng-fr-theo-5-sprint-của-dự-án)
-  - [6.2. Trạng thái 23 Yêu cầu Chức năng theo từng Sprint](#62-trạng-thái-23-yêu-cầu-chức-năng-theo-từng-sprint)
+  - [6.2. Trạng thái 24 Yêu cầu Chức năng theo từng Sprint](#62-trạng-thái-24-yêu-cầu-chức-năng-theo-từng-sprint)
   - [6.3. Bảng phân rã công việc (WBS) Sprint 2 (Mốc Giữa kỳ - T01 … T14)](#63-bảng-phân-rã-công-việc-wbs-sprint-2-mốc-giữa-kỳ---t01--t14)
   - [6.4. Tổng hợp phân bổ nguồn lực và giờ công toàn dự án qua 5 Sprint](#64-tổng-hợp-phân-bổ-nguồn-lực-và-giờ-công-toàn-dự-án-qua-5-sprint)
   - [6.5. Kiểm thử hệ thống: Concurrency Test chống bán trùng](#65-kiểm-thử-hệ-thống-concurrency-test-chống-bán-trùng)
@@ -98,7 +98,7 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
 
 ### Danh mục Bảng
 - **Bảng 1:** Danh sách các bên liên quan (Stakeholders) và Mối quan tâm chính
-- **Bảng 2:** Danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) và Diễn giải cho Stakeholder
+- **Bảng 2:** Danh mục 24 Yêu cầu Chức năng (FR-01 … FR-24) và Diễn giải cho Stakeholder
 - **Bảng 3:** Danh mục 13 Yêu cầu Phi chức năng (NFR-01 … NFR-13) và Chỉ số SLA
 - **Bảng 4:** Tóm tắt 7 User Stories và Tiêu chí chấp nhận (Acceptance Criteria)
 - **Bảng 5:** Phân loại ưu tiên tính năng MoSCoW cho phiên bản MVP
@@ -110,7 +110,7 @@ KHOA CÔNG NGHỆ VÀ KHOA HỌC DỮ LIỆU
 - **Bảng 11:** Từ điển dữ liệu (Data Dictionary) các bảng thực thể cốt lõi
 - **Bảng 12:** Dữ liệu đầu vào của thuật toán Định giá động (FR-22)
 - **Bảng 13:** Phân bổ các Yêu cầu Chức năng (FR) theo 5 Sprint của dự án
-- **Bảng 14:** Trạng thái và căn cứ trong code của 23 Yêu cầu Chức năng (FR-01 … FR-23) theo từng Sprint
+- **Bảng 14:** Trạng thái và căn cứ trong code của 24 Yêu cầu Chức năng (FR-01 … FR-24) theo từng Sprint
 - **Bảng 15:** Bảng phân rã công việc (WBS) và ước lượng thời gian Sprint 2
 - **Bảng 16:** Tổng hợp phân bổ nguồn lực và giờ công toàn dự án qua 5 Sprint
 - **Bảng 17:** Endpoint đã có trong router
@@ -134,7 +134,7 @@ Báo cáo dẫn liên kết tới tài liệu chứa từng sơ đồ, không d�
 
 Thị trường tổ chức sự kiện âm nhạc và thể thao quy mô lớn tại Việt Nam đang phát triển bùng nổ, kéo theo nhu cầu mua vé trực tuyến tăng vọt. Tuy nhiên, các hệ thống bán vé truyền thống hiện nay thường xuyên bộc lộ các điểm yếu nghiêm trọng: tê liệt hệ thống do lượng truy cập đột biến (flash-sale), nạn phe vé dùng bot tự động đầu cơ, xung đột dữ liệu dẫn đến bán trùng ghế (double-booking), và gian lận vé điện tử tại cửa soát vé.
 
-Nhằm giải quyết triệt để các thách thức trên, trong khuôn khổ học phần **Phân tích và Thiết kế Hệ thống (COSH301 / COSH201)** tại Trường Đại học Ngoại thương, nhóm nghiên cứu đã xây dựng đề tài: **"Thiết kế hệ thống đặt vé trực tuyến cho sự kiện (EventTicketing)"**. Đồ án tập trung nghiên cứu, áp dụng bài bản quy trình kỹ nghệ phần mềm: bóc tách yêu cầu chi tiết (23 FRs, 13 NFRs, 7 User Stories); mô hình hóa hệ thống bằng các biểu đồ UML và DFD chuẩn mực; thiết kế kiến trúc theo mô hình phân tầng **BCE (Boundary – Control – Entity)** và triết lý **"Single Source of Truth"** trên PostgreSQL 18, loại bỏ tầng cache Redis phân tán để giữ an toàn giao dịch ACID và không bán trùng ghế.
+Nhằm giải quyết triệt để các thách thức trên, trong khuôn khổ học phần **Phân tích và Thiết kế Hệ thống (COSH301 / COSH201)** tại Trường Đại học Ngoại thương, nhóm nghiên cứu đã xây dựng đề tài: **"Thiết kế hệ thống đặt vé trực tuyến cho sự kiện (EventTicketing)"**. Đồ án tập trung nghiên cứu, áp dụng bài bản quy trình kỹ nghệ phần mềm: bóc tách yêu cầu chi tiết (24 FRs, 13 NFRs, 7 User Stories); mô hình hóa hệ thống bằng các biểu đồ UML và DFD chuẩn mực; thiết kế kiến trúc theo mô hình phân tầng **BCE (Boundary – Control – Entity)** và triết lý **"Single Source of Truth"** trên PostgreSQL 18, loại bỏ tầng cache Redis phân tán để giữ an toàn giao dịch ACID và không bán trùng ghế.
 
 Báo cáo gồm 7 phần chính và 1 phụ lục kỹ thuật: (1) Giới thiệu và tổng quan; (2) Bóc tách và đặc tả yêu cầu; (3) Thiết kế kiến trúc và mô hình hóa; (4) Thiết kế cơ sở dữ liệu và quy trình nghiệp vụ cốt lõi; (5) Thiết kế các phân hệ nâng cao; (6) Kế hoạch triển khai, kiểm thử và đánh giá; (7) Kết luận; cùng Phụ lục A về API và mã nguồn.
 Báo cáo ghi rõ phần nào đã chạy trong code và phần nào mới ở mức thiết kế.
@@ -184,7 +184,7 @@ Xuất phát từ đó, việc thiết kế một nền tảng bán vé hiện �
 
 ## 1.5. Trạng thái triển khai
 
-- **Profile đang chạy:** `sprint2`. Bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`. Hệ thống có 19 cờ tính năng, 14 cờ còn lại đang tắt.
+- **Profile đang chạy:** `sprint2`. Bật: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`, `rotating_qr`, `dynamic_pricing`, `promo_suggestions`. Hệ thống có 20 cờ tính năng, 12 cờ còn lại đang tắt.
 - **Cờ tắt:** giao diện ẩn tính năng, API trả `404 feature_disabled`. Vì vậy `payments` tắt nghĩa là chưa có đơn hàng, thanh toán và phát vé.
 - **Cơ sở dữ liệu:** 23 bảng trong migration. ERD Sprint 1 trên MySQL có 26 bảng.
 - **Nơi chạy:** một máy ảo GCP (Compute Engine), Docker Compose gồm `db`, `api`, `frontend`, `tunnel` (cloudflared), công bố qua Cloudflare Tunnel tại `https://cosh301.nhansp.id.vn`.
@@ -195,12 +195,12 @@ Xuất phát từ đó, việc thiết kế một nền tảng bán vé hiện �
 
 # PHẦN 2. BÓC TÁCH VÀ ĐẶC TẢ YÊU CẦU HỆ THỐNG
 
-## 2.1. Yêu cầu Chức năng (23 FRs phân bổ 5 Sprint)
+## 2.1. Yêu cầu Chức năng (24 FRs phân bổ 5 Sprint)
 
-Dưới đây là danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) của hệ thống. Bên cạnh mô tả kỹ thuật, báo cáo bổ sung **cột diễn giải thực tế dành cho Stakeholder (các bên liên quan không có chuyên môn IT như Ban Tổ chức, Giám đốc, Nhân viên cổng và Khán giả)** để dễ nắm bắt trải nghiệm và giá trị mang lại.
+Dưới đây là danh mục 24 Yêu cầu Chức năng (FR-01 … FR-24) của hệ thống. Bên cạnh mô tả kỹ thuật, báo cáo bổ sung **cột diễn giải thực tế dành cho Stakeholder (các bên liên quan không có chuyên môn IT như Ban Tổ chức, Giám đốc, Nhân viên cổng và Khán giả)** để dễ nắm bắt trải nghiệm và giá trị mang lại.
 Cột Trạng thái dùng ba mức như [`docs/spec.md`](spec.md): Xong, Đang làm, Chưa làm. Cờ tắt thì không thể là Xong.
 
-**Bảng 2. Danh mục 23 Yêu cầu Chức năng (FR-01 … FR-23) và Diễn giải cho Stakeholder**
+**Bảng 2. Danh mục 24 Yêu cầu Chức năng (FR-01 … FR-24) và Diễn giải cho Stakeholder**
 
 | Mã FR | Tên tính năng | Ý nghĩa & Trải nghiệm thực tế cho Stakeholder (Dễ hiểu cho người không chuyên IT) | Mô tả kỹ thuật nghiệp vụ | Sprint & Cờ tính năng | Trạng thái |
 |:---:|---|---|---|:---:|:---:|
@@ -215,7 +215,7 @@ Cột Trạng thái dùng ba mức như [`docs/spec.md`](spec.md): Xong, Đang l
 | **FR-09** | Phòng chờ ảo xếp hàng công bằng | Khi mở bán trận cầu lớn hay concert ca sĩ nổi tiếng, trang web không bị sập hay quay đơ; hệ thống mời người mua vào 'phòng chờ ảo', bốc số thứ tự công bằng và hiển thị thời gian chờ ước tính trước khi vào mua. | Hàng đợi FIFO trong `queue_entries`. Số người mua cùng lúc tối đa `waiting_room_capacity`, mỗi lượt vào có hạn 10 phút. Hiện mới có bảng, chưa có API. | Sprint 3<br/>(`waiting_room`) | Chưa làm |
 | **FR-10** | Tự động phát hiện và chặn Bot | 'Vệ sĩ vô hình' tự động nhận diện xem ai là người thật đang thao tác và ai là phần mềm máy tính (bot) do phe vé cài đặt để gom hàng loạt vé; các công cụ gian lận sẽ bị chặn đứng ngay ngoài cửa hệ thống. | Cloudflare Turnstile khi xin mã OTP, cộng giới hạn tốc độ theo IP. Hiện mới có giới hạn tốc độ; chưa kiểm tra token Turnstile. | Sprint 3<br/>(`bot_check`) | Chưa làm |
 | **FR-11** | Giới hạn số vé mỗi người | Mỗi tài khoản chỉ được giữ và mua tối đa `max_tickets_per_user` vé cho một sự kiện (mặc định 4), mua thêm sẽ bị từ chối. Ngăn một người hoặc phe vé ôm nhiều vé. | Khi cờ `ticket_limit` bật: `pg_advisory_xact_lock` theo (người dùng, sự kiện), đếm ghế đang giữ cộng vé đã mua, vượt giới hạn thì trả `400 ticket_limit_reached`. Cờ đang tắt ở `sprint2`. | Sprint 3<br/>(`ticket_limit`) | Đang làm |
-| **FR-12** | Mã QR vé tự đổi sau mỗi 30 giây | Mã QR trên vé điện tử tự động làm mới sau mỗi 30 giây (kèm thanh đếm ngược); nếu có ai chụp ảnh màn hình vé gửi bán lại trên mạng thì bức ảnh đó sẽ trở nên vô giá trị sau 30 giây, dẹp nạn lừa đảo vé lậu. | QR chứa `ticket_code.step.HMAC(qr_secret, step)`, `step` tăng 1 sau mỗi 30 giây. Cổng chấp nhận `step` hiện tại, liền trước và liền sau. Đã có cột `tickets.qr_secret`, chưa có code sinh QR. | Sprint 3<br/>(`rotating_qr`) | Chưa làm |
+| **FR-12** | Mã QR vé tự đổi sau mỗi 30 giây | Mã QR trên vé điện tử tự động làm mới sau mỗi 30 giây (kèm thanh đếm ngược); nếu có ai chụp ảnh màn hình vé gửi bán lại trên mạng thì bức ảnh đó sẽ trở nên vô giá trị sau 30 giây, dẹp nạn lừa đảo vé lậu. | QR chứa `ticket_code.step.HMAC(qr_secret, step)`, `step` tăng 1 sau mỗi 30 giây. Cổng chấp nhận `step` hiện tại, liền trước và liền sau. Đã có cột `tickets.qr_secret`, chưa có code sinh QR. | Sprint 2<br/>(`rotating_qr`) | Chưa làm |
 | **FR-13** | Thanh toán trực tuyến đa kênh | Khán giả thanh toán tiền vé bằng ví MoMo hoặc cổng VNPAY và được chuyển về trang kết quả. | Tích hợp MoMo và VNPAY: tạo liên kết thanh toán có chữ ký, nhận IPN, kiểm tra chữ ký, mỗi `provider_txn_id` chỉ xử lý một lần. | Sprint 4<br/>(`payments`) | Chưa làm |
 | **FR-14** | Nhận vé điện tử tức thì qua Email | Ngay khi ngân hàng báo trừ tiền thành công, hệ thống lập tức gửi một thư email chứa thông tin vé (họ tên, vị trí hàng ghế, mã QR) và người mua có thể mở mục 'Vé của tôi' trên web để xem bất cứ lúc nào. | Cập nhật ghế sang `SOLD`, tạo bản ghi trong bảng `tickets`, kích hoạt tác vụ nền gửi email vé định dạng HTML chuẩn qua máy chủ SMTP. | Sprint 4<br/>(`ticket_email`) | Chưa làm |
 | **FR-15** | Tự động hoàn tiền khi thanh toán trễ | Nếu khán giả chuyển khoản ở ngân hàng quá chậm khiến thời hạn giữ chỗ 5 phút bị trôi qua và ghế đã bị người khác mua: Hệ thống sẽ tự động hoàn trả 100% số tiền về tài khoản ngân hàng trong thời gian $\le 15$ phút. | Worker chạy ngầm quét các giao dịch thanh toán thành công khi hold đã hết hạn, tự động kích hoạt API Auto Refund của cổng thanh toán để hoàn tiền an toàn. | Sprint 4<br/>(`reconciliation`) | Chưa làm |
@@ -225,8 +225,9 @@ Cột Trạng thái dùng ba mức như [`docs/spec.md`](spec.md): Xong, Đang l
 | **FR-19** | Bảng theo dõi doanh thu cho CEO | Giám đốc hoặc Ban Lãnh đạo chỉ cần mở điện thoại là thấy ngay biểu đồ doanh thu theo từng phút, số vé đã bán và tỷ lệ lấp đầy của từng khán đài theo thời gian thực để chỉ đạo vận hành kịp thời. | Dashboard cập nhật qua `GET /api/dashboard/stream` (SSE), số liệu từ `sales_snapshots`, độ trễ ≤ 60 giây. | Sprint 5<br/>(`ceo_dashboard`) | Chưa làm |
 | **FR-20** | Sổ nhật ký giá vé bất biến | Mọi lần đổi giá vé (ai đổi, lúc nào, từ giá nào sang giá nào) đều được ghi vào sổ nhật ký. Ứng dụng không sửa hoặc xóa được các dòng này. | Bảng `price_changes` có trigger chặn `UPDATE` và `DELETE`. Mỗi lần BTC đổi giá cơ bản đều ghi một dòng. Chưa có trang xem nhật ký. | Sprint 5<br/>(`price_log`) | Đang làm |
 | **FR-21** | Xuất báo cáo CSV và XLSX | Phòng kế toán và Ban Tổ chức tải danh mục giao dịch bán vé và tổng doanh thu ra bảng tính Excel (XLSX) hoặc CSV chỉ bằng một cú nhấp chuột. | `GET /api/reports/sales.csv` và `GET /api/reports/sales.xlsx`. | Sprint 5<br/>(`reports_export`) | Chưa làm |
-| **FR-22** | Định giá động (đề xuất giá, BTC duyệt) | Hệ thống tự quan sát xem khu nào bán quá chạy hoặc khu nào bán quá chậm để gửi gợi ý cho Ban Tổ chức: 'Khu VIP nên tăng nhẹ giá để chống phe vé, khu C nên giảm giá để kích cầu'. BTC bấm duyệt thì giá mới đổi. | Tác vụ nền mỗi 5 phút phân tích cung cầu, sinh đề xuất giá vào `price_suggestions`, giữ giá trong `[giá sàn, giá trần]`, chờ BTC duyệt (`W-01`). Chưa làm: cờ `dynamic_pricing` tắt, mới có bảng. Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md). | Sprint 5<br/>(`dynamic_pricing`) | Chưa làm |
-| **FR-23** | Tự động gợi ý mã giảm giá kích cầu | Nếu sự kiện đến gần mà một khu khán đài vẫn còn nhiều ghế trống, hệ thống nhắc Ban Tổ chức phát hành mã giảm giá để bán hết vé kịp thời. | Tác vụ nền phân tích tỷ lệ lấp đầy theo thời gian còn lại, tạo gợi ý chiến dịch trong `promotions` để BTC duyệt. | Sprint 5<br/>(`promo_suggestions`) | Chưa làm |
+| **FR-22** | Định giá động (đề xuất giá, BTC duyệt) | Hệ thống tự quan sát xem khu nào bán quá chạy hoặc khu nào bán quá chậm để gửi gợi ý cho Ban Tổ chức: 'Khu VIP nên tăng nhẹ giá để chống phe vé, khu C nên giảm giá để kích cầu'. BTC bấm duyệt thì giá mới đổi. | Tác vụ nền mỗi 5 phút phân tích cung cầu, sinh đề xuất giá vào `price_suggestions`, giữ giá trong `[giá sàn, giá trần]`, chờ BTC duyệt (`W-01`). Cờ `dynamic_pricing` thuộc Sprint 2; mới có bảng, chưa có job và endpoint duyệt. Thiết kế ở [`dynamic-pricing.md`](dynamic-pricing.md). | Sprint 2<br/>(`dynamic_pricing`) | Chưa làm |
+| **FR-23** | Tự động gợi ý mã giảm giá kích cầu | Nếu sự kiện đến gần mà một khu khán đài vẫn còn nhiều ghế trống, hệ thống nhắc Ban Tổ chức phát hành mã giảm giá để bán hết vé kịp thời. | Tác vụ nền phân tích tỷ lệ lấp đầy theo thời gian còn lại, tạo gợi ý chiến dịch trong `promotions` để BTC duyệt. | Sprint 2<br/>(`promo_suggestions`) | Chưa làm |
+| **FR-24** | Trợ lý Chatbot AI hỗ trợ khán giả và Ban Tổ chức | Khán giả hỏi nhanh lịch diễn, giá vé, hạng ghế còn trống và cách đặt vé ngay trong khung chat; Ban Tổ chức hỏi tóm tắt tình hình bán vé của sự kiện mình mà không cần tra nhiều bảng. | Endpoint `POST /api/assistant/chat` (`AssistantHandler`, `AssistantService`) xác định vai trò từ phiên server, truy vấn dữ liệu thật từ PostgreSQL và tùy chọn diễn giải bằng Ollama/Gemini (fallback xác định khi không có LLM). | Sprint 3<br/>(`chatbot`) | Đang làm |
 
 
 ## 2.2. Yêu cầu Phi chức năng (13 NFRs gắn SLA định lượng)
@@ -276,7 +277,7 @@ Trạng thái từng NFR theo [`docs/spec.md`](spec.md) mục 2:
 |---|---|---|
 | **MUST-HAVE (M)** | Bắt buộc phải có để hệ thống vận hành và bàn giao phiên bản MVP. | Đăng nhập OTP (`FR-01, 04`), Danh mục sự kiện & Sơ đồ ghế (`FR-02, 03`), SSE Realtime (`FR-05`), Giữ ghế 5 phút & Chống bán trùng (`FR-06, 07`), Giá trần/sàn (`FR-08`), Phòng chờ (`FR-09`), Chống bot & Giới hạn vé (`FR-10, 11`), Thanh toán & Cấp vé (`FR-13, 14`), Tự hoàn tiền (`FR-15`), Soát vé cổng (`FR-16, 17`). |
 | **SHOULD-HAVE (S)** | Rất quan trọng, nâng cao trải nghiệm và độ an toàn vận hành. | Mã QR xoay vòng 30s (`FR-12`), Soát vé ngoại tuyến (`FR-18`), Dashboard CEO (`FR-19`), Nhật ký giá bất biến (`FR-20`). |
-| **COULD-HAVE (C)** | Tính năng giá trị gia tăng thông minh; làm khi còn nguồn lực. | Thuật toán Định giá động (`FR-22`), Gợi ý khuyến mãi (`FR-23`), Xuất báo cáo CSV/XLSX (`FR-21`). |
+| **COULD-HAVE (C)** | Tính năng giá trị gia tăng thông minh; làm khi còn nguồn lực. | Thuật toán Định giá động (`FR-22`), Gợi ý khuyến mãi (`FR-23`), Xuất báo cáo CSV/XLSX (`FR-21`), Trợ lý Chatbot AI (`FR-24`). |
 | **WON'T-HAVE (W)** | Hoãn lại trong phiên bản này để tránh rủi ro pháp lý và chi phí ngoài phạm vi. | Tự đổi giá không qua người duyệt (`W-01`), Sàn bán lại vé chính thức (`W-02`), eKYC đầy đủ (`W-03`), Sơ đồ sân khấu 3D (`W-04`), Đa ngôn ngữ và đa tiền tệ (`W-05`). |
 
 ## 2.5. Ma trận truy vết yêu cầu (Traceability Matrix)
@@ -300,6 +301,7 @@ Trạng thái từng NFR theo [`docs/spec.md`](spec.md) mục 2:
 | **FR-19, 21** | Dashboard CEO & Xuất báo cáo | SH-02 | — | NFR-11 | Dashboard và xuất CSV/XLSX (chưa có code) |
 | **FR-20** | Nhật ký kiểm toán giá bất biến | SH-01, 02 | — | NFR-12 | `price_changes`, PostgreSQL Database Trigger cấm sửa/xóa |
 | **FR-22, 23** | Định giá động & Gợi ý khuyến mãi | SH-01 | — | NFR-12 | `price_suggestions`, `price_changes`, `promotions` (chưa có code) |
+| **FR-24** | Trợ lý Chatbot AI hỗ trợ đặt vé & BTC | SH-01, 03 | — | NFR-01 | `AssistantHandler`, `AssistantService`, `AssistantWidget.tsx`, Ollama/Gemini |
 
 Chỉ các thành phần của Sprint 2 đã có trong `backend/internal/`.
 Các thành phần còn lại là dự kiến, xem [`docs/class-diagram.md`](class-diagram.md) mục 5.
@@ -414,7 +416,7 @@ Bảng lấy từ [`docs/dfd.md`](dfd.md) mục 5. Mỗi bảng trong 23 bảng 
 
 Hệ thống quản lý tính năng thông qua middleware `RequireFeature(flagName)`. Khi một cờ bị tắt, giao diện tự động ẩn và API trả về `404 Not Found {"error": "feature_disabled"}`.
 
-**Bảng 10. 19 cờ tính năng theo Profile Sprint** (lấy từ `backend/internal/config/features.go`)
+**Bảng 10. 20 cờ tính năng theo Profile Sprint** (lấy từ `backend/internal/config/features.go`)
 
 | Cờ (`flag`) | Yêu cầu | sprint2 (đang chạy) | sprint3 | sprint4 | final |
 |---|:---:|:---:|:---:|:---:|:---:|
@@ -423,10 +425,13 @@ Hệ thống quản lý tính năng thông qua middleware `RequireFeature(flagNa
 | `seat_hold` | FR-06, 07, NFR-03 | **Bật** | **Bật** | **Bật** | **Bật** |
 | `zone_pricing` | FR-08 | **Bật** | **Bật** | **Bật** | **Bật** |
 | `organizer_console` | FR-08 | **Bật** | **Bật** | **Bật** | **Bật** |
+| `rotating_qr` | FR-12, NFR-08 | **Bật** | **Bật** | **Bật** | **Bật** |
+| `dynamic_pricing` | FR-22, W-01 | **Bật** | **Bật** | **Bật** | **Bật** |
+| `promo_suggestions` | FR-23 | **Bật** | **Bật** | **Bật** | **Bật** |
 | `waiting_room` | FR-09, NFR-09 | Tắt | **Bật** | **Bật** | **Bật** |
 | `bot_check` | FR-10, NFR-07 | Tắt | **Bật** | **Bật** | **Bật** |
 | `ticket_limit` | FR-11 | Tắt | **Bật** | **Bật** | **Bật** |
-| `rotating_qr` | FR-12, NFR-08 | Tắt | **Bật** | **Bật** | **Bật** |
+| `chatbot` | FR-24 | Tắt | **Bật** | **Bật** | **Bật** |
 | `payments` | FR-13 | Tắt | Tắt | **Bật** | **Bật** |
 | `ticket_email` | FR-14 | Tắt | Tắt | **Bật** | **Bật** |
 | `reconciliation` | FR-15, NFR-04 | Tắt | Tắt | **Bật** | **Bật** |
@@ -435,8 +440,6 @@ Hệ thống quản lý tính năng thông qua middleware `RequireFeature(flagNa
 | `ceo_dashboard` | FR-19 | Tắt | Tắt | Tắt | **Bật** |
 | `price_log` | FR-20, NFR-12 | Tắt | Tắt | Tắt | **Bật** |
 | `reports_export` | FR-21 | Tắt | Tắt | Tắt | **Bật** |
-| `dynamic_pricing` | FR-22, W-01 | Tắt | Tắt | Tắt | **Bật** |
-| `promo_suggestions` | FR-23 | Tắt | Tắt | Tắt | **Bật** |
 
 FR-02 luôn bật. Nhật ký giá luôn được ghi, cờ `price_log` chỉ ẩn hoặc hiện trang xem.
 
@@ -499,7 +502,7 @@ ERD Sprint 1 trên MySQL có 26 bảng.
 
 ## 5.1. Định giá động (FR-22): bài toán, quy tắc và phản biện
 
-**Trạng thái:** cờ `dynamic_pricing` tắt, FR-22 chưa làm.
+**Trạng thái:** cờ `dynamic_pricing` đã thuộc profile `sprint2`, nhưng job tính đề xuất và endpoint duyệt chưa cài đặt nên FR-22 vẫn ở trạng thái chưa làm.
 Code đã có bảng `price_suggestions`, bảng `price_changes` và giá sàn, cơ bản, trần theo khu vực (FR-08).
 Chưa có job tính đề xuất và endpoint duyệt.
 Đặc tả đầy đủ, gồm cả ba ví dụ tính tay, nằm ở [`docs/dynamic-pricing.md`](dynamic-pricing.md).
@@ -585,9 +588,8 @@ Thiết kế cho FR-13, FR-15 (cờ `payments`, `reconciliation`), chưa làm.
 
 # PHẦN 6. KẾ HOẠCH TRIỂN KHAI, KIỂM THỬ VÀ ĐÁNH GIÁ THỰC TẾ
 
-Dự án chia thành 5 Sprint theo mô hình Agile/Scrum, ước lượng tổng cộng **458 giờ công**.
-Các bảng dưới đây phân bổ 23 Yêu cầu Chức năng (FR) theo Sprint và ghi trạng thái thực tế theo [`docs/spec.md`](spec.md).
-Chỉ Sprint 2 đã có code.
+Dự án chia thành 5 Sprint theo mô hình Agile/Scrum, ước lượng tổng cộng **472 giờ công**.
+Các bảng dưới đây phân bổ 24 Yêu cầu Chức năng (FR) theo Sprint và ghi trạng thái thực tế theo [`docs/spec.md`](spec.md).
 
 ## 6.1. Phân bổ các Yêu cầu Chức năng (FR) theo 5 Sprint của dự án
 
@@ -595,26 +597,26 @@ Lộ trình phát triển hệ thống EventTicketing được phân bổ theo 5
 
 ```mermaid
 flowchart LR
-    S1["Sprint 1 (2 tuần)<br/>Khảo sát và phân tích SA<br/>(đã báo cáo)"] --> S2["Sprint 2 (3 tuần, giữa kỳ)<br/>Profile: sprint2<br/>OTP, Giữ ghế, SSE Realtime<br/>(FR-01 đến FR-08)"]
-    S2 --> S3["Sprint 3 (2 tuần)<br/>Profile: sprint3<br/>Phòng chờ, Chống Bot, QR 30s<br/>(FR-09 đến FR-12)"]
+    S1["Sprint 1 (2 tuần)<br/>Khảo sát và phân tích SA<br/>(đã báo cáo)"] --> S2["Sprint 2 (3 tuần, giữa kỳ)<br/>Profile: sprint2<br/>OTP, Giữ ghế, SSE, QR 30s, Giá động, Khuyến mãi<br/>(FR-01 đến FR-08, FR-12, FR-22, FR-23)"]
+    S2 --> S3["Sprint 3 (2 tuần)<br/>Profile: sprint3<br/>Phòng chờ, Chống Bot, Giới hạn vé, Chatbot AI<br/>(FR-09, FR-10, FR-11, FR-24)"]
     S3 --> S4["Sprint 4 (2 tuần)<br/>Profile: sprint4<br/>Thanh toán MoMo/VNPAY, Email<br/>(FR-13 đến FR-15)"]
-    S4 --> S5["Sprint 5 (3 tuần, cuối kỳ)<br/>Profile: final<br/>Soát vé, CEO Dashboard, Định giá động<br/>(FR-16 đến FR-23)"]
+    S4 --> S5["Sprint 5 (3 tuần, cuối kỳ)<br/>Profile: final<br/>Soát vé, CEO Dashboard, Nhật ký giá, Báo cáo<br/>(FR-16 đến FR-21)"]
 ```
 
 **Bảng 13. Phân bổ các Yêu cầu Chức năng (FR) theo 5 Sprint của dự án**
 
 | Sprint | Mục tiêu | Cấu hình cờ | Các FR trong Sprint | Số FR | Trạng thái thực tế |
 |:---:|---|---|---|:---:|---|
-| **Sprint 1**<br/>*(2 tuần)* | Khảo sát, phân tích yêu cầu, thiết kế sơ bộ: tài liệu SA, mockup UI React, ERD MySQL 26 bảng. | Không có profile cờ | Không có FR chạy trong code | 0 | Đã báo cáo, giữ nguyên theo báo cáo Sprint 1. |
-| **Sprint 2**<br/>*(3 tuần)* | Backend Go, giữ ghế chống bán trùng, SSE realtime, đăng nhập OTP. | `sprint2`: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console` | FR-01 đến FR-08 | 8<br/>*(34,8%)* | 6 xong (FR-02 đến FR-07), 2 đang làm (FR-01 chưa gửi OTP qua SMS/email, FR-08 chưa tạo sự kiện). |
-| **Sprint 3**<br/>*(2 tuần)* | Phòng chờ ảo, chống bot, giới hạn vé, QR xoay vòng. | `sprint3`: thêm `waiting_room`, `bot_check`, `ticket_limit`, `rotating_qr` | FR-09, FR-10, FR-11, FR-12 | 4<br/>*(17,4%)* | FR-11 đang làm (logic trong `HoldSeat`, cờ tắt). FR-09, 10, 12 chưa làm. |
-| **Sprint 4**<br/>*(2 tuần)* | Thanh toán MoMo/VNPAY, gửi vé email, đối soát và hoàn tiền. | `sprint4`: thêm `payments`, `ticket_email`, `reconciliation` | FR-13, FR-14, FR-15 | 3<br/>*(13,0%)* | Chưa làm. |
-| **Sprint 5**<br/>*(3 tuần)* | Soát vé, CEO dashboard, nhật ký giá, báo cáo, Định giá động, gợi ý khuyến mãi. | `final`: thêm `gate_checkin`, `offline_checkin`, `ceo_dashboard`, `price_log`, `reports_export`, `dynamic_pricing`, `promo_suggestions` | FR-16 đến FR-23 | 8<br/>*(34,8%)* | FR-20 đang làm (đã ghi `price_changes`, chưa có trang xem). Các FR còn lại chưa làm. |
-| **Tổng cộng** | 23 FR, 19 cờ tính năng | | FR-01 đến FR-23 | **23** | 6 xong, 4 đang làm (FR-01, 08, 11, 20), 13 chưa làm. |
+| **Sprint 1**<br/>*(2 tuần)* | Khảo sát, phân tích yêu cầu, thiết kế sơ bộ: Convert requirement, Thiết kế DFD Level 1, Thiết kế ERD, Demo Database, Review bản thiết kế ERD, tài liệu SA và mockup UI React. | Không có profile cờ | Không có FR chạy trong code | 0 | Đã báo cáo, giữ nguyên theo báo cáo Sprint 1. |
+| **Sprint 2**<br/>*(3 tuần)* | Backend Go, giữ ghế chống bán trùng, SSE realtime, đăng nhập OTP, QR xoay vòng 30s, Định giá động và Gợi ý khuyến mãi. | `sprint2`: `otp_login`, `seat_map_realtime`, `seat_hold`, `zone_pricing`, `organizer_console`, `rotating_qr`, `dynamic_pricing`, `promo_suggestions` | FR-01 đến FR-08, FR-12, FR-22, FR-23 | 11<br/>*(45,8%)* | 6 xong (FR-02 đến FR-07), 2 đang làm (FR-01, FR-08), 3 chưa làm (FR-12, FR-22, FR-23). |
+| **Sprint 3**<br/>*(2 tuần)* | Phòng chờ ảo, chống bot, giới hạn vé, Trợ lý Chatbot AI. | `sprint3`: thêm `waiting_room`, `bot_check`, `ticket_limit`, `chatbot` | FR-09, FR-10, FR-11, FR-24 | 4<br/>*(16,7%)* | FR-11 và FR-24 đang làm. FR-09, FR-10 chưa làm. |
+| **Sprint 4**<br/>*(2 tuần)* | Thanh toán MoMo/VNPAY, gửi vé email, đối soát và hoàn tiền. | `sprint4`: thêm `payments`, `ticket_email`, `reconciliation` | FR-13, FR-14, FR-15 | 3<br/>*(12,5%)* | Chưa làm. |
+| **Sprint 5**<br/>*(3 tuần)* | Soát vé cổng & ngoại tuyến, CEO dashboard, nhật ký giá, xuất báo cáo. | `final`: thêm `gate_checkin`, `offline_checkin`, `ceo_dashboard`, `price_log`, `reports_export` | FR-16 đến FR-21 | 6<br/>*(25,0%)* | FR-20 đang làm (đã ghi `price_changes`, chưa có trang xem). Các FR còn lại chưa làm. |
+| **Tổng cộng** | 24 FR, 20 cờ tính năng | | FR-01 đến FR-24 | **24** | 6 xong, 5 đang làm (FR-01, 08, 11, 20, 24), 13 chưa làm. |
 
-## 6.2. Trạng thái 23 Yêu cầu Chức năng theo từng Sprint
+## 6.2. Trạng thái 24 Yêu cầu Chức năng theo từng Sprint
 
-**Bảng 14. Trạng thái và kiểm chứng 23 Yêu cầu Chức năng (FR-01 … FR-23) theo từng Sprint**
+**Bảng 14. Trạng thái và kiểm chứng 24 Yêu cầu Chức năng (FR-01 … FR-24) theo từng Sprint**
 
 | Sprint | Mã FR | Tên yêu cầu | Cờ tính năng | Trạng thái | Căn cứ trong code |
 |:---:|:---:|---|---|:---:|---|
@@ -626,10 +628,13 @@ flowchart LR
 | **Sprint 2** | **FR-06** | Giữ ghế độc quyền 5 phút | `seat_hold` | **Xong** | Hạn giữ tính theo giờ server. `HoldReaper` nhả ghế hết hạn, quét 5 giây một lần. |
 | **Sprint 2** | **FR-07** | Chống bán trùng ghế | `seat_hold` | **Xong** | Test `TestHoldSeat_ConcurrentHoldersGetOneSeat`: 50 luồng cùng giữ một ghế, đúng một luồng thành công. Test cần `TEST_DATABASE_URL`. |
 | **Sprint 2** | **FR-08** | Giá sàn, giá trần theo khu vực | `zone_pricing`, `organizer_console` | **Đang làm** | Đã có xem sự kiện của mình, đặt giá khu vực, ghi `price_changes`. Chưa có tạo địa điểm, khu vực, ghế, sự kiện. |
+| **Sprint 2** | **FR-12** | QR đổi mỗi 30 giây | `rotating_qr` | **Chưa làm** | Cờ thuộc `sprint2`. Mới có cột `tickets.qr_secret`. |
+| **Sprint 2** | **FR-22** | Định giá động | `dynamic_pricing` | **Chưa làm** | Cờ thuộc `sprint2`. Mới có bảng `price_suggestions`. Thiết kế ở `dynamic-pricing.md`. |
+| **Sprint 2** | **FR-23** | Gợi ý khuyến mãi | `promo_suggestions` | **Chưa làm** | Cờ thuộc `sprint2`. Mới có bảng `promotions`. |
 | **Sprint 3** | **FR-09** | Phòng chờ ảo | `waiting_room` | **Chưa làm** | Mới có bảng `queue_entries`. |
 | **Sprint 3** | **FR-10** | Chặn bot bằng Turnstile | `bot_check` | **Chưa làm** | Chưa kiểm tra Turnstile. Đã giới hạn OTP theo IP và theo SĐT hoặc email. |
 | **Sprint 3** | **FR-11** | Giới hạn vé mỗi tài khoản | `ticket_limit` | **Đang làm** | Có trong `HoldSeat` khi cờ bật. Cờ đang tắt. Chưa kiểm thử tải. |
-| **Sprint 3** | **FR-12** | QR đổi mỗi 30 giây | `rotating_qr` | **Chưa làm** | Mới có cột `tickets.qr_secret`. |
+| **Sprint 3** | **FR-24** | Trợ lý Chatbot AI hỗ trợ khán giả & BTC | `chatbot` | **Đang làm** | Đã có `POST /api/assistant/chat`, `AssistantService` (Ollama/Gemini fallback) và `AssistantWidget.tsx`. Cờ thuộc `sprint3`. |
 | **Sprint 4** | **FR-13** | Thanh toán MoMo, VNPAY | `payments` | **Chưa làm** | Cờ tắt. Chưa có đơn hàng, thanh toán và IPN. |
 | **Sprint 4** | **FR-14** | Gửi vé qua email | `ticket_email` | **Chưa làm** | Cờ tắt. Chưa phát hành vé. |
 | **Sprint 4** | **FR-15** | Đối soát, hoàn tiền | `reconciliation` | **Chưa làm** | Cờ tắt. |
@@ -639,8 +644,6 @@ flowchart LR
 | **Sprint 5** | **FR-19** | Dashboard doanh thu cho CEO | `ceo_dashboard` | **Chưa làm** | Cờ tắt. Mới có bảng `sales_snapshots`. |
 | **Sprint 5** | **FR-20** | Nhật ký giá | `price_log` | **Đang làm** | Mỗi lần BTC đổi giá cơ bản đều ghi `price_changes`. Trigger chặn sửa và xóa. Chưa có trang xem. |
 | **Sprint 5** | **FR-21** | Xuất báo cáo CSV/XLSX | `reports_export` | **Chưa làm** | Cờ tắt. |
-| **Sprint 5** | **FR-22** | Định giá động | `dynamic_pricing` | **Chưa làm** | Cờ tắt. Mới có bảng `price_suggestions`. Thiết kế ở `dynamic-pricing.md`. |
-| **Sprint 5** | **FR-23** | Gợi ý khuyến mãi | `promo_suggestions` | **Chưa làm** | Cờ tắt. Mới có bảng `promotions`. |
 
 ## 6.3. Bảng phân rã công việc (WBS) Sprint 2 (Mốc Giữa kỳ - T01 … T14)
 
@@ -654,9 +657,12 @@ flowchart LR
 | **T12.4** | SSE Hub với `LISTEN/NOTIFY` và `HoldReaper` | Vũ Đức Huy | 14 | `seat_map_realtime` |
 | **T12.5** | nginx proxy `/api`, nối frontend React với SSE và API giữ ghế | Trần Trung Nhân | 12 | `frontend/` |
 | **T12.6** | Danh sách sự kiện và API Ban Tổ chức: đặt giá khu vực, ghi `price_changes` | Trần Trung Nhân | 8 | `zone_pricing`, `organizer_console` |
+| **T12.7** | Thuật toán sinh mã QR xoay vòng 30s HMAC và giao diện đổi QR | Đinh Tiến Thành | 14 | `rotating_qr` |
+| **T12.8** | Job định giá động chu kỳ 5 phút và endpoint duyệt, từ chối đề xuất | Nguyễn Anh Dũng | 20 | `dynamic_pricing` |
+| **T12.9** | Phân tích tỷ lệ lấp đầy thấp và gợi ý khuyến mãi kích cầu cho BTC duyệt | Đinh Tiến Thành | 6 | `promo_suggestions` |
 | **T01** | ERD Mermaid từ schema PostgreSQL, so sánh với Sprint 1 | Vũ Đức Huy | 8 | `docs/erd.md` |
-| **T02** | Sơ đồ lớp BCE, ánh xạ các Entity với bảng | Vũ Đức Huy | 10 | `docs/class-diagram.md` |
-| **T03** | Kế hoạch 5 Sprint, WBS, phân bổ nguồn lực | Vũ Đức Huy | 6 | `docs/sprints.md` |
+| **T02** | Sơ đồ lớp BCE, ánh xạ các Entity với bảng | Nguyễn Anh Dũng | 10 | `docs/class-diagram.md` |
+| **T03** | Kế hoạch 5 Sprint, WBS, phân bổ nguồn lực | Nguyễn Anh Dũng | 6 | `docs/sprints.md` |
 | **T04** | Sequence giữ ghế 5 phút | Nguyễn Anh Dũng | 8 | `docs/sequences/hold.md` |
 | **T05** | Kiểm thử thủ công giữ ghế theo US-03 | Đinh Tiến Thành | 10 | `docs/checks/fr-06.md` |
 | **T06** | Sequence chống bán trùng | Nguyễn Đức Phúc | 8 | `docs/sequences/double-booking.md` |
@@ -667,7 +673,7 @@ flowchart LR
 | **T11** | Kịch bản kiểm thử người dùng và form khảo sát SUS (chưa thực hiện kiểm thử) | Lê Đức Anh | 10 | `docs/testing.md` |
 | **T13** | Sequence đăng nhập OTP | Trần Trung Nhân | 6 | `docs/sequences/otp-login.md` |
 | **T14** | Kiến trúc và đặc tả OpenAPI | Trần Trung Nhân | 12 | `docs/architecture.md`, `docs/api/openapi.yaml` |
-| **Tổng** | | 6 thành viên | **206** | |
+| **Tổng** | | 6 thành viên | **246** | |
 
 Ước lượng giờ lấy từ [`docs/sprints.md`](sprints.md). Phụ trách chính lấy từ [`docs/TASKS.md`](TASKS.md).
 
@@ -677,13 +683,13 @@ flowchart LR
 
 | Thành viên | Nhiệm vụ chính trong dự án | Sprint 2 | Sprint 3 | Sprint 4 | Sprint 5 | Tổng cộng |
 |---|---|:---:|:---:|:---:|:---:|:---:|
-| **Vũ Đức Huy** (`vdhwy`) | ERD, Sơ đồ lớp BCE, Kế hoạch Sprint, Giữ ghế nguyên tử và Realtime SSE | 56 giờ | 18 giờ | 14 giờ | 18 giờ | **106 giờ** |
+| **Vũ Đức Huy** (`vdhwy`) | ERD, Giữ ghế nguyên tử, Realtime SSE, Chatbot AI (Sprint 3) | 40 giờ | 32 giờ | 14 giờ | 18 giờ | **104 giờ** |
 | **Trần Trung Nhân** (`nhansp`) | Hạ tầng Docker, Go API, Xác thực OTP, Frontend React, API Ban Tổ chức, OpenAPI 3.0 | 66 giờ | 10 giờ | 20 giờ | 16 giờ | **112 giờ** |
-| **Nguyễn Anh Dũng** (`Lan-0924`) | Bài toán và thiết kế Định giá động, Sequence giữ ghế 5:00, kịch bản tải k6 (kế hoạch Sprint 3, chưa chạy) | 24 giờ | 14 giờ | 16 giờ | 20 giờ | **74 giờ** |
+| **Nguyễn Anh Dũng** (`Lan-0924`) | Sơ đồ lớp BCE, Kế hoạch Sprint, Bài toán, thiết kế và Job Định giá động, Sequence giữ ghế 5:00, kịch bản tải k6 | 60 giờ | 14 giờ | 16 giờ | 0 giờ | **90 giờ** |
 | **Nguyễn Đức Phúc** (`phukzz`) | Sequence chống bán trùng, DFD, giao diện soát vé (kế hoạch Sprint 5) | 20 giờ | 8 giờ | 8 giờ | 16 giờ | **52 giờ** |
-| **Đinh Tiến Thành** (`Th4nhDT716`) | Bảng đặc tả 23 FR/13 NFR, ma trận truy vết, kiểm thử thủ công FR-06, QR 30s (kế hoạch Sprint 3) | 18 giờ | 14 giờ | 10 giờ | 12 giờ | **54 giờ** |
+| **Đinh Tiến Thành** (`Th4nhDT716`) | Bảng đặc tả 24 FR/13 NFR, ma trận truy vết, kiểm thử thủ công FR-06, QR 30s, gợi ý khuyến mãi, nhật ký giá | 38 giờ | 0 giờ | 10 giờ | 6 giờ | **54 giờ** |
 | **Lê Đức Anh** | Use Case, kịch bản kiểm thử người dùng và form SUS | 22 giờ | 10 giờ | 12 giờ | 16 giờ | **60 giờ** |
-| **Toàn nhóm (6 thành viên)** | **Tổng ước lượng giờ công của 5 Sprint** | **206 giờ** | **74 giờ** | **80 giờ** | **98 giờ** | **458 giờ** |
+| **Toàn nhóm (6 thành viên)** | **Tổng ước lượng giờ công của 5 Sprint** | **246 giờ** | **74 giờ** | **80 giờ** | **72 giờ** | **472 giờ** |
 
 ## 6.5. Kiểm thử hệ thống: Concurrency Test chống bán trùng
 
@@ -718,7 +724,7 @@ Báo cáo không nêu tỷ lệ hoàn thành nhiệm vụ hay điểm SUS.
 # PHẦN 7. KẾT LUẬN VÀ BÀI HỌC KINH NGHIỆM
 
 ## 7.1. Tổng kết kết quả đạt được của đồ án
-1. Bóc tách 23 FR, 13 NFR, 7 User Story và ma trận truy vết.
+1. Bóc tách 24 FR, 13 NFR, 7 User Story và ma trận truy vết.
 2. Mô hình hóa: 17 Use Case, DFD ba mức, sơ đồ lớp BCE và các sơ đồ tuần tự giữ ghế, chống bán trùng, đăng nhập OTP.
 3. Thiết kế cơ sở dữ liệu 23 bảng trên PostgreSQL 18, có unique index một phần và trigger nhật ký không sửa được.
 4. Chạy được Sprint 2 trên Go và PostgreSQL 18: đăng nhập OTP, sơ đồ ghế realtime, giữ ghế 5 phút, đặt giá khu vực.
@@ -776,6 +782,7 @@ Cờ tắt thì endpoint trả `404 feature_disabled`.
 | `POST` | `/api/tickets/cancel` | `payments` | Đã đăng nhập | Hủy ghế hoặc vé của chính người gọi. |
 | `GET` | `/api/tickets/cancelled` | `payments` | Đã đăng nhập | Danh sách đã hủy của người gọi. |
 | `POST` | `/api/tickets/reset-demo` | Chỉ khi `APP_ENV` khác `production` | Đã đăng nhập | Nhả các lượt giữ của người gọi để chạy lại demo. |
+| `POST` | `/api/assistant/chat` | `chatbot` (Sprint 3) | Mọi tác nhân | Trợ lý Chatbot AI hỗ trợ khán giả và tóm tắt bán vé cho Ban Tổ chức. |
 
 Bản trực tuyến chạy `APP_ENV=production`, nên không có `demo-login` và `reset-demo`.
 

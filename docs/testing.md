@@ -26,7 +26,7 @@ Các mục 4, 5 và 6 là mẫu trống, chờ điền sau khi kiểm thử.
 ## 2. Kịch bản kiểm thử (Test Scripts & Tasks)
 
 Mỗi người tham gia hoàn thành lần lượt 5 nhiệm vụ trên bản đang chạy.
-Bản triển khai hiện dùng profile `sprint2`: cờ `payments` và `rotating_qr` đang tắt.
+Bản triển khai hiện dùng profile `sprint2`: cờ `payments` đang tắt (cờ `rotating_qr` đã thuộc `sprint2` nhưng luồng tạo vé cần `payments`).
 Nhiệm vụ 5 chỉ thực hiện được khi cờ `payments` bật, nếu không thì bỏ qua và ghi rõ trong kết quả.
 
 | Mã nhiệm vụ | Tên nhiệm vụ | Hướng dẫn cho người dùng | Tiêu chí thành công |

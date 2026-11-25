@@ -8,7 +8,7 @@ Ban Tổ chức luôn là người quyết định cuối cùng (Human-in-the-lo
 
 ## 0. Trạng thái triển khai
 
-Cờ `dynamic_pricing` tắt ở profile `sprint2` (profile đang chạy), nên FR-22 ở trạng thái **chưa làm**.
+Cờ `dynamic_pricing` thuộc profile `sprint2`, tuy nhiên job tính đề xuất và endpoint duyệt chưa được cài đặt nên FR-22 vẫn ở trạng thái **chưa làm**.
 Phần đã có trong code:
 - bảng `price_suggestions` (đề xuất giá) và `price_changes` (nhật ký giá, trigger chặn sửa và xóa);
 - cột `event_zones.floor_price`, `base_price`, `ceiling_price` với ràng buộc `floor_price <= base_price <= ceiling_price`;
