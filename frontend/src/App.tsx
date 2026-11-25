@@ -16,6 +16,7 @@ import { PaymentReturnPage } from './pages/PaymentReturnPage';
 import { TicketSelectionPage } from './pages/TicketSelectionPage';
 import { SurveyPage } from './pages/SurveyPage';
 import { GatePage } from './pages/GatePage';
+import { SeatMonitorPage } from './pages/SeatMonitorPage';
 
 export default function App() {
   return (
@@ -67,6 +68,15 @@ export default function App() {
                 element={
                   <ProtectedRoute roles={['GATE_STAFF', 'ORGANIZER', 'ADMIN']}>
                     <GatePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/giam-sat-ghe"
+                element={
+                  <ProtectedRoute roles={['ORGANIZER', 'ADMIN']}>
+                    <SeatMonitorPage />
                   </ProtectedRoute>
                 }
               />

@@ -61,6 +61,7 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
     { to: '/', label: 'Lịch diễn', show: true, count: 0 },
     { to: '/my-tickets', label: 'Ghế đang giữ', show: isAuthenticated && isEnabled('seat_hold'), count: 0 },
     { to: '/organizer', label: 'Quản lý sự kiện', show: showOrganizerLink, count: 0 },
+    { to: '/giam-sat-ghe', label: 'Giám sát ghế', show: showOrganizerLink, count: 0 },
     { to: '/soat-ve', label: 'Soát vé', show: (isOrganizer || user?.role === 'GATE_STAFF') && isEnabled('gate_checkin'), count: 0 },
     { to: '/khao-sat', label: 'Khảo sát', show: isEnabled('user_testing'), count: 0 }
   ].filter(item => item.show);
