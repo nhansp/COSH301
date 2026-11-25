@@ -154,26 +154,26 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
             <dd className="tabular-nums text-kumo-default">{formatPrice(fee)}</dd>
           </div>
         </dl>
-        {/* Total + action buttons */}
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="min-w-0">
-            <span className="block text-sm font-medium text-kumo-strong">Tổng cộng</span>
-            <span className="type-figure block text-2xl leading-tight text-kumo-strong">
-              {formatPrice(total)}
-            </span>
-          </p>
-          {!onHoldOnly && (
-            <button type="button" onClick={onCheckout} className="btn btn-primary h-12 shrink-0">
-              {checkoutLabel}
-            </button>
-          )}
+        {/* Total */}
+        <div className="mt-2.5 flex items-baseline justify-between gap-3 border-t border-kumo-hairline pt-2.5">
+          <span className="text-sm font-medium text-kumo-strong">Tổng cộng</span>
+          <span className="type-figure text-2xl leading-tight text-kumo-strong">
+            {formatPrice(total)}
+          </span>
         </div>
-        {onHoldOnly && (
+        {/* Action buttons below Tổng cộng */}
+        {onHoldOnly ? (
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button type="button" onClick={onHoldOnly} className="btn btn-secondary h-11 w-full">
               <Clock className="size-4 text-violet-ink" />
               <span>{holdLabel}</span>
             </button>
+            <button type="button" onClick={onCheckout} className="btn btn-primary h-11 w-full">
+              {checkoutLabel}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3">
             <button type="button" onClick={onCheckout} className="btn btn-primary h-11 w-full">
               {checkoutLabel}
             </button>
