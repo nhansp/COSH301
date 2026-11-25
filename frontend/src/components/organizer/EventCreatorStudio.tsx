@@ -1297,40 +1297,117 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
                             />
                           </label>
 
-                          <label className="block text-xs">
-                            <span className="text-kumo-subtle">Giá cơ bản (VND)</span>
-                            <input
-                              type="number"
-                              min={0}
-                              step={50000}
-                              value={z.basePrice}
-                              onChange={e => updateZone(z.uid, { basePrice: Math.max(0, Number(e.target.value) || 0) })}
-                              className="field mt-1 text-xs tabular-nums"
-                            />
-                            <span className="mt-0.5 block text-[10px] text-kumo-subtle">{formatPrice(z.basePrice)}</span>
-                          </label>
-                          <label className="block text-xs">
-                            <span className="text-kumo-subtle">Giá sàn</span>
-                            <input
-                              type="number"
-                              min={0}
-                              step={50000}
-                              value={z.floorPrice}
-                              onChange={e => updateZone(z.uid, { floorPrice: Math.max(0, Number(e.target.value) || 0) })}
-                              className="field mt-1 text-xs tabular-nums"
-                            />
-                          </label>
-                          <label className="block text-xs">
-                            <span className="text-kumo-subtle">Giá trần</span>
-                            <input
-                              type="number"
-                              min={0}
-                              step={50000}
-                              value={z.ceilingPrice}
-                              onChange={e => updateZone(z.uid, { ceilingPrice: Math.max(0, Number(e.target.value) || 0) })}
-                              className="field mt-1 text-xs tabular-nums"
-                            />
-                          </label>
+                          <div className="col-span-2 sm:col-span-3">
+                            <span className="block text-[11px] font-medium text-kumo-subtle">
+                              Chế độ giá cho khu vực này
+                            </span>
+                            <div
+                              role="radiogroup"
+                              aria-label={`Chế độ giá ${z.name}`}
+                              className="mt-1.5 grid grid-cols-2 gap-2"
+                            >
+                              <button
+                                type="button"
+                                role="radio"
+                                aria-checked={!z.isDynamicPricingEnabled}
+                                onClick={() =>
+                                  updateZone(z.uid, {
+                                    isDynamicPricingEnabled: false,
+                                    floorPrice: z.basePrice,
+                                    ceilingPrice: z.basePrice
+                                  })
+                                }
+                                className={`rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                                  !z.isDynamicPricingEnabled
+                                    ? 'bg-kumo-tint font-semibold text-kumo-strong ring-2 ring-violet-ink'
+                                    : 'bg-kumo-base text-kumo-subtle ring ring-kumo-line hover:text-kumo-strong'
+                                }`}
+                              >
+                                Giá cố định (Fixed)
+                              </button>
+                              <button
+                                type="button"
+                                role="radio"
+                                aria-checked={z.isDynamicPricingEnabled}
+                                onClick={() => {
+                                  const needsBand = z.basePrice > 0 && z.floorPrice === z.basePrice && z.ceilingPrice === z.basePrice;
+                                  updateZone(z.uid, {
+                                    isDynamicPricingEnabled: true,
+                                    floorPrice: needsBand ? Math.round((z.basePrice * 0.8) / 1000) * 1000 : z.floorPrice,
+                                    ceilingPrice: needsBand ? Math.round((z.basePrice * 1.2) / 1000) * 1000 : z.ceilingPrice
+                                  });
+                                }}
+                                className={`rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                                  z.isDynamicPricingEnabled
+                                    ? 'bg-kumo-tint font-semibold text-kumo-strong ring-2 ring-violet-ink'
+                                    : 'bg-kumo-base text-kumo-subtle ring ring-kumo-line hover:text-kumo-strong'
+                                }`}
+                              >
+                                Giá động (Dynamic)
+                              </button>
+                            </div>
+                          </div>
+
+                          {z.isDynamicPricingEnabled ? (
+                            <>
+                              <label className="block text-xs">
+                                <span className="text-kumo-subtle">Giá cơ bản (VND)</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={50000}
+                                  value={z.basePrice}
+                                  onChange={e => updateZone(z.uid, { basePrice: Math.max(0, Number(e.target.value) || 0) })}
+                                  className="field mt-1 text-xs tabular-nums"
+                                />
+                                <span className="mt-0.5 block text-[10px] text-kumo-subtle">{formatPrice(z.basePrice)}</span>
+                              </label>
+                              <label className="block text-xs">
+                                <span className="text-kumo-subtle">Giá sàn</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={50000}
+                                  value={z.floorPrice}
+                                  onChange={e => updateZone(z.uid, { floorPrice: Math.max(0, Number(e.target.value) || 0) })}
+                                  className="field mt-1 text-xs tabular-nums"
+                                />
+                              </label>
+                              <label className="block text-xs">
+                                <span className="text-kumo-subtle">Giá trần</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={50000}
+                                  value={z.ceilingPrice}
+                                  onChange={e => updateZone(z.uid, { ceilingPrice: Math.max(0, Number(e.target.value) || 0) })}
+                                  className="field mt-1 text-xs tabular-nums"
+                                />
+                              </label>
+                            </>
+                          ) : (
+                            <label className="col-span-2 block text-xs sm:col-span-3">
+                              <span className="text-kumo-subtle">Giá cố định (VND)</span>
+                              <input
+                                type="number"
+                                min={0}
+                                step={50000}
+                                value={z.basePrice}
+                                onChange={e => {
+                                  const nextPrice = Math.max(0, Number(e.target.value) || 0);
+                                  updateZone(z.uid, {
+                                    basePrice: nextPrice,
+                                    floorPrice: nextPrice,
+                                    ceilingPrice: nextPrice
+                                  });
+                                }}
+                                className="field mt-1 text-xs tabular-nums"
+                              />
+                              <span className="mt-0.5 block text-[10px] text-kumo-subtle">
+                                {formatPrice(z.basePrice)} · Giá niêm yết cố định cho khu vực này
+                              </span>
+                            </label>
+                          )}
 
                           <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 pt-1 sm:col-span-3">
                             <div className="flex items-center gap-1.5">
@@ -1350,15 +1427,6 @@ export const EventCreatorStudio: React.FC<EventCreatorStudioProps> = ({
                                 />
                               ))}
                             </div>
-                            <label className="inline-flex items-center gap-1.5 text-xs text-kumo-default">
-                              <input
-                                type="checkbox"
-                                checked={z.isDynamicPricingEnabled}
-                                onChange={e => updateZone(z.uid, { isDynamicPricingEnabled: e.target.checked })}
-                                className="rounded accent-violet-ink"
-                              />
-                              <span>Bật giá động</span>
-                            </label>
                           </div>
                         </div>
                       )}

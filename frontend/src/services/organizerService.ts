@@ -54,6 +54,7 @@ export interface ZonePricing {
   basePrice: number;
   floorPrice: number;
   ceilingPrice: number;
+  isDynamicPricingEnabled?: boolean;
 }
 
 export interface OrganizerZone extends ZonePricing {

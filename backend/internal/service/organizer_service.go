@@ -558,22 +558,40 @@ func (s *OrganizerService) AuthorizeEvent(ctx context.Context, eventID, userID p
 }
 
 type ZonePricing struct {
-	BasePrice    int64 `json:"basePrice"`
-	FloorPrice   int64 `json:"floorPrice"`
-	CeilingPrice int64 `json:"ceilingPrice"`
+	BasePrice               int64 `json:"basePrice"`
+	FloorPrice              int64 `json:"floorPrice"`
+	CeilingPrice            int64 `json:"ceilingPrice"`
+	IsDynamicPricingEnabled *bool `json:"isDynamicPricingEnabled,omitempty"`
+}
+
+// NormalizeZonePricing validates and normalizes a zone pricing update for either
+// fixed pricing (floor == base == ceiling) or dynamic pricing (floor <= base <= ceiling).
+func NormalizeZonePricing(p ZonePricing, currentDynamic bool) (ZonePricing, bool, error) {
+	dynamicEnabled := currentDynamic
+	if p.IsDynamicPricingEnabled != nil {
+		dynamicEnabled = *p.IsDynamicPricingEnabled
+	}
+	if p.BasePrice < 0 {
+		return ZonePricing{}, false, ErrInvalidPriceBounds
+	}
+	if !dynamicEnabled {
+		p.FloorPrice = p.BasePrice
+		p.CeilingPrice = p.BasePrice
+	} else if p.FloorPrice < 0 || p.FloorPrice > p.BasePrice || p.BasePrice > p.CeilingPrice {
+		return ZonePricing{}, false, ErrInvalidPriceBounds
+	}
+	p.IsDynamicPricingEnabled = &dynamicEnabled
+	return p, dynamicEnabled, nil
 }
 
 func numeric(v int64) pgtype.Numeric {
 	return pgtype.Numeric{Int: big.NewInt(v), Valid: true}
 }
 
-// UpdateZonePricing sets a zone's floor, ceiling and base price. A new base
-// price reprices the zone's available seats and is written to the price log.
+// UpdateZonePricing sets a zone's pricing mode (fixed or dynamic) along with floor,
+// ceiling and base price. A new base price reprices the zone's available seats and
+// is written to the price log.
 func (s *OrganizerService) UpdateZonePricing(ctx context.Context, eventID, zoneID, userID pgtype.UUID, p ZonePricing) (*ZonePricing, error) {
-	if p.FloorPrice < 0 || p.FloorPrice > p.BasePrice || p.BasePrice > p.CeilingPrice {
-		return nil, ErrInvalidPriceBounds
-	}
-
 	tx, err := s.dbPool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction: %w", err)
@@ -589,12 +607,18 @@ func (s *OrganizerService) UpdateZonePricing(ctx context.Context, eventID, zoneI
 		return nil, fmt.Errorf("load event zone: %w", err)
 	}
 
+	normalized, dynamicEnabled, err := NormalizeZonePricing(p, current.IsDynamicPricingEnabled)
+	if err != nil {
+		return nil, err
+	}
+
 	if _, err := qtx.UpdateEventZonePricing(ctx, store.UpdateEventZonePricingParams{
-		EventID:      eventID,
-		ZoneID:       zoneID,
-		BasePrice:    numeric(p.BasePrice),
-		FloorPrice:   numeric(p.FloorPrice),
-		CeilingPrice: numeric(p.CeilingPrice),
+		EventID:                 eventID,
+		ZoneID:                  zoneID,
+		BasePrice:               numeric(normalized.BasePrice),
+		FloorPrice:              numeric(normalized.FloorPrice),
+		CeilingPrice:            numeric(normalized.CeilingPrice),
+		IsDynamicPricingEnabled: dynamicEnabled,
 	}); err != nil {
 		return nil, fmt.Errorf("update zone pricing: %w", err)
 	}
@@ -603,11 +627,11 @@ func (s *OrganizerService) UpdateZonePricing(ctx context.Context, eventID, zoneI
 	if err != nil {
 		return nil, fmt.Errorf("read base price: %w", err)
 	}
-	if oldBase.Int64 != p.BasePrice {
+	if oldBase.Int64 != normalized.BasePrice {
 		if _, err := qtx.RepriceAvailableZoneSeats(ctx, store.RepriceAvailableZoneSeatsParams{
 			EventID:      eventID,
 			ZoneID:       zoneID,
-			CurrentPrice: numeric(p.BasePrice),
+			CurrentPrice: numeric(normalized.BasePrice),
 		}); err != nil {
 			return nil, fmt.Errorf("reprice seats: %w", err)
 		}
@@ -615,7 +639,7 @@ func (s *OrganizerService) UpdateZonePricing(ctx context.Context, eventID, zoneI
 			EventID:   eventID,
 			ZoneID:    zoneID,
 			OldPrice:  current.BasePrice,
-			NewPrice:  numeric(p.BasePrice),
+			NewPrice:  numeric(normalized.BasePrice),
 			ChangedBy: userID,
 			Reason:    "MANUAL",
 		}); err != nil {
@@ -629,7 +653,7 @@ func (s *OrganizerService) UpdateZonePricing(ctx context.Context, eventID, zoneI
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit pricing: %w", err)
 	}
-	return &p, nil
+	return &normalized, nil
 }
 
 type ZoneSalesSummaryDTO struct {

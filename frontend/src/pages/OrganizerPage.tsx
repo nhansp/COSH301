@@ -11,7 +11,9 @@ import {
   SlidersHorizontal,
   Plus,
   ExternalLink,
-  X
+  X,
+  Lock,
+  TrendingUp
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
@@ -37,9 +39,10 @@ import {
   pricingErrorMessage,
 } from '../services/organizerService';
 
-type PriceDraft = Record<keyof ZonePricing, string>;
+type PriceFieldKey = 'floorPrice' | 'basePrice' | 'ceilingPrice';
+type PriceDraft = Record<PriceFieldKey, string>;
 
-const PRICE_FIELDS: { key: keyof ZonePricing; label: string }[] = [
+const PRICE_FIELDS: { key: PriceFieldKey; label: string }[] = [
   { key: 'floorPrice', label: 'Giá sàn' },
   { key: 'basePrice', label: 'Giá cơ bản' },
   { key: 'ceilingPrice', label: 'Giá trần' },
@@ -54,7 +57,12 @@ function toDraft(z: ZonePricing): PriceDraft {
 }
 
 // Returns a Vietnamese error message, or null when the draft is valid.
-function validateDraft(d: PriceDraft): string | null {
+function validateDraft(d: PriceDraft, isDynamic: boolean): string | null {
+  if (!isDynamic) {
+    const baseStr = d.basePrice.trim();
+    if (!/^\d+$/.test(baseStr)) return 'Giá phải là số nguyên không âm (VND).';
+    return null;
+  }
   const values = PRICE_FIELDS.map(f => d[f.key].trim());
   if (values.some(v => !/^\d+$/.test(v))) return 'Giá phải là số nguyên không âm (VND).';
   const [floor, base, ceiling] = values.map(Number);
@@ -71,29 +79,60 @@ interface ZoneRowProps {
 }
 
 const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted, onSaved }) => {
+  const [isDynamic, setIsDynamic] = useState<boolean>(zone.isDynamicPricingEnabled);
   const [draft, setDraft] = useState<PriceDraft>(toDraft(zone));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const handleModeChange = (nextDynamic: boolean) => {
+    setIsDynamic(nextDynamic);
+    setSaved(false);
+    setError(null);
+    if (nextDynamic && /^\d+$/.test(draft.basePrice.trim())) {
+      const base = Number(draft.basePrice.trim());
+      const curFloor = /^\d+$/.test(draft.floorPrice.trim()) ? Number(draft.floorPrice.trim()) : base;
+      const curCeil = /^\d+$/.test(draft.ceilingPrice.trim()) ? Number(draft.ceilingPrice.trim()) : base;
+      if (base > 0 && curFloor === base && curCeil === base) {
+        setDraft({
+          basePrice: String(base),
+          floorPrice: String(Math.round((base * 0.8) / 1000) * 1000),
+          ceilingPrice: String(Math.round((base * 1.2) / 1000) * 1000),
+        });
+      }
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaved(false);
-    const invalid = validateDraft(draft);
+    const invalid = validateDraft(draft, isDynamic);
     setError(invalid);
     if (invalid) return;
 
-    const pricing: ZonePricing = {
-      basePrice: Number(draft.basePrice),
-      floorPrice: Number(draft.floorPrice),
-      ceilingPrice: Number(draft.ceilingPrice),
-    };
+    const base = Number(draft.basePrice.trim());
+    const pricing: ZonePricing = isDynamic
+      ? {
+          basePrice: base,
+          floorPrice: Number(draft.floorPrice.trim()),
+          ceilingPrice: Number(draft.ceilingPrice.trim()),
+          isDynamicPricingEnabled: true,
+        }
+      : {
+          basePrice: base,
+          floorPrice: base,
+          ceilingPrice: base,
+          isDynamicPricingEnabled: false,
+        };
     setIsSaving(true);
     const code = await apiUpdateZonePricing(eventId, zone.zoneId, pricing);
     setIsSaving(false);
     if (code) {
       setError(pricingErrorMessage(code));
       return;
+    }
+    if (!isDynamic) {
+      setDraft({ basePrice: String(base), floorPrice: String(base), ceilingPrice: String(base) });
     }
     onSaved(zone.zoneId, pricing);
     setSaved(true);
@@ -116,38 +155,131 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted,
             <span className="tabular-nums">{zone.capacity} chỗ</span>
           </p>
         </div>
-        {zone.isDynamicPricingEnabled && (
-          <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium bg-kumo-success-tint text-kumo-success">
+        {isDynamic ? (
+          <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-kumo-success-tint text-kumo-success">
+            <TrendingUp className="size-3" />
             Giá động
+          </span>
+        ) : (
+          <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-kumo-recessed text-kumo-subtle ring ring-kumo-line">
+            <Lock className="size-3" />
+            Giá cố định
           </span>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {PRICE_FIELDS.map(({ key, label }) => (
-          <label key={key} className="block text-sm font-medium text-kumo-default">
-            {label}
+      {editable && (
+        <fieldset className="mb-4">
+          <legend className="mb-2 text-xs font-medium text-kumo-subtle">
+            Bạn muốn áp dụng chế độ giá nào cho khu vực này?
+          </legend>
+          <div role="radiogroup" aria-label={`Chế độ giá ${zone.zoneName}`} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!isDynamic}
+              onClick={() => handleModeChange(false)}
+              className={`flex items-start gap-2.5 rounded-xl p-3 text-left transition-colors ${
+                !isDynamic
+                  ? 'bg-kumo-tint ring-2 ring-violet-ink'
+                  : 'bg-kumo-recessed/70 ring ring-kumo-line hover:ring-kumo-interact'
+              }`}
+            >
+              <span
+                className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg ${
+                  !isDynamic ? 'bg-kumo-base text-violet-ink' : 'bg-kumo-base/80 text-kumo-subtle'
+                }`}
+              >
+                <Lock className="size-3.5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-kumo-strong">Giá cố định (Fixed)</span>
+                <span className="mt-0.5 block text-xs text-kumo-subtle">
+                  Một mức giá niêm yết duy nhất, không biến động theo nhu cầu.
+                </span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              role="radio"
+              aria-checked={isDynamic}
+              onClick={() => handleModeChange(true)}
+              className={`flex items-start gap-2.5 rounded-xl p-3 text-left transition-colors ${
+                isDynamic
+                  ? 'bg-kumo-tint ring-2 ring-violet-ink'
+                  : 'bg-kumo-recessed/70 ring ring-kumo-line hover:ring-kumo-interact'
+              }`}
+            >
+              <span
+                className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg ${
+                  isDynamic ? 'bg-kumo-success-tint text-kumo-success' : 'bg-kumo-base/80 text-kumo-subtle'
+                }`}
+              >
+                <TrendingUp className="size-3.5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-kumo-strong">Giá động (Dynamic)</span>
+                <span className="mt-0.5 block text-xs text-kumo-subtle">
+                  Tự điều chỉnh linh hoạt trong khung Giá sàn — Giá trần.
+                </span>
+              </span>
+            </button>
+          </div>
+        </fieldset>
+      )}
+
+      {isDynamic ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {PRICE_FIELDS.map(({ key, label }) => (
+            <label key={key} className="block text-sm font-medium text-kumo-default">
+              {label}
+              {editable ? (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={draft[key]}
+                  onChange={e => setDraft({ ...draft, [key]: e.target.value })}
+                  className="field mt-1.5 font-normal tabular-nums"
+                />
+              ) : (
+                <div className="mt-1.5 rounded-lg bg-kumo-recessed px-3 py-2 text-base font-semibold text-kumo-strong tabular-nums">
+                  {formatPrice(zone[key])}
+                </div>
+              )}
+              {editable && /^\d+$/.test(draft[key].trim()) && (
+                <span className="mt-1 block text-xs font-normal text-kumo-subtle tabular-nums">
+                  {formatPrice(Number(draft[key]))}
+                </span>
+              )}
+            </label>
+          ))}
+        </div>
+      ) : (
+        <div className="max-w-sm">
+          <label className="block text-sm font-medium text-kumo-default">
+            Giá vé cố định (VND)
             {editable ? (
               <input
                 type="text"
                 inputMode="numeric"
-                value={draft[key]}
-                onChange={e => setDraft({ ...draft, [key]: e.target.value })}
+                value={draft.basePrice}
+                onChange={e => setDraft({ ...draft, basePrice: e.target.value })}
                 className="field mt-1.5 font-normal tabular-nums"
               />
             ) : (
               <div className="mt-1.5 rounded-lg bg-kumo-recessed px-3 py-2 text-base font-semibold text-kumo-strong tabular-nums">
-                {formatPrice(zone[key])}
+                {formatPrice(zone.basePrice)}
               </div>
             )}
-            {editable && /^\d+$/.test(draft[key].trim()) && (
+            {editable && /^\d+$/.test(draft.basePrice.trim()) && (
               <span className="mt-1 block text-xs font-normal text-kumo-subtle tabular-nums">
-                {formatPrice(Number(draft[key]))}
+                {formatPrice(Number(draft.basePrice))} · Áp dụng đồng nhất cho toàn khu
               </span>
             )}
           </label>
-        ))}
-      </div>
+        </div>
+      )}
 
       {editable && (
         <div className="mt-4 pt-4 border-t border-kumo-hairline flex flex-col sm:flex-row sm:items-center gap-3">
@@ -290,7 +422,19 @@ export const OrganizerPage: React.FC = () => {
   };
 
   const handleSaved = (zoneId: string, pricing: ZonePricing) => {
-    setZones(prev => prev.map(z => (z.zoneId === zoneId ? { ...z, ...pricing } : z)));
+    setZones(prev =>
+      prev.map(z =>
+        z.zoneId === zoneId
+          ? {
+              ...z,
+              basePrice: pricing.basePrice,
+              floorPrice: pricing.floorPrice,
+              ceilingPrice: pricing.ceilingPrice,
+              isDynamicPricingEnabled: pricing.isDynamicPricingEnabled ?? z.isDynamicPricingEnabled,
+            }
+          : z
+      )
+    );
     invalidateAssistantCache();
     loadOverview();
   };

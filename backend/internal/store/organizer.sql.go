@@ -397,17 +397,22 @@ func (q *Queries) RepriceAvailableZoneSeats(ctx context.Context, arg RepriceAvai
 
 const updateEventZonePricing = `-- name: UpdateEventZonePricing :one
 UPDATE event_zones
-SET base_price = $3, floor_price = $4, ceiling_price = $5, updated_at = now()
+SET base_price = $3,
+    floor_price = $4,
+    ceiling_price = $5,
+    is_dynamic_pricing_enabled = $6,
+    updated_at = now()
 WHERE event_id = $1 AND zone_id = $2
 RETURNING id, event_id, zone_id, base_price, floor_price, ceiling_price, is_dynamic_pricing_enabled, created_at, updated_at
 `
 
 type UpdateEventZonePricingParams struct {
-	EventID      pgtype.UUID    `json:"event_id"`
-	ZoneID       pgtype.UUID    `json:"zone_id"`
-	BasePrice    pgtype.Numeric `json:"base_price"`
-	FloorPrice   pgtype.Numeric `json:"floor_price"`
-	CeilingPrice pgtype.Numeric `json:"ceiling_price"`
+	EventID                 pgtype.UUID    `json:"event_id"`
+	ZoneID                  pgtype.UUID    `json:"zone_id"`
+	BasePrice               pgtype.Numeric `json:"base_price"`
+	FloorPrice              pgtype.Numeric `json:"floor_price"`
+	CeilingPrice            pgtype.Numeric `json:"ceiling_price"`
+	IsDynamicPricingEnabled bool           `json:"is_dynamic_pricing_enabled"`
 }
 
 func (q *Queries) UpdateEventZonePricing(ctx context.Context, arg UpdateEventZonePricingParams) (EventZone, error) {
@@ -417,6 +422,7 @@ func (q *Queries) UpdateEventZonePricing(ctx context.Context, arg UpdateEventZon
 		arg.BasePrice,
 		arg.FloorPrice,
 		arg.CeilingPrice,
+		arg.IsDynamicPricingEnabled,
 	)
 	var i EventZone
 	err := row.Scan(

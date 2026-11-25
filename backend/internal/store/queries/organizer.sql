@@ -15,7 +15,11 @@ FOR UPDATE;
 
 -- name: UpdateEventZonePricing :one
 UPDATE event_zones
-SET base_price = $3, floor_price = $4, ceiling_price = $5, updated_at = now()
+SET base_price = $3,
+    floor_price = $4,
+    ceiling_price = $5,
+    is_dynamic_pricing_enabled = $6,
+    updated_at = now()
 WHERE event_id = $1 AND zone_id = $2
 RETURNING *;
 

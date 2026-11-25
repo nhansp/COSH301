@@ -132,3 +132,39 @@ func TestValidateCreateOrganizerEvent(t *testing.T) {
 		t.Fatalf("expected MaxTicketsPerUser=50 to be preserved, got %+v err=%v", gotLimit, err)
 	}
 }
+
+func TestNormalizeZonePricing(t *testing.T) {
+	f := false
+	fixed, isDyn, err := service.NormalizeZonePricing(service.ZonePricing{
+		BasePrice:               1800000,
+		FloorPrice:              1200000,
+		CeilingPrice:            2400000,
+		IsDynamicPricingEnabled: &f,
+	}, true)
+	if err != nil {
+		t.Fatalf("expected fixed pricing to succeed, got %v", err)
+	}
+	if isDyn || fixed.FloorPrice != 1800000 || fixed.CeilingPrice != 1800000 {
+		t.Fatalf("expected fixed pricing to clamp floor/ceiling to base, got %+v dyn=%v", fixed, isDyn)
+	}
+
+	tr := true
+	dyn, isDyn, err := service.NormalizeZonePricing(service.ZonePricing{
+		BasePrice:               2000000,
+		FloorPrice:              1600000,
+		CeilingPrice:            2600000,
+		IsDynamicPricingEnabled: &tr,
+	}, false)
+	if err != nil || !isDyn || dyn.FloorPrice != 1600000 || dyn.CeilingPrice != 2600000 {
+		t.Fatalf("expected dynamic pricing bounds preserved, got %+v dyn=%v err=%v", dyn, isDyn, err)
+	}
+
+	if _, _, err := service.NormalizeZonePricing(service.ZonePricing{
+		BasePrice:               2000000,
+		FloorPrice:              2500000,
+		CeilingPrice:            3000000,
+		IsDynamicPricingEnabled: &tr,
+	}, true); !errors.Is(err, service.ErrInvalidPriceBounds) {
+		t.Fatalf("expected ErrInvalidPriceBounds for floor > base in dynamic mode, got %v", err)
+	}
+}
