@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Clock, LayoutDashboard, LogOut, Menu, Ticket, X } from 'lucide-react';
+import { Ban, ChevronDown, Clock, LayoutDashboard, LogOut, Menu, Ticket, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFeatures } from '../context/FeatureContext';
 import { useHolds } from '../hooks/useHolds';
@@ -176,10 +176,16 @@ export const Navbar: React.FC<{ tone?: PageTone }> = ({ tone = 'editorial' }) =>
                       </Link>
                     )}
                     {showMyTicketsLink && (
-                      <Link role="menuitem" to="/my-tickets?tab=tickets" className={menuItem}>
-                        <Ticket className="size-4 text-kumo-subtle" />
-                        <span className="flex-1">Vé của tôi</span>
-                      </Link>
+                      <>
+                        <Link role="menuitem" to="/my-tickets?tab=tickets" className={menuItem}>
+                          <Ticket className="size-4 text-kumo-subtle" />
+                          <span className="flex-1">Vé của tôi</span>
+                        </Link>
+                        <Link role="menuitem" to="/my-tickets?tab=cancelled" className={menuItem}>
+                          <Ban className="size-4 text-kumo-subtle" />
+                          <span className="flex-1">Vé đã hủy</span>
+                        </Link>
+                      </>
                     )}
                     {showOrganizerLink && (
                       <Link role="menuitem" to="/organizer" className={menuItem}>

@@ -101,6 +101,28 @@ export interface TicketQRPayload {
   status: string;
 }
 
+export interface CancelledTicketItem {
+  id: number;
+  bookingId?: string;
+  bookingCode?: string;
+  eventId: string;
+  eventTitle: string;
+  concert?: {
+    id?: string;
+    name?: string;
+    title?: string;
+    slug?: string;
+    venue?: string;
+    city?: string;
+    startsAt?: string;
+    endsAt?: string;
+  };
+  seats: string[];
+  releasedSeats: string[];
+  reason: string;
+  cancelledAt: string;
+}
+
 const PAYMENT_ERROR_MESSAGES: Record<string, string> = {
   no_active_holds: 'Các ghế bạn giữ đã hết hạn 5 phút. Vui lòng quay lại sơ đồ để chọn ghế mới.',
   invalid_payment_provider: 'Phương thức thanh toán không hợp lệ.',
@@ -202,6 +224,17 @@ export async function apiFetchTicketQR(ticketId: string): Promise<TicketQRPayloa
     });
     if (!res.ok) return null;
     return (await res.json()) as TicketQRPayload;
+  } catch {
+    return null;
+  }
+}
+
+export async function apiFetchCancelledTickets(): Promise<CancelledTicketItem[] | null> {
+  try {
+    const res = await fetch('/api/tickets/cancelled', { credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? (data as CancelledTicketItem[]) : [];
   } catch {
     return null;
   }
