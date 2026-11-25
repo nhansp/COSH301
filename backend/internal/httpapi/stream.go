@@ -26,12 +26,6 @@ func (h *StreamHandler) HandleEventStream(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
-		return
-	}
-
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 4 || parts[1] == "" {
 		http.Error(w, "invalid path", http.StatusBadRequest)
@@ -44,7 +38,16 @@ func (h *StreamHandler) HandleEventStream(w http.ResponseWriter, r *http.Request
 	}
 	eventID := store.UUIDToString(uid)
 
-	// SSE Headers
+	serveTopic(w, r, h.hub, eventID, fmt.Sprintf(`{"status":"subscribed","eventId":"%s"}`, eventID))
+}
+
+// serveTopic streams a realtime hub topic as server-sent events until the client leaves.
+func serveTopic(w http.ResponseWriter, r *http.Request, hub *service.RealtimeHub, topic, hello string) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -56,11 +59,10 @@ func (h *StreamHandler) HandleEventStream(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ch := h.hub.Subscribe(eventID)
-	defer h.hub.Unsubscribe(eventID, ch)
+	ch := hub.Subscribe(topic)
+	defer hub.Unsubscribe(topic, ch)
 
-	// Send initial connection event
-	fmt.Fprintf(w, "event: connected\ndata: {\"status\":\"subscribed\",\"eventId\":\"%s\"}\n\n", eventID)
+	fmt.Fprintf(w, "event: connected\ndata: %s\n\n", hello)
 	flusher.Flush()
 
 	heartbeat := time.NewTicker(15 * time.Second)

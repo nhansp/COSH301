@@ -12,6 +12,7 @@ import { useHolds } from '../hooks/useHolds';
 import { Hold, Ticket } from '../types';
 import { formatPrice, withServiceFee } from '../services/eventService';
 import { apiFetchMyTickets } from '../services/paymentService';
+import { TicketQRPanel } from '../components/gate/TicketQRPanel';
 
 function groupBy<T>(items: T[], key: (item: T) => string): T[][] {
   const groups = new Map<string, T[]>();
@@ -117,7 +118,15 @@ export const MyTicketsPage: React.FC = () => {
   );
 };
 
-const TicketSections: React.FC<{ tickets: Ticket[] }> = ({ tickets }) => (
+const TicketSections: React.FC<{ tickets: Ticket[] }> = ({ tickets }) => {
+  const { isEnabled } = useFeatures();
+  const qrEnabled = isEnabled('rotating_qr');
+  const [openQR, setOpenQR] = useState<string | null>(null);
+  const [usedNow, setUsedNow] = useState<Record<string, string>>({});
+  const markUsed = useCallback((id: string, usedAt?: string) => {
+    setUsedNow(prev => ({ ...prev, [id]: usedAt ?? new Date().toISOString() }));
+  }, []);
+  return (
   <section aria-labelledby="tickets-title" className="space-y-5">
     <h2 id="tickets-title" className="type-display text-title">
       Vé đã mua
@@ -137,16 +146,37 @@ const TicketSections: React.FC<{ tickets: Ticket[] }> = ({ tickets }) => (
           </p>
           <ul className="mt-2 divide-y divide-kumo-hairline">
             {group.map(ticket => (
-              <li key={ticket.id} className="flex flex-wrap items-center gap-x-5 gap-y-1 py-4">
-                <div className="min-w-0 flex-1">
-                  <p className="type-figure text-2xl text-kumo-strong">{ticket.seatLabel}</p>
-                  <p className="text-sm text-kumo-subtle">{ticket.zoneName}</p>
+              <li key={ticket.id} className="py-4">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                  <div className="min-w-0 flex-1">
+                    <p className="type-figure text-2xl text-kumo-strong">{ticket.seatLabel}</p>
+                    <p className="text-sm text-kumo-subtle">{ticket.zoneName}</p>
+                  </div>
+                  <div className="text-sm text-kumo-subtle">
+                    <p>Mã vé {ticket.ticketCode}</p>
+                    <p>Đơn {ticket.orderCode}</p>
+                  </div>
+                  <span className="type-figure w-32 text-right text-lg text-kumo-strong">{formatPrice(ticket.price)}</span>
+                  {qrEnabled && (ticket.status === 'USED' || usedNow[ticket.id] ? (
+                    <span className="rounded-full bg-kumo-tint px-3 py-1.5 text-sm text-kumo-subtle">Đã vào cổng</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-ink min-h-11"
+                      aria-expanded={openQR === ticket.id}
+                      onClick={() => setOpenQR(openQR === ticket.id ? null : ticket.id)}
+                    >
+                      {openQR === ticket.id ? 'Ẩn mã QR' : 'Mã QR vào cổng'}
+                    </button>
+                  ))}
                 </div>
-                <div className="text-sm text-kumo-subtle">
-                  <p>Mã vé {ticket.ticketCode}</p>
-                  <p>Đơn {ticket.orderCode}</p>
-                </div>
-                <span className="type-figure w-32 text-right text-lg text-kumo-strong">{formatPrice(ticket.price)}</span>
+                {qrEnabled && openQR === ticket.id && (usedNow[ticket.id] ? (
+                  <p role="status" className="mt-3 rounded-xl bg-[#1f8a5b] p-4 text-lg font-semibold text-white">
+                    Đã vào cổng lúc {new Date(usedNow[ticket.id]).toLocaleTimeString('vi-VN')}. Chúc bạn xem concert vui vẻ!
+                  </p>
+                ) : (
+                  <TicketQRPanel ticketId={ticket.id} seatLabel={ticket.seatLabel} onUsed={usedAt => markUsed(ticket.id, usedAt)} />
+                ))}
               </li>
             ))}
           </ul>
@@ -158,7 +188,8 @@ const TicketSections: React.FC<{ tickets: Ticket[] }> = ({ tickets }) => (
       );
     })}
   </section>
-);
+  );
+};
 
 interface HoldSectionsProps {
   holds: Hold[];

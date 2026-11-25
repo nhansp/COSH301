@@ -19,6 +19,7 @@ type Querier interface {
 	// and returns it, so concurrent guesses cannot exceed the attempt limit.
 	ConsumeOTPAttempt(ctx context.Context, arg ConsumeOTPAttemptParams) (OtpVerification, error)
 	ConvertOrderHolds(ctx context.Context, orderID pgtype.UUID) error
+	CountEventCheckins(ctx context.Context, eventID pgtype.UUID) (int32, error)
 	CountOrderItems(ctx context.Context, orderID pgtype.UUID) (int32, error)
 	CountRecentOTPs(ctx context.Context, arg CountRecentOTPsParams) (CountRecentOTPsRow, error)
 	CountUserHeldAndBoughtTickets(ctx context.Context, arg CountUserHeldAndBoughtTicketsParams) (int32, error)
@@ -49,6 +50,7 @@ type Querier interface {
 	// FindOwnedEventSeats resolves a seat reference (UUID or label) among the seats
 	// of an event that the user currently holds or has a ticket for.
 	FindOwnedEventSeats(ctx context.Context, arg FindOwnedEventSeatsParams) ([]FindOwnedEventSeatsRow, error)
+	FirstValidCheckin(ctx context.Context, ticketID pgtype.UUID) (pgtype.Timestamptz, error)
 	GetEventByID(ctx context.Context, id pgtype.UUID) (GetEventByIDRow, error)
 	GetEventBySlug(ctx context.Context, slug string) (GetEventBySlugRow, error)
 	GetEventOrganizer(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
@@ -57,6 +59,7 @@ type Querier interface {
 	GetEventSaleState(ctx context.Context, id pgtype.UUID) (GetEventSaleStateRow, error)
 	GetEventSeatMap(ctx context.Context, eventID pgtype.UUID) ([]GetEventSeatMapRow, error)
 	GetEventZoneForUpdate(ctx context.Context, arg GetEventZoneForUpdateParams) (EventZone, error)
+	GetOwnedTicketSecret(ctx context.Context, arg GetOwnedTicketSecretParams) (GetOwnedTicketSecretRow, error)
 	// IPN: resolve the payment without locking, then lock order and payment in a fixed order.
 	GetPaymentByCode(ctx context.Context, paymentCode string) (Payment, error)
 	// Return page: payment and order state keyed by the transaction reference.
@@ -72,6 +75,7 @@ type Querier interface {
 	GetZoneDemand(ctx context.Context, arg GetZoneDemandParams) (GetZoneDemandRow, error)
 	// True when the organizer already rejected this exact change recently.
 	HasRecentRejection(ctx context.Context, arg HasRecentRejectionParams) (bool, error)
+	InsertCheckin(ctx context.Context, arg InsertCheckinParams) (pgtype.Timestamptz, error)
 	InsertPriceChange(ctx context.Context, arg InsertPriceChangeParams) error
 	InsertPriceSuggestion(ctx context.Context, arg InsertPriceSuggestionParams) (PriceSuggestion, error)
 	IssueOrderTickets(ctx context.Context, id pgtype.UUID) ([]pgtype.UUID, error)
@@ -111,6 +115,9 @@ type Querier interface {
 	LockOrderHolds(ctx context.Context, orderID pgtype.UUID) ([]LockOrderHoldsRow, error)
 	LockPaymentForUpdate(ctx context.Context, id pgtype.UUID) (Payment, error)
 	LockPendingOrdersForUser(ctx context.Context, arg LockPendingOrdersForUserParams) ([]Order, error)
+	// LockTicketForCheckin serializes scans of one ticket: a second gate scanning the
+	// same code waits here and then sees the ticket as used.
+	LockTicketForCheckin(ctx context.Context, id pgtype.UUID) (LockTicketForCheckinRow, error)
 	LockUserEventAdvisory(ctx context.Context, arg LockUserEventAdvisoryParams) error
 	MarkOTPVerified(ctx context.Context, id pgtype.UUID) (int64, error)
 	MarkOrderExpired(ctx context.Context, id pgtype.UUID) error
@@ -119,6 +126,7 @@ type Querier interface {
 	MarkPaymentFailed(ctx context.Context, arg MarkPaymentFailedParams) error
 	MarkPaymentSuccess(ctx context.Context, arg MarkPaymentSuccessParams) error
 	MarkPriceSuggestionReviewed(ctx context.Context, arg MarkPriceSuggestionReviewedParams) (PriceSuggestion, error)
+	MarkTicketUsed(ctx context.Context, id pgtype.UUID) error
 	NotifyChannel(ctx context.Context, arg NotifyChannelParams) error
 	RefreshPriceSuggestion(ctx context.Context, arg RefreshPriceSuggestionParams) (PriceSuggestion, error)
 	ReleaseSeatHold(ctx context.Context, arg ReleaseSeatHoldParams) (SeatHold, error)

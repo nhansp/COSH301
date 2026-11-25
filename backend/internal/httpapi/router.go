@@ -21,6 +21,7 @@ type RouterDependencies struct {
 	Organizer    *service.OrganizerService
 	Pricing      *service.PricingService
 	Tickets      *service.TicketService
+	Gate         *service.GateService
 	Payments     *service.PaymentService
 	Assistant    *service.AssistantService
 	Feedback     *service.FeedbackService
@@ -110,6 +111,18 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	if deps.Config.DemoMode {
 		mux.HandleFunc("POST /api/tickets/reset-demo", RequireFeature(fm, config.FlagSeatHold,
 			RequireRole(authHandler, anyRole, ticketHandler.HandleResetDemoTickets)))
+	}
+
+	// 7b. Rotating ticket QR (FR-12) and gate check-in (FR-16).
+	if deps.Gate != nil {
+		gateHandler := NewGateHandler(deps.Gate, deps.EventService, deps.RealtimeHub)
+		qrLimiter := NewRateLimiter(120, time.Minute)
+		mux.HandleFunc("GET /api/tickets/{id}/qr", RequireFeature(fm, config.FlagRotatingQR,
+			qrLimiter.Wrap(RequireRole(authHandler, anyRole, gateHandler.HandleTicketQR))))
+		mux.HandleFunc("GET /api/tickets/{id}/stream", RequireFeature(fm, config.FlagRotatingQR,
+			RequireRole(authHandler, anyRole, gateHandler.HandleTicketStream)))
+		mux.HandleFunc("POST /api/gate/checkin", RequireFeature(fm, config.FlagGateCheckin,
+			RequireRole(authHandler, gateRoles, gateHandler.HandleCheckin)))
 	}
 
 	// 8. VNPay payment. The IPN and return endpoints are called without a session:

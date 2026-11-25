@@ -97,6 +97,7 @@ func main() {
 		Organizer:    organizerService,
 		Pricing:      pricingService,
 		Tickets:      service.NewTicketService(dbPool, queries),
+		Gate:         service.NewGateService(dbPool, queries),
 		Payments:     paymentService,
 		Assistant: service.NewAssistantService(queries, cfg.Features,
 			service.NewLLMClient(cfg.LLM.BaseURL, cfg.LLM.Model, cfg.LLM.APIKey)),
