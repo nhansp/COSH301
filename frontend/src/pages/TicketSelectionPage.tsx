@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Box, ChevronUp, Clock, Eye, FlaskConical, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Box, Eye, FlaskConical, LogOut, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -15,8 +15,7 @@ import { buildVenueLayout, povFor, summarizeZones } from '../services/venue';
 import { SeatItem } from '../types';
 import { NoticeToast } from '../components/tickets/NoticeToast';
 import { ZoneDetail, ZoneList } from '../components/tickets/ZonePanel';
-import { SelectionTray, orderTotals } from '../components/tickets/SelectionTray';
-import { HoldTimer } from '../components/tickets/HoldTimer';
+import { SelectionTray } from '../components/tickets/SelectionTray';
 import { formatPrice } from '../services/eventService';
 import { SceneBoundary } from '../venue3d/SceneBoundary';
 import { FloorPlan2D } from '../components/tickets/FloorPlan2D';
@@ -159,16 +158,6 @@ export const TicketSelectionPage: React.FC = () => {
 
   // Category under the pointer in the side panel; the map lights it up without moving the camera.
   const [listHoverZoneId, setListHoverZoneId] = useState<string | null>(null);
-  const [summaryOpen, setSummaryOpen] = useState(false);
-  useEffect(() => {
-    if (mine.length === 0) setSummaryOpen(false);
-  }, [mine.length]);
-  useEffect(() => {
-    if (!summaryOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setSummaryOpen(false);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [summaryOpen]);
 
   const chooseView = (next: '3d' | '2d') => {
     setView(next);
@@ -298,7 +287,6 @@ export const TicketSelectionPage: React.FC = () => {
   }
 
   const seatMapOff = !isEnabled('seat_map_realtime');
-  const totals = orderTotals(mine);
 
   // A held seat gives a seat-level view; otherwise the view comes from the middle of the zone.
   const heldHere = activeZone
@@ -407,11 +395,11 @@ export const TicketSelectionPage: React.FC = () => {
   );
 
   return (
-    <PageShell tone="stage" style={accentStyle(accent)} data-dim={dimmed || undefined} className="house-lights pb-28 lg:pb-0">
+    <PageShell tone="stage" style={accentStyle(accent)} data-dim={dimmed || undefined} className="house-lights">
       <Navbar tone="stage" />
       <NoticeToast notice={inventory.notice} onDismiss={inventory.dismissNotice} />
 
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pt-3 pb-10 sm:px-6 lg:px-10 lg:pb-4">
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pt-3 pb-12 sm:px-6 lg:px-10 lg:pb-10">
         <header className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">
             <Link
@@ -501,7 +489,7 @@ export const TicketSelectionPage: React.FC = () => {
             <section
               ref={frameRef}
               aria-label={shown === '3d' ? 'Sơ đồ sân khấu 3D' : 'Sơ đồ 2D nhìn từ trên xuống'}
-              className="relative h-[62svh] min-h-96 scroll-mt-20 overflow-hidden rounded-2xl bg-stage lg:sticky lg:top-20 lg:h-[max(520px,calc(100dvh-14rem))]"
+              className="relative h-[60svh] min-h-96 scroll-mt-20 overflow-hidden rounded-2xl bg-stage lg:sticky lg:top-20 lg:h-[max(520px,calc(100dvh-7.5rem))]"
             >
               {can3D && mounted3D && (
                 <div className={`absolute inset-0 ${shown === '3d' ? '' : 'invisible'}`} aria-hidden={shown !== '3d'}>
@@ -548,10 +536,9 @@ export const TicketSelectionPage: React.FC = () => {
               )}
             </section>
 
-            {/* The aside matches the venue frame. The category panel keeps at least 13rem; the order
-                summary takes what it needs up to a cap, and past that only its ticket list scrolls. */}
-            <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:h-[max(520px,calc(100dvh-14rem))] lg:self-start">
-              <div className="min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-kumo-base ring ring-kumo-line lg:min-h-52 lg:flex-1">
+            {/* Right column stacks seat selection and checkout summary in normal flow so they never overlap. */}
+            <aside className="flex flex-col gap-4 lg:self-start">
+              <div className="overflow-y-auto overscroll-contain rounded-2xl bg-kumo-base ring ring-kumo-line lg:max-h-[min(32rem,56dvh)]">
                 {inventory.loadState === 'loading' ? (
                   <p className="p-4 text-kumo-subtle">Đang tải sơ đồ vé…</p>
                 ) : (
@@ -559,11 +546,10 @@ export const TicketSelectionPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="hidden min-h-0 flex-col rounded-2xl bg-kumo-base p-4 ring ring-kumo-line lg:flex">
+              <div className="flex flex-col overflow-hidden rounded-2xl bg-kumo-base p-4 ring ring-kumo-line">
                 <SelectionTray
                   collapsible
-                  className="min-h-0"
-                  listClassName="max-h-[min(18rem,32dvh)]"
+                  listClassName="max-h-48"
                   mine={mine}
                   zones={zoneById}
                   limit={limitEnabled ? limit : null}
@@ -588,76 +574,6 @@ export const TicketSelectionPage: React.FC = () => {
           </>
         )}
       </main>
-
-      {/* Phones keep the order in reach: a sticky bar that opens into the full summary. */}
-      {mine.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-kumo-hairline bg-kumo-canvas/95 backdrop-blur lg:hidden">
-          {summaryOpen && (
-            <div id="order-sheet" className="mx-auto flex max-h-[min(60dvh,34rem)] max-w-2xl flex-col border-b border-kumo-hairline px-4 pt-4 pb-3">
-              <SelectionTray
-                className="min-h-0"
-                mine={mine}
-                zones={zoneById}
-                limit={limitEnabled ? limit : null}
-                remaining={remaining}
-                secondsLeft={inventory.secondsLeft}
-                pending={pending}
-                onRelease={seat => inventory.release(seat)}
-                onCheckout={goToCheckout}
-                onHoldOnly={canHoldOnly ? keepHoldAndOpenHolds : undefined}
-                holdLabel="Giữ ghế"
-                checkoutLabel={
-                  isOrganizer
-                    ? 'Thử thanh toán (Mô phỏng)'
-                    : isEnabled('payments')
-                      ? 'Thanh toán ngay'
-                      : 'Xem ghế đã giữ'
-                }
-              />
-            </div>
-          )}
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <button
-              type="button"
-              onClick={() => setSummaryOpen(open => !open)}
-              aria-expanded={summaryOpen}
-              aria-controls="order-sheet"
-              className="-ml-2 flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-kumo-tint"
-            >
-              <ChevronUp className={`size-5 shrink-0 text-kumo-subtle transition-transform ${summaryOpen ? '' : 'rotate-180'}`} />
-              <span className="min-w-0">
-                <span className="flex items-baseline gap-1.5">
-                  <span className="type-figure text-xl text-kumo-strong">{formatPrice(totals.total)}</span>
-                  <span className="text-xs text-kumo-subtle">đã gồm phí</span>
-                </span>
-                <span className="flex flex-wrap items-baseline gap-x-2 text-sm text-kumo-subtle">
-                  <span className="tabular-nums">
-                    {mine.length}{limitEnabled && `/${limit}`} vé
-                  </span>
-                  {inventory.secondsLeft !== null && <HoldTimer secondsLeft={inventory.secondsLeft} label="Giữ chỗ" className="text-sm" />}
-                </span>
-              </span>
-            </button>
-            {!summaryOpen && (
-              <div className="flex shrink-0 items-center gap-2">
-                {canHoldOnly && (
-                  <button type="button" onClick={keepHoldAndOpenHolds} className="btn btn-secondary h-12 px-3.5 text-sm">
-                    <Clock className="size-4 text-violet-ink" />
-                    <span>Giữ ghế</span>
-                  </button>
-                )}
-                <button type="button" onClick={goToCheckout} className="btn btn-primary h-12 px-4">
-                  {isOrganizer
-                    ? 'Thử thanh toán'
-                    : isEnabled('payments')
-                      ? 'Thanh toán'
-                      : 'Xem ghế đã giữ'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </PageShell>
   );
 };

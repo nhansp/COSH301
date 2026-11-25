@@ -163,19 +163,31 @@ export const SelectionTray: React.FC<SelectionTrayProps> = ({
         </div>
         {/* Action buttons below Tổng cộng */}
         {onHoldOnly ? (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={onHoldOnly} className="btn btn-secondary h-11 w-full">
-              <Clock className="size-4 text-violet-ink" />
-              <span>{holdLabel}</span>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={onHoldOnly}
+              className="btn btn-secondary h-11 w-full min-w-0 px-3 text-sm"
+            >
+              <Clock className="size-4 shrink-0 text-violet-ink" />
+              <span className="truncate">{holdLabel}</span>
             </button>
-            <button type="button" onClick={onCheckout} className="btn btn-primary h-11 w-full">
-              {checkoutLabel}
+            <button
+              type="button"
+              onClick={onCheckout}
+              className="btn btn-primary h-11 w-full min-w-0 px-3 text-sm"
+            >
+              <span className="truncate">{checkoutLabel}</span>
             </button>
           </div>
         ) : (
           <div className="mt-3">
-            <button type="button" onClick={onCheckout} className="btn btn-primary h-11 w-full">
-              {checkoutLabel}
+            <button
+              type="button"
+              onClick={onCheckout}
+              className="btn btn-primary h-11 w-full min-w-0 px-4 text-sm"
+            >
+              <span className="truncate">{checkoutLabel}</span>
             </button>
           </div>
         )}
