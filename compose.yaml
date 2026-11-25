@@ -32,6 +32,8 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-}
       # Empty means "use the profile default"; set on to turn VNPay payment on.
       FEATURE_PAYMENTS: ${FEATURE_PAYMENTS:-}
+      FEATURE_ROTATING_QR: ${FEATURE_ROTATING_QR:-}
+      FEATURE_GATE_CHECKIN: ${FEATURE_GATE_CHECKIN:-}
       # Dynamic pricing engine. Empty means "use the default" (see .env.example).
       PRICING_INTERVAL_SECONDS: ${PRICING_INTERVAL_SECONDS:-}
       PRICING_WINDOW_MINUTES: ${PRICING_WINDOW_MINUTES:-}

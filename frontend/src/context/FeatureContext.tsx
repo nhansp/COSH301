@@ -10,7 +10,9 @@ export type FeatureFlag =
   | 'payments'
   | 'chatbot'
   | 'dynamic_pricing'
-  | 'user_testing';
+  | 'user_testing'
+  | 'rotating_qr'
+  | 'gate_checkin';
 
 interface FeatureContextType {
   isLoading: boolean;

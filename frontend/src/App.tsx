@@ -15,6 +15,7 @@ import { OrganizerPage } from './pages/OrganizerPage';
 import { PaymentReturnPage } from './pages/PaymentReturnPage';
 import { TicketSelectionPage } from './pages/TicketSelectionPage';
 import { SurveyPage } from './pages/SurveyPage';
+import { GatePage } from './pages/GatePage';
 
 export default function App() {
   return (
@@ -57,6 +58,15 @@ export default function App() {
                 element={
                   <ProtectedRoute roles={['ORGANIZER', 'ADMIN']}>
                     <OrganizerPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/soat-ve"
+                element={
+                  <ProtectedRoute roles={['GATE_STAFF', 'ORGANIZER', 'ADMIN']}>
+                    <GatePage />
                   </ProtectedRoute>
                 }
               />
