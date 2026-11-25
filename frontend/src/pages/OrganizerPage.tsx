@@ -13,7 +13,8 @@ import {
   ExternalLink,
   X,
   Lock,
-  TrendingUp
+  TrendingUp,
+  RotateCcw
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { PageShell } from '../components/layout/PageShell';
@@ -40,7 +41,15 @@ import {
 } from '../services/organizerService';
 
 type PriceFieldKey = 'floorPrice' | 'basePrice' | 'ceilingPrice';
-type PriceDraft = Record<PriceFieldKey, string>;
+
+interface ZonePriceDraft {
+  basePrice: string;
+  floorPrice: string;
+  ceilingPrice: string;
+  isDynamicPricingEnabled: boolean;
+}
+
+const PRICING_CACHE_PREFIX = 'sms_organizer_pricing_draft_v1:';
 
 const PRICE_FIELDS: { key: PriceFieldKey; label: string }[] = [
   { key: 'floorPrice', label: 'Giá sàn' },
@@ -48,17 +57,78 @@ const PRICE_FIELDS: { key: PriceFieldKey; label: string }[] = [
   { key: 'ceilingPrice', label: 'Giá trần' },
 ];
 
-function toDraft(z: ZonePricing): PriceDraft {
+function toZoneDraft(z: OrganizerZone): ZonePriceDraft {
   return {
     basePrice: String(z.basePrice),
     floorPrice: String(z.floorPrice),
     ceilingPrice: String(z.ceilingPrice),
+    isDynamicPricingEnabled: z.isDynamicPricingEnabled,
   };
 }
 
+function loadPricingDraftCache(eventId: string): Record<string, ZonePriceDraft> {
+  try {
+    const raw = localStorage.getItem(`${PRICING_CACHE_PREFIX}${eventId}`);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: Record<string, ZonePriceDraft> = {};
+    for (const [zoneId, entry] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!entry || typeof entry !== 'object') continue;
+      const e = entry as Record<string, unknown>;
+      if (
+        typeof e.basePrice === 'string' &&
+        typeof e.floorPrice === 'string' &&
+        typeof e.ceilingPrice === 'string' &&
+        typeof e.isDynamicPricingEnabled === 'boolean'
+      ) {
+        out[zoneId] = {
+          basePrice: e.basePrice,
+          floorPrice: e.floorPrice,
+          ceilingPrice: e.ceilingPrice,
+          isDynamicPricingEnabled: e.isDynamicPricingEnabled,
+        };
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function savePricingDraftCache(eventId: string, drafts: Record<string, ZonePriceDraft>): void {
+  try {
+    const key = `${PRICING_CACHE_PREFIX}${eventId}`;
+    if (Object.keys(drafts).length === 0) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, JSON.stringify(drafts));
+    }
+  } catch {
+    // Ignore storage quota or private-mode errors.
+  }
+}
+
+function isZoneDraftDirty(zone: OrganizerZone, draft: ZonePriceDraft | undefined): boolean {
+  if (!draft) return false;
+  if (draft.isDynamicPricingEnabled !== zone.isDynamicPricingEnabled) return true;
+  if (!draft.isDynamicPricingEnabled) {
+    return (
+      draft.basePrice.trim() !== String(zone.basePrice) ||
+      zone.floorPrice !== zone.basePrice ||
+      zone.ceilingPrice !== zone.basePrice
+    );
+  }
+  return (
+    draft.basePrice.trim() !== String(zone.basePrice) ||
+    draft.floorPrice.trim() !== String(zone.floorPrice) ||
+    draft.ceilingPrice.trim() !== String(zone.ceilingPrice)
+  );
+}
+
 // Returns a Vietnamese error message, or null when the draft is valid.
-function validateDraft(d: PriceDraft, isDynamic: boolean): string | null {
-  if (!isDynamic) {
+function validateDraft(d: ZonePriceDraft): string | null {
+  if (!d.isDynamicPricingEnabled) {
     const baseStr = d.basePrice.trim();
     if (!/^\d+$/.test(baseStr)) return 'Giá phải là số nguyên không âm (VND).';
     return null;
@@ -71,79 +141,52 @@ function validateDraft(d: PriceDraft, isDynamic: boolean): string | null {
 }
 
 interface ZoneRowProps {
-  eventId: string;
   zone: OrganizerZone;
+  draft: ZonePriceDraft;
+  isDirty: boolean;
+  error: string | null;
   editable: boolean;
   highlighted?: boolean;
-  onSaved: (zoneId: string, pricing: ZonePricing) => void;
+  onChange: (zoneId: string, next: ZonePriceDraft) => void;
 }
 
-const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted, onSaved }) => {
-  const [isDynamic, setIsDynamic] = useState<boolean>(zone.isDynamicPricingEnabled);
-  const [draft, setDraft] = useState<PriceDraft>(toDraft(zone));
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+const ZoneRow: React.FC<ZoneRowProps> = ({
+  zone,
+  draft,
+  isDirty,
+  error,
+  editable,
+  highlighted,
+  onChange,
+}) => {
+  const isDynamic = draft.isDynamicPricingEnabled;
 
   const handleModeChange = (nextDynamic: boolean) => {
-    setIsDynamic(nextDynamic);
-    setSaved(false);
-    setError(null);
+    let next: ZonePriceDraft = { ...draft, isDynamicPricingEnabled: nextDynamic };
     if (nextDynamic && /^\d+$/.test(draft.basePrice.trim())) {
       const base = Number(draft.basePrice.trim());
       const curFloor = /^\d+$/.test(draft.floorPrice.trim()) ? Number(draft.floorPrice.trim()) : base;
       const curCeil = /^\d+$/.test(draft.ceilingPrice.trim()) ? Number(draft.ceilingPrice.trim()) : base;
       if (base > 0 && curFloor === base && curCeil === base) {
-        setDraft({
-          basePrice: String(base),
+        next = {
+          ...next,
           floorPrice: String(Math.round((base * 0.8) / 1000) * 1000),
           ceilingPrice: String(Math.round((base * 1.2) / 1000) * 1000),
-        });
+        };
       }
     }
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaved(false);
-    const invalid = validateDraft(draft, isDynamic);
-    setError(invalid);
-    if (invalid) return;
-
-    const base = Number(draft.basePrice.trim());
-    const pricing: ZonePricing = isDynamic
-      ? {
-          basePrice: base,
-          floorPrice: Number(draft.floorPrice.trim()),
-          ceilingPrice: Number(draft.ceilingPrice.trim()),
-          isDynamicPricingEnabled: true,
-        }
-      : {
-          basePrice: base,
-          floorPrice: base,
-          ceilingPrice: base,
-          isDynamicPricingEnabled: false,
-        };
-    setIsSaving(true);
-    const code = await apiUpdateZonePricing(eventId, zone.zoneId, pricing);
-    setIsSaving(false);
-    if (code) {
-      setError(pricingErrorMessage(code));
-      return;
-    }
-    if (!isDynamic) {
-      setDraft({ basePrice: String(base), floorPrice: String(base), ceilingPrice: String(base) });
-    }
-    onSaved(zone.zoneId, pricing);
-    setSaved(true);
+    onChange(zone.zoneId, next);
   };
 
   return (
-    <form
+    <article
       id={`zone-pricing-${zone.zoneId}`}
-      onSubmit={handleSave}
       className={`rounded-xl bg-kumo-base p-4 sm:p-5 transition-shadow ${
-        highlighted ? 'ring-2 ring-violet-ink' : 'ring ring-kumo-line'
+        error
+          ? 'ring-2 ring-kumo-danger'
+          : highlighted || isDirty
+            ? 'ring-2 ring-violet-ink'
+            : 'ring ring-kumo-line'
       }`}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
@@ -155,17 +198,24 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted,
             <span className="tabular-nums">{zone.capacity} chỗ</span>
           </p>
         </div>
-        {isDynamic ? (
-          <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-kumo-success-tint text-kumo-success">
-            <TrendingUp className="size-3" />
-            Giá động
-          </span>
-        ) : (
-          <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-kumo-recessed text-kumo-subtle ring ring-kumo-line">
-            <Lock className="size-3" />
-            Giá cố định
-          </span>
-        )}
+        <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5">
+          {isDirty && (
+            <span className="rounded-full bg-kumo-warning-tint px-2.5 py-0.5 text-xs font-medium text-kumo-warning">
+              Đã lưu nháp
+            </span>
+          )}
+          {isDynamic ? (
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-kumo-success-tint text-kumo-success">
+              <TrendingUp className="size-3" />
+              Giá động
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-kumo-recessed text-kumo-subtle ring ring-kumo-line">
+              <Lock className="size-3" />
+              Giá cố định
+            </span>
+          )}
+        </div>
       </div>
 
       {editable && (
@@ -239,7 +289,7 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted,
                   type="text"
                   inputMode="numeric"
                   value={draft[key]}
-                  onChange={e => setDraft({ ...draft, [key]: e.target.value })}
+                  onChange={e => onChange(zone.zoneId, { ...draft, [key]: e.target.value })}
                   className="field mt-1.5 font-normal tabular-nums"
                 />
               ) : (
@@ -264,7 +314,7 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted,
                 type="text"
                 inputMode="numeric"
                 value={draft.basePrice}
-                onChange={e => setDraft({ ...draft, basePrice: e.target.value })}
+                onChange={e => onChange(zone.zoneId, { ...draft, basePrice: e.target.value })}
                 className="field mt-1.5 font-normal tabular-nums"
               />
             ) : (
@@ -281,31 +331,13 @@ const ZoneRow: React.FC<ZoneRowProps> = ({ eventId, zone, editable, highlighted,
         </div>
       )}
 
-      {editable && (
-        <div className="mt-4 pt-4 border-t border-kumo-hairline flex flex-col sm:flex-row sm:items-center gap-3">
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="btn btn-ink"
-          >
-            <Save className="size-4" />
-            <span>{isSaving ? 'Đang lưu...' : 'Lưu giá'}</span>
-          </button>
-          {error && (
-            <p role="alert" className="rounded-lg px-3 py-2 text-sm bg-kumo-danger-tint text-kumo-danger flex items-start gap-2">
-              <AlertCircle className="size-4 flex-shrink-0 mt-px" />
-              {error}
-            </p>
-          )}
-          {saved && !error && (
-            <p role="status" className="rounded-lg px-3 py-2 text-sm bg-kumo-success-tint text-kumo-success flex items-center gap-2">
-              <CheckCircle2 className="size-4 flex-shrink-0" />
-              Đã lưu giá
-            </p>
-          )}
-        </div>
+      {error && (
+        <p role="alert" className="mt-3 rounded-lg px-3 py-2 text-sm bg-kumo-danger-tint text-kumo-danger flex items-start gap-2">
+          <AlertCircle className="size-4 flex-shrink-0 mt-px" />
+          {error}
+        </p>
       )}
-    </form>
+    </article>
   );
 };
 
@@ -321,6 +353,11 @@ export const OrganizerPage: React.FC = () => {
   const [cancellations, setCancellations] = useState<OrganizerCancellationRecord[]>([]);
   const [selected, setSelected] = useState<OrganizerEvent | null>(null);
   const [zones, setZones] = useState<OrganizerZone[]>([]);
+  const [draftsByZone, setDraftsByZone] = useState<Record<string, ZonePriceDraft>>({});
+  const [zoneErrors, setZoneErrors] = useState<Record<string, string>>({});
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [saveSummaryError, setSaveSummaryError] = useState<string | null>(null);
+  const [saveSummarySuccess, setSaveSummarySuccess] = useState<string | null>(null);
   const [eventSeats, setEventSeats] = useState<SeatItem[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'pricing'>('dashboard');
   const [createdBanner, setCreatedBanner] = useState<CreatedOrganizerEvent | null>(incomingCreated);
@@ -354,6 +391,10 @@ export const OrganizerPage: React.FC = () => {
     const seq = ++selectSeqRef.current;
     setSelected(ev);
     setZones([]);
+    setDraftsByZone(loadPricingDraftCache(ev.id));
+    setZoneErrors({});
+    setSaveSummaryError(null);
+    setSaveSummarySuccess(null);
     setEventSeats([]);
     setFocusedZoneId(null);
     setError(null);
@@ -365,6 +406,17 @@ export const OrganizerPage: React.FC = () => {
       if (selectSeqRef.current !== seq) return;
       setZones(zoneList);
       setEventSeats(seatList ?? []);
+      // Prune any cached drafts that no longer differ from server values or belong to removed zones.
+      const cached = loadPricingDraftCache(ev.id);
+      const validCached: Record<string, ZonePriceDraft> = {};
+      for (const z of zoneList) {
+        const d = cached[z.zoneId];
+        if (d && isZoneDraftDirty(z, d)) {
+          validCached[z.zoneId] = d;
+        }
+      }
+      savePricingDraftCache(ev.id, validCached);
+      setDraftsByZone(validCached);
     } catch {
       if (selectSeqRef.current === seq) {
         setError('Không thể tải các khu vực của sự kiện.');
@@ -421,22 +473,138 @@ export const OrganizerPage: React.FC = () => {
     });
   };
 
-  const handleSaved = (zoneId: string, pricing: ZonePricing) => {
-    setZones(prev =>
-      prev.map(z =>
-        z.zoneId === zoneId
+  const handleZoneDraftChange = (zoneId: string, next: ZonePriceDraft) => {
+    if (!selected) return;
+    const baseZone = zones.find(z => z.zoneId === zoneId);
+    setSaveSummaryError(null);
+    setSaveSummarySuccess(null);
+    setZoneErrors(prev => {
+      if (!(zoneId in prev)) return prev;
+      const copy = { ...prev };
+      delete copy[zoneId];
+      return copy;
+    });
+    setDraftsByZone(prev => {
+      const updated = { ...prev };
+      if (baseZone && !isZoneDraftDirty(baseZone, next)) {
+        delete updated[zoneId];
+      } else {
+        updated[zoneId] = next;
+      }
+      savePricingDraftCache(selected.id, updated);
+      return updated;
+    });
+  };
+
+  const dirtyZones = zones.filter(z => isZoneDraftDirty(z, draftsByZone[z.zoneId]));
+
+  const handleDiscardDrafts = () => {
+    if (!selected) return;
+    setDraftsByZone({});
+    setZoneErrors({});
+    setSaveSummaryError(null);
+    setSaveSummarySuccess(null);
+    savePricingDraftCache(selected.id, {});
+  };
+
+  const handleSaveAllPricing = async () => {
+    if (!selected || isSavingAll) return;
+    setSaveSummaryError(null);
+    setSaveSummarySuccess(null);
+
+    if (dirtyZones.length === 0) {
+      setSaveSummarySuccess('Tất cả khu vực đã khớp với giá đang lưu.');
+      return;
+    }
+
+    const validationErrors: Record<string, string> = {};
+    for (const z of dirtyZones) {
+      const d = draftsByZone[z.zoneId] ?? toZoneDraft(z);
+      const err = validateDraft(d);
+      if (err) validationErrors[z.zoneId] = err;
+    }
+    if (Object.keys(validationErrors).length > 0) {
+      setZoneErrors(validationErrors);
+      setSaveSummaryError('Một số khu vực có mức giá chưa hợp lệ. Vui lòng kiểm tra các ô báo đỏ.');
+      const firstBadId = Object.keys(validationErrors)[0];
+      document.getElementById(`zone-pricing-${firstBadId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+      return;
+    }
+
+    setIsSavingAll(true);
+    setZoneErrors({});
+    const results = await Promise.all(
+      dirtyZones.map(async z => {
+        const d = draftsByZone[z.zoneId] ?? toZoneDraft(z);
+        const base = Number(d.basePrice.trim());
+        const pricing: ZonePricing = d.isDynamicPricingEnabled
           ? {
-              ...z,
-              basePrice: pricing.basePrice,
-              floorPrice: pricing.floorPrice,
-              ceilingPrice: pricing.ceilingPrice,
-              isDynamicPricingEnabled: pricing.isDynamicPricingEnabled ?? z.isDynamicPricingEnabled,
+              basePrice: base,
+              floorPrice: Number(d.floorPrice.trim()),
+              ceilingPrice: Number(d.ceilingPrice.trim()),
+              isDynamicPricingEnabled: true,
             }
-          : z
-      )
+          : {
+              basePrice: base,
+              floorPrice: base,
+              ceilingPrice: base,
+              isDynamicPricingEnabled: false,
+            };
+        const code = await apiUpdateZonePricing(selected.id, z.zoneId, pricing);
+        return { zoneId: z.zoneId, pricing, code };
+      })
     );
-    invalidateAssistantCache();
-    loadOverview();
+    setIsSavingAll(false);
+
+    const savedMap = new Map<string, ZonePricing>();
+    const failedErrors: Record<string, string> = {};
+    for (const r of results) {
+      if (r.code) {
+        failedErrors[r.zoneId] = pricingErrorMessage(r.code);
+      } else {
+        savedMap.set(r.zoneId, r.pricing);
+      }
+    }
+
+    if (savedMap.size > 0) {
+      setZones(prev =>
+        prev.map(z => {
+          const p = savedMap.get(z.zoneId);
+          return p
+            ? {
+                ...z,
+                basePrice: p.basePrice,
+                floorPrice: p.floorPrice,
+                ceilingPrice: p.ceilingPrice,
+                isDynamicPricingEnabled: p.isDynamicPricingEnabled ?? z.isDynamicPricingEnabled,
+              }
+            : z;
+        })
+      );
+      setDraftsByZone(prev => {
+        const remaining = { ...prev };
+        for (const zid of savedMap.keys()) delete remaining[zid];
+        savePricingDraftCache(selected.id, remaining);
+        return remaining;
+      });
+      invalidateAssistantCache();
+      loadOverview();
+    }
+
+    setZoneErrors(failedErrors);
+    const failedCount = Object.keys(failedErrors).length;
+    if (failedCount > 0) {
+      setSaveSummaryError(
+        savedMap.size > 0
+          ? `Đã lưu ${savedMap.size} khu vực, nhưng ${failedCount} khu vực gặp lỗi (bản nháp vẫn được giữ lại).`
+          : `Chưa thể lưu giá cho ${failedCount} khu vực. Bản nháp vẫn được giữ lại để bạn thử lại.`
+      );
+    } else {
+      setSaveSummarySuccess(`Đã lưu giá cho ${savedMap.size} khu vực.`);
+    }
   };
 
   const selectedSummary: EventSalesSummary | undefined = selected
@@ -618,6 +786,17 @@ export const OrganizerPage: React.FC = () => {
                       >
                         <SlidersHorizontal className="size-3.5" />
                         <span>Cấu hình giá khu vực</span>
+                        {dirtyZones.length > 0 && (
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                              activeTab === 'pricing'
+                                ? 'bg-kumo-inverse/20 text-kumo-inverse'
+                                : 'bg-kumo-warning-tint text-kumo-warning'
+                            }`}
+                          >
+                            {dirtyZones.length}
+                          </span>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -644,16 +823,80 @@ export const OrganizerPage: React.FC = () => {
                     onInspectPricing={handleInspectZonePricing}
                   />
                 ) : (
-                  zones.map(zone => (
-                    <ZoneRow
-                      key={`${selected.id}-${zone.zoneId}`}
-                      eventId={selected.id}
-                      zone={zone}
-                      editable={isEnabled('zone_pricing')}
-                      highlighted={focusedZoneId === zone.zoneId}
-                      onSaved={handleSaved}
-                    />
-                  ))
+                  <div className="space-y-3">
+                    {zones.map(zone => {
+                      const draft = draftsByZone[zone.zoneId] ?? toZoneDraft(zone);
+                      const dirty = isZoneDraftDirty(zone, draftsByZone[zone.zoneId]);
+                      return (
+                        <ZoneRow
+                          key={`${selected.id}-${zone.zoneId}`}
+                          zone={zone}
+                          draft={draft}
+                          isDirty={dirty}
+                          error={zoneErrors[zone.zoneId] ?? null}
+                          editable={isEnabled('zone_pricing')}
+                          highlighted={focusedZoneId === zone.zoneId}
+                          onChange={handleZoneDraftChange}
+                        />
+                      );
+                    })}
+
+                    {isEnabled('zone_pricing') && zones.length > 0 && (
+                      <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-kumo-base/95 p-4 shadow-lg ring ring-kumo-line backdrop-blur">
+                        <div className="min-w-0 flex-1 text-sm">
+                          {saveSummaryError ? (
+                            <p role="alert" className="flex items-start gap-2 text-kumo-danger">
+                              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                              <span>{saveSummaryError}</span>
+                            </p>
+                          ) : saveSummarySuccess ? (
+                            <p role="status" className="flex items-center gap-2 text-kumo-success">
+                              <CheckCircle2 className="size-4 shrink-0" />
+                              <span>{saveSummarySuccess}</span>
+                            </p>
+                          ) : dirtyZones.length > 0 ? (
+                            <p className="text-kumo-default tabular-nums">
+                              <strong className="text-kumo-strong">{dirtyZones.length} khu vực</strong> có thay đổi chưa lưu ·{' '}
+                              <span className="text-xs text-kumo-subtle">Đã tự động lưu nháp trên trình duyệt</span>
+                            </p>
+                          ) : (
+                            <p className="text-kumo-subtle">
+                              Chỉnh sửa giá ở các khu vực bên trên rồi nhấn <strong>Lưu giá</strong> để áp dụng đồng loạt.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          {dirtyZones.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleDiscardDrafts}
+                              disabled={isSavingAll}
+                              className="btn btn-secondary btn-sm h-10"
+                            >
+                              <RotateCcw className="size-3.5" />
+                              <span>Hủy nháp</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleSaveAllPricing}
+                            disabled={isSavingAll || dirtyZones.length === 0}
+                            className="btn btn-ink h-10 px-5"
+                          >
+                            <Save className="size-4" />
+                            <span>
+                              {isSavingAll
+                                ? 'Đang lưu...'
+                                : dirtyZones.length > 0
+                                  ? `Lưu giá (${dirtyZones.length} khu)`
+                                  : 'Lưu giá'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </>
             )}
