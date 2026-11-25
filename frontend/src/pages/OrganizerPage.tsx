@@ -24,10 +24,12 @@ import { invalidateAssistantCache, openAssistant } from '../services/assistantSe
 import {
   CreatedOrganizerEvent,
   EventSalesSummary,
+  OrganizerCancellationRecord,
   OrganizerEvent,
   OrganizerSalesOverview,
   OrganizerZone,
   ZonePricing,
+  apiFetchOrganizerCancellations,
   apiFetchOrganizerEvents,
   apiFetchOrganizerSalesOverview,
   apiFetchEventZones,
@@ -184,6 +186,7 @@ export const OrganizerPage: React.FC = () => {
 
   const [events, setEvents] = useState<OrganizerEvent[]>([]);
   const [overview, setOverview] = useState<OrganizerSalesOverview | null>(null);
+  const [cancellations, setCancellations] = useState<OrganizerCancellationRecord[]>([]);
   const [selected, setSelected] = useState<OrganizerEvent | null>(null);
   const [zones, setZones] = useState<OrganizerZone[]>([]);
   const [eventSeats, setEventSeats] = useState<SeatItem[]>([]);
@@ -204,8 +207,12 @@ export const OrganizerPage: React.FC = () => {
   const consoleEnabled = isEnabled('organizer_console');
 
   const loadOverview = useCallback(async () => {
-    const data = await apiFetchOrganizerSalesOverview();
+    const [data, cancelledList] = await Promise.all([
+      apiFetchOrganizerSalesOverview(),
+      apiFetchOrganizerCancellations()
+    ]);
     if (data) setOverview(data);
+    setCancellations(cancelledList);
     return data;
   }, []);
 
@@ -364,6 +371,7 @@ export const OrganizerPage: React.FC = () => {
         {overview && (
           <PortfolioSalesBanner
             overview={overview}
+            cancellations={cancellations}
             selectedEventId={selected?.id ?? null}
             onSelectEvent={eventId => {
               const found = events.find(e => e.id === eventId);
@@ -475,6 +483,7 @@ export const OrganizerPage: React.FC = () => {
                   <EventSalesDashboard
                     summary={selectedSummary}
                     seats={eventSeats}
+                    cancellations={cancellations}
                     onOpenAiAnalysis={() => openAssistant({ eventId: selected.id, mode: 'sales_analysis' })}
                     onOpenStageGraph={overlay =>
                       openAssistant({

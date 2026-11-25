@@ -1,6 +1,7 @@
 import React, { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Ban,
   CircleDot,
   ExternalLink,
   Flame,
@@ -11,7 +12,12 @@ import {
   Wallet,
   X
 } from 'lucide-react';
-import { EventSalesSummary, ZoneSalesSummary } from '../../services/organizerService';
+import {
+  EventSalesSummary,
+  OrganizerCancellationRecord,
+  ZoneSalesSummary,
+  groupCancellationsByZone
+} from '../../services/organizerService';
 import { formatPrice, formatPriceShort } from '../../services/eventService';
 import {
   PRICE_BAND_COLORS,
@@ -142,12 +148,14 @@ function toZoneSummaries(zones: ZoneSalesSummary[]): ZoneSummary[] {
 interface StageSalesHeatmapProps {
   summary: EventSalesSummary;
   seats: SeatItem[];
+  cancellations?: OrganizerCancellationRecord[];
   onInspectPricing?: (zoneId: string) => void;
 }
 
 export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
   summary,
   seats,
+  cancellations = [],
   onInspectPricing
 }) => {
   const [metric, setMetric] = useState<HeatmapMetric>('fill');
@@ -168,6 +176,10 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
   const zoneMap = useMemo(() => new Map(summary.zones.map(z => [z.zoneId, z])), [summary.zones]);
   const summaryMap = useMemo(() => new Map(zoneSummaries.map(z => [z.id, z])), [zoneSummaries]);
   const seatStatusMap = useMemo(() => new Map(seats.map(s => [s.id, s.status])), [seats]);
+  const zoneCancellationsMap = useMemo(
+    () => groupCancellationsByZone(cancellations, seats, summary.zones),
+    [cancellations, seats, summary.zones]
+  );
 
   const hasLiveSales = summary.realizedRevenue + summary.heldPipelineRevenue > 0;
 
@@ -206,6 +218,9 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
   };
 
   const inspectedZone = activeZoneId ? zoneMap.get(activeZoneId) : undefined;
+  const inspectedCancelStats = inspectedZone
+    ? zoneCancellationsMap.get(inspectedZone.zoneId)
+    : undefined;
   const inspectedGeo = inspectedZone
     ? layout.zones.find(g => g.zoneId === inspectedZone.zoneId)
     : undefined;
@@ -686,6 +701,12 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
                       Cần kích cầu
                     </span>
                   )}
+                  {(inspectedCancelStats?.cancelledSeats ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-kumo-danger-tint px-2 py-0.5 font-semibold text-kumo-danger tabular-nums">
+                      <Ban className="size-3" />
+                      {inspectedCancelStats?.cancelledSeats} vé hủy
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -711,7 +732,7 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
                     />
                   )}
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[11px] tabular-nums">
+                <div className="mt-2 grid grid-cols-2 gap-1.5 text-center text-[11px] tabular-nums sm:grid-cols-4">
                   <div className="rounded bg-kumo-recessed/70 py-1">
                     <span className="block text-kumo-subtle">Đã bán</span>
                     <strong className="text-kumo-success">{inspectedZone.sold}</strong>
@@ -724,8 +745,78 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
                     <span className="block text-kumo-subtle">Còn trống</span>
                     <strong className="text-kumo-strong">{inspectedZone.available}</strong>
                   </div>
+                  <div className="rounded bg-kumo-recessed/70 py-1">
+                    <span className="block text-kumo-subtle">Đã hủy</span>
+                    <strong
+                      className={
+                        (inspectedCancelStats?.cancelledSeats ?? 0) > 0
+                          ? 'text-kumo-danger'
+                          : 'text-kumo-subtle'
+                      }
+                    >
+                      {inspectedCancelStats?.cancelledSeats ?? 0}
+                    </strong>
+                  </div>
                 </div>
               </div>
+
+              {/* Zone-specific Cancellation Details */}
+              {inspectedCancelStats && inspectedCancelStats.entries.length > 0 && (
+                <div className="rounded-lg bg-kumo-danger-tint/45 p-2.5 text-xs ring ring-kumo-danger/25">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1 font-semibold text-kumo-danger">
+                      <Ban className="size-3.5" />
+                      Vé đã hủy khu này
+                    </span>
+                    <span className="text-[11px] font-medium text-kumo-danger tabular-nums">
+                      {inspectedCancelStats.cancelledSeats} vé · {inspectedCancelStats.cancelCount} lượt
+                    </span>
+                  </div>
+                  <ul className="mt-2 space-y-1.5">
+                    {inspectedCancelStats.entries.slice(0, 3).map((entry, idx) => {
+                      const shown = entry.seatLabels.slice(0, 4);
+                      const more = Math.max(0, entry.seatLabels.length - shown.length);
+                      const when = new Date(entry.record.cancelledAt);
+                      const timeText = Number.isNaN(when.getTime())
+                        ? ''
+                        : when.toLocaleString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          });
+                      return (
+                        <li
+                          key={`${entry.record.id}-${idx}`}
+                          className="rounded-md bg-kumo-base/90 px-2 py-1.5 text-[11px] ring ring-kumo-line/60"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-kumo-strong">
+                              {shown.length > 0
+                                ? `Ghế ${shown.join(', ')}${more > 0 ? ` +${more}` : ''}`
+                                : `${entry.seatCount} ghế`}
+                            </span>
+                            {timeText && (
+                              <span className="shrink-0 text-[10px] text-kumo-subtle tabular-nums">
+                                {timeText}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-0.5 truncate text-kumo-subtle" title={entry.record.reason}>
+                            {entry.record.bookingCode ? `${entry.record.bookingCode} · ` : ''}
+                            {entry.record.reason}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {inspectedCancelStats.entries.length > 3 && (
+                    <p className="mt-1.5 text-[10px] text-kumo-subtle">
+                      +{inspectedCancelStats.entries.length - 3} lượt hủy khác — xem chi tiết ở mục Thông tin hủy vé bên dưới.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Revenue Breakdown */}
               <div className="grid grid-cols-2 gap-2 text-xs">

@@ -124,6 +124,194 @@ export interface OrganizerSalesOverview {
   events: EventSalesSummary[];
 }
 
+export interface OrganizerCancellationRecord {
+  id: number;
+  eventId: string;
+  eventName: string;
+  bookingCode: string;
+  customerEmail: string;
+  seatLabels: string[];
+  seatIds: string[];
+  seatCount: number;
+  tierId?: string;
+  tierName?: string;
+  totalAmount?: number;
+  reason: string;
+  cancelledAt: string;
+}
+
+export interface ZoneCancellationEntry {
+  record: OrganizerCancellationRecord;
+  seatLabels: string[];
+  seatCount: number;
+}
+
+export interface ZoneCancellationStats {
+  cancelledSeats: number;
+  cancelCount: number;
+  entries: ZoneCancellationEntry[];
+}
+
+export function groupCancellationsByZone(
+  cancellations: OrganizerCancellationRecord[],
+  seats: { id: string; label: string; zoneId: string }[],
+  zones: { zoneId: string; zoneCode: string; zoneName: string }[]
+): Map<string, ZoneCancellationStats> {
+  const result = new Map<string, ZoneCancellationStats>();
+  const seatById = new Map(seats.map(s => [s.id, s]));
+  const zoneIds = new Set(zones.map(z => z.zoneId));
+
+  const addEntry = (zoneId: string, record: OrganizerCancellationRecord, labels: string[], count: number) => {
+    const existing = result.get(zoneId) ?? { cancelledSeats: 0, cancelCount: 0, entries: [] };
+    existing.cancelledSeats += count;
+    existing.cancelCount += 1;
+    existing.entries.push({ record, seatLabels: labels, seatCount: count });
+    result.set(zoneId, existing);
+  };
+
+  for (const rec of cancellations) {
+    const matchedByZone = new Map<string, string[]>();
+    for (const sid of rec.seatIds) {
+      const seat = seatById.get(sid);
+      if (!seat) continue;
+      const list = matchedByZone.get(seat.zoneId) ?? [];
+      list.push(seat.label);
+      matchedByZone.set(seat.zoneId, list);
+    }
+
+    if (matchedByZone.size > 0) {
+      for (const [zoneId, labels] of matchedByZone.entries()) {
+        const displayLabels =
+          matchedByZone.size === 1 && rec.seatLabels.length > 0 ? rec.seatLabels : labels;
+        addEntry(zoneId, rec, displayLabels, Math.max(labels.length, displayLabels.length));
+      }
+      continue;
+    }
+
+    // Fallback: match by tierId, then tierName/zoneCode, then unique seat label.
+    let fallbackZoneId: string | undefined;
+    if (rec.tierId && zoneIds.has(rec.tierId)) {
+      fallbackZoneId = rec.tierId;
+    } else if (rec.tierName) {
+      const needle = rec.tierName.trim().toLowerCase();
+      fallbackZoneId = zones.find(
+        z => z.zoneName.trim().toLowerCase() === needle || z.zoneCode.trim().toLowerCase() === needle
+      )?.zoneId;
+    } else if (rec.seatLabels.length > 0) {
+      const candidates = new Set<string>();
+      for (const lbl of rec.seatLabels) {
+        const matching = seats.filter(s => s.label === lbl);
+        if (matching.length === 1) candidates.add(matching[0].zoneId);
+      }
+      if (candidates.size === 1) fallbackZoneId = [...candidates][0];
+    }
+
+    if (fallbackZoneId) {
+      addEntry(fallbackZoneId, rec, rec.seatLabels, rec.seatCount);
+    }
+  }
+
+  return result;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function firstNonEmpty(...values: unknown[]): string {
+  for (const v of values) {
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return '';
+}
+
+export async function apiFetchOrganizerCancellations(): Promise<OrganizerCancellationRecord[]> {
+  try {
+    const res = await fetch('/api/tickets/audit-logs', { credentials: 'include' });
+    if (!res.ok) return [];
+    const raw = await res.json();
+    if (!Array.isArray(raw)) return [];
+
+    const records: OrganizerCancellationRecord[] = [];
+    for (const entry of raw) {
+      const item = asRecord(entry);
+      if (!item || item.action !== 'TICKET_CANCELLED') continue;
+
+      const oldData = asRecord(item.oldData);
+      const concert = asRecord(item.concert) ?? asRecord(oldData?.concert);
+      const client = asRecord(oldData?.client);
+      const clientConcert = asRecord(client?.concert);
+      const ticketDetails = asRecord(client?.ticketDetails) ?? asRecord(oldData?.ticketDetails);
+
+      const releasedSeats = stringArray(oldData?.releasedSeats);
+      const rawSeats = stringArray(oldData?.seats);
+      const seatLabels =
+        releasedSeats.length > 0
+          ? releasedSeats
+          : rawSeats.filter(ref => !UUID_PATTERN.test(ref));
+      const seatIds = rawSeats.filter(ref => UUID_PATTERN.test(ref));
+
+      const detailQty =
+        typeof ticketDetails?.quantity === 'number' && ticketDetails.quantity > 0
+          ? ticketDetails.quantity
+          : 0;
+      const seatCount = Math.max(1, seatLabels.length, rawSeats.length, detailQty);
+
+      const actorEmail = firstNonEmpty(item.actorEmail);
+      const customerEmail =
+        actorEmail && actorEmail !== 'guest'
+          ? actorEmail
+          : firstNonEmpty(oldData?.userEmail, ticketDetails?.attendeeEmail, 'Khách hàng');
+
+      const eventId = firstNonEmpty(oldData?.eventId, concert?.id, clientConcert?.id);
+      const eventName = firstNonEmpty(
+        item.eventName,
+        concert?.name,
+        concert?.title,
+        clientConcert?.name,
+        clientConcert?.title,
+        ticketDetails?.eventTitle,
+        'Sự kiện'
+      );
+
+      const totalAmount =
+        typeof ticketDetails?.totalAmount === 'number' && ticketDetails.totalAmount > 0
+          ? ticketDetails.totalAmount
+          : undefined;
+      const tierId = firstNonEmpty(ticketDetails?.tierId) || undefined;
+      const tierName = firstNonEmpty(ticketDetails?.tierName) || undefined;
+
+      records.push({
+        id: typeof item.id === 'number' ? item.id : records.length + 1,
+        eventId,
+        eventName,
+        bookingCode: firstNonEmpty(oldData?.bookingCode),
+        customerEmail,
+        seatLabels,
+        seatIds,
+        seatCount,
+        tierId,
+        tierName,
+        totalAmount,
+        reason: firstNonEmpty(item.reason, 'Khách hàng xác nhận hủy vé'),
+        cancelledAt: firstNonEmpty(item.createdAt)
+      });
+    }
+    return records;
+  } catch {
+    return [];
+  }
+}
+
 export async function apiFetchOrganizerSalesOverview(): Promise<OrganizerSalesOverview | null> {
   try {
     const res = await fetch('/api/organizer/sales-overview', { credentials: 'include' });
