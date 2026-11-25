@@ -6,7 +6,11 @@ export type FeatureFlag =
   | 'seat_hold'
   | 'zone_pricing'
   | 'organizer_console'
+  | 'rotating_qr'
+  | 'dynamic_pricing'
+  | 'promo_suggestions'
   | 'ticket_limit'
+  | 'chatbot'
   | 'payments';
 
 interface FeatureContextType {
