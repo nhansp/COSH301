@@ -1,6 +1,6 @@
 import React, { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, ExternalLink, Flame, Layers, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { BarChart3, ExternalLink, Flame, Layers, MousePointerClick, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import {
   EnrichedEvent,
   StageGraphTab,
@@ -86,6 +86,7 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
   const [tab, setTab] = useState<StageGraphTab>(initialTab);
   const [overlay, setOverlay] = useState<StageMapOverlay>(initialOverlay);
   const [activeZoneId, setActiveZoneId] = useState<string | null>(null);
+  const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null);
   const gradientId = useId();
 
   const current = useMemo(
@@ -102,8 +103,7 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
   const zoneMap = useMemo(() => new Map(current.zones.map(z => [z.zoneId, z])), [current.zones]);
   const summaryMap = useMemo(() => new Map(current.zoneSummaries.map(z => [z.id, z])), [current.zoneSummaries]);
 
-  const inspectedZone: ZoneTelemetry | undefined =
-    (activeZoneId ? zoneMap.get(activeZoneId) : undefined) ?? current.zones[0];
+  const inspectedZone: ZoneTelemetry | undefined = activeZoneId ? zoneMap.get(activeZoneId) : undefined;
 
   const maxCeiling = useMemo(
     () => Math.max(1, ...current.zones.map(z => Math.max(z.ceilingPrice, z.basePrice))),
@@ -313,6 +313,7 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
                   const summary = summaryMap.get(geo.zoneId);
                   if (!z || !summary) return null;
                   const isActive = inspectedZone?.zoneId === geo.zoneId;
+                  const isHovered = hoveredZoneId === geo.zoneId;
                   const fill = overlay === 'occupancy' ? occupancyColor(z.occupancyRate) : summary.color;
                   const [cx, cy] = zoneCenter2D(geo);
                   const label = z.zoneCode || summary.shortName;
@@ -320,9 +321,20 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
                   return (
                     <g
                       key={geo.zoneId}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isActive}
+                      aria-label={`Xem chi tiết ${z.zoneName}`}
                       onClick={() => setActiveZoneId(geo.zoneId)}
-                      onPointerEnter={() => setActiveZoneId(geo.zoneId)}
-                      style={{ cursor: 'pointer' }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setActiveZoneId(geo.zoneId);
+                        }
+                      }}
+                      onPointerEnter={() => setHoveredZoneId(geo.zoneId)}
+                      onPointerLeave={() => setHoveredZoneId(cur => (cur === geo.zoneId ? null : cur))}
+                      style={{ cursor: 'pointer', outline: 'none' }}
                     >
                       {geo.kind === 'pit' ? (
                         <rect
@@ -332,17 +344,17 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
                           height={geo.depth}
                           rx={0.5}
                           fill={fill}
-                          fillOpacity={isActive ? 0.92 : 0.62}
-                          stroke={isActive ? '#ffe2a8' : '#11121a'}
-                          strokeWidth={isActive ? 0.42 : 0.2}
+                          fillOpacity={isActive ? 0.92 : isHovered ? 0.78 : 0.62}
+                          stroke={isActive ? '#ffe2a8' : isHovered ? '#cbd5e1' : '#11121a'}
+                          strokeWidth={isActive ? 0.42 : isHovered ? 0.3 : 0.2}
                         />
                       ) : (
                         <path
                           d={sectorPath(geo)}
                           fill={fill}
-                          fillOpacity={isActive ? 0.92 : 0.62}
-                          stroke={isActive ? '#ffe2a8' : '#11121a'}
-                          strokeWidth={isActive ? 0.42 : 0.2}
+                          fillOpacity={isActive ? 0.92 : isHovered ? 0.78 : 0.62}
+                          stroke={isActive ? '#ffe2a8' : isHovered ? '#cbd5e1' : '#11121a'}
+                          strokeWidth={isActive ? 0.42 : isHovered ? 0.3 : 0.2}
                         />
                       )}
                       <text
@@ -391,23 +403,33 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
                     </span>
                   </span>
                 )}
-                <span>Nhấn khu vực để xem chi tiết</span>
+                <span>Nhấn vào hàng ghế / khu vực để xem chi tiết</span>
               </div>
             </div>
 
             {/* Selected Zone Telemetry Inspector */}
-            {inspectedZone && (
+            {inspectedZone ? (
               <div className="mt-2.5 rounded-xl bg-kumo-recessed p-3 ring ring-kumo-line">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="text-sm font-semibold text-kumo-strong">{inspectedZone.zoneName}</span>
                     <span className="ml-2 rounded-full bg-kumo-base px-2 py-0.5 text-[11px] font-medium text-kumo-subtle ring ring-kumo-line">
                       {inspectedZone.kind === 'standing' ? 'Khu đứng' : 'Ghế ngồi'}
                     </span>
                   </div>
-                  <span className="type-figure text-sm text-violet-ink">
-                    {formatPrice(inspectedZone.basePrice)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="type-figure text-sm text-violet-ink">
+                      {formatPrice(inspectedZone.basePrice)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveZoneId(null)}
+                      aria-label="Đóng chi tiết khu vực"
+                      className="grid size-6 place-items-center rounded-md text-kumo-subtle transition-colors hover:bg-kumo-base hover:text-kumo-strong"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                   <div className="rounded-lg bg-kumo-base px-2.5 py-1.5">
@@ -429,6 +451,11 @@ export const StageGraphCard: React.FC<StageGraphCardProps> = ({
                     </span>
                   </div>
                 </div>
+              </div>
+            ) : (
+              <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-kumo-recessed/70 px-3 py-2.5 text-xs text-kumo-subtle ring ring-kumo-line">
+                <MousePointerClick className="size-4 shrink-0 text-violet-ink" />
+                <span>Nhấn vào một hàng ghế hoặc khu vực trên sơ đồ để xem chi tiết giá và tình trạng ghế.</span>
               </div>
             )}
           </>

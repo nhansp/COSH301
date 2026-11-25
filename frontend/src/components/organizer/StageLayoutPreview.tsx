@@ -92,6 +92,7 @@ export const StageLayoutPreview: React.FC<StageLayoutPreviewProps> = ({
 }) => {
   const [showSeats, setShowSeats] = useState(true);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
   const ledGradId = useId();
   const gridPatId = useId();
   const crowdPatId = useId();
@@ -119,7 +120,7 @@ export const StageLayoutPreview: React.FC<StageLayoutPreviewProps> = ({
     };
   }, [zones]);
 
-  const activeId = hoveredId ?? selectedZoneId;
+  const activeId = selectedZoneId ?? internalSelectedId;
   const activeZone = activeId ? zoneMap.get(activeId) ?? null : null;
   const stage = layout.stage;
   const stageX = stage.center[0] - stage.width / 2;
@@ -291,7 +292,7 @@ export const StageLayoutPreview: React.FC<StageLayoutPreviewProps> = ({
           {layout.zones.map(geo => {
             const z = zoneMap.get(geo.zoneId);
             if (!z) return null;
-            const isSelected = selectedZoneId === geo.zoneId;
+            const isSelected = activeId === geo.zoneId;
             const isHovered = hoveredId === geo.zoneId;
             const highlight = isSelected || isHovered;
             const stroke = isSelected ? '#ffe2a8' : z.color;
@@ -299,10 +300,24 @@ export const StageLayoutPreview: React.FC<StageLayoutPreviewProps> = ({
             return (
               <g
                 key={geo.zoneId}
-                onClick={() => onSelectZone?.(geo.zoneId)}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
+                aria-label={`Chọn khu vực ${z.name}`}
+                onClick={() => {
+                  if (onSelectZone) onSelectZone(geo.zoneId);
+                  else setInternalSelectedId(geo.zoneId);
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (onSelectZone) onSelectZone(geo.zoneId);
+                    else setInternalSelectedId(geo.zoneId);
+                  }
+                }}
                 onPointerEnter={() => setHoveredId(geo.zoneId)}
                 onPointerLeave={() => setHoveredId(cur => (cur === geo.zoneId ? null : cur))}
-                style={{ cursor: onSelectZone ? 'pointer' : 'default' }}
+                style={{ cursor: 'pointer', outline: 'none' }}
               >
                 {geo.kind === 'pit' ? (
                   <>

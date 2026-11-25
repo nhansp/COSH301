@@ -4,10 +4,12 @@ import {
   CircleDot,
   ExternalLink,
   Flame,
+  MousePointerClick,
   SlidersHorizontal,
   TrendingDown,
   TrendingUp,
-  Wallet
+  Wallet,
+  X
 } from 'lucide-react';
 import { EventSalesSummary, ZoneSalesSummary } from '../../services/organizerService';
 import { formatPrice, formatPriceShort } from '../../services/eventService';
@@ -151,6 +153,7 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
   const [metric, setMetric] = useState<HeatmapMetric>('fill');
   const [showSeats, setShowSeats] = useState(true);
   const [activeZoneId, setActiveZoneId] = useState<string | null>(null);
+  const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null);
   const stageGradId = useId();
   const glowFilterId = useId();
 
@@ -202,16 +205,7 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
     return activeRev > 0 ? formatPriceShort(activeRev) : '0₫';
   };
 
-  const defaultZone = useMemo(() => {
-    if (summary.zones.length === 0) return undefined;
-    return [...summary.zones].sort((a, b) => {
-      const filledDiff = b.sold + b.held - (a.sold + a.held);
-      if (filledDiff !== 0) return filledDiff;
-      return b.potentialRevenue - a.potentialRevenue;
-    })[0];
-  }, [summary.zones]);
-
-  const inspectedZone = (activeZoneId ? zoneMap.get(activeZoneId) : undefined) ?? defaultZone;
+  const inspectedZone = activeZoneId ? zoneMap.get(activeZoneId) : undefined;
   const inspectedGeo = inspectedZone
     ? layout.zones.find(g => g.zoneId === inspectedZone.zoneId)
     : undefined;
@@ -479,13 +473,25 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
               const intensity = zoneIntensity(z);
               const fill = heatColor(intensity);
               const isActive = inspectedZone?.zoneId === geo.zoneId;
+              const isHovered = hoveredZoneId === geo.zoneId;
 
               return (
                 <g
                   key={geo.zoneId}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isActive}
+                  aria-label={`Xem chi tiết ${z.zoneName}`}
                   onClick={() => setActiveZoneId(geo.zoneId)}
-                  onPointerEnter={() => setActiveZoneId(geo.zoneId)}
-                  style={{ cursor: 'pointer' }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setActiveZoneId(geo.zoneId);
+                    }
+                  }}
+                  onPointerEnter={() => setHoveredZoneId(geo.zoneId)}
+                  onPointerLeave={() => setHoveredZoneId(cur => (cur === geo.zoneId ? null : cur))}
+                  style={{ cursor: 'pointer', outline: 'none' }}
                 >
                   {geo.kind === 'pit' ? (
                     <rect
@@ -495,17 +501,17 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
                       height={geo.depth}
                       rx={0.55}
                       fill={fill}
-                      fillOpacity={isActive ? 0.94 : 0.72}
-                      stroke={isActive ? '#ffe2a8' : '#0b0e26'}
-                      strokeWidth={isActive ? 0.44 : 0.22}
+                      fillOpacity={isActive ? 0.94 : isHovered ? 0.84 : 0.72}
+                      stroke={isActive ? '#ffe2a8' : isHovered ? '#cbd5e1' : '#0b0e26'}
+                      strokeWidth={isActive ? 0.44 : isHovered ? 0.3 : 0.22}
                     />
                   ) : (
                     <path
                       d={sectorPath(geo)}
                       fill={fill}
-                      fillOpacity={isActive ? 0.94 : 0.72}
-                      stroke={isActive ? '#ffe2a8' : '#0b0e26'}
-                      strokeWidth={isActive ? 0.44 : 0.22}
+                      fillOpacity={isActive ? 0.94 : isHovered ? 0.84 : 0.72}
+                      stroke={isActive ? '#ffe2a8' : isHovered ? '#cbd5e1' : '#0b0e26'}
+                      strokeWidth={isActive ? 0.44 : isHovered ? 0.3 : 0.22}
                     />
                   )}
 
@@ -630,24 +636,34 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
               ) : (
                 <span>{scaleLabels.mid}</span>
               )}
-              <span>Di chuột hoặc nhấn khu để soi chi tiết</span>
+              <span>Nhấn vào hàng ghế / khu vực để xem chi tiết</span>
             </div>
           </div>
         </div>
 
         {/* Selected Zone Inspector Side Panel */}
-        {inspectedZone && (
+        {inspectedZone ? (
           <div className="flex flex-col justify-between rounded-xl bg-kumo-recessed/70 p-4 ring ring-kumo-line">
             <div className="space-y-3">
               <div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span
-                    className="inline-block size-2.5 rounded-full"
-                    style={{ backgroundColor: heatColor(zoneIntensity(inspectedZone)) }}
-                  />
-                  <h4 className="text-sm font-semibold text-kumo-strong">
-                    {inspectedZone.zoneName}
-                  </h4>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span
+                      className="inline-block size-2.5 rounded-full"
+                      style={{ backgroundColor: heatColor(zoneIntensity(inspectedZone)) }}
+                    />
+                    <h4 className="text-sm font-semibold text-kumo-strong">
+                      {inspectedZone.zoneName}
+                    </h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveZoneId(null)}
+                    aria-label="Đóng chi tiết khu vực"
+                    className="grid size-6 shrink-0 place-items-center rounded-md text-kumo-subtle transition-colors hover:bg-kumo-base hover:text-kumo-strong"
+                  >
+                    <X className="size-3.5" />
+                  </button>
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
                   <span className="rounded-full bg-kumo-base px-2 py-0.5 text-kumo-subtle ring ring-kumo-line">
@@ -781,6 +797,21 @@ export const StageSalesHeatmap: React.FC<StageSalesHeatmapProps> = ({
                 <ExternalLink className="size-3.5" />
               </Link>
             </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-xl bg-kumo-recessed/70 p-6 text-center ring ring-kumo-line">
+            <span className="grid size-11 place-items-center rounded-2xl bg-kumo-base text-violet-ink ring ring-kumo-line">
+              <MousePointerClick className="size-5" />
+            </span>
+            <h4 className="mt-3 text-sm font-semibold text-kumo-strong">
+              Chọn hàng ghế để xem chi tiết
+            </h4>
+            <p className="mt-1 max-w-[26ch] text-xs leading-relaxed text-kumo-subtle">
+              Nhấn trực tiếp vào một hàng ghế hoặc khu vực trên sơ đồ sân khấu để xem tỉ lệ lấp đầy, thực thu và biên giá.
+            </p>
+            <span className="mt-3 rounded-full bg-kumo-base px-2.5 py-1 text-[11px] font-medium text-kumo-subtle ring ring-kumo-line tabular-nums">
+              {summary.zones.length} khu vực trên sân khấu
+            </span>
           </div>
         )}
       </div>
