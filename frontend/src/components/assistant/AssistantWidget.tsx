@@ -99,6 +99,9 @@ export const AssistantWidget: React.FC = () => {
   const hasBottomBar = /^\/events?\//.test(location.pathname);
   const launcherOffset = hasBottomBar ? 'bottom-24 lg:bottom-6' : 'bottom-6';
 
+  // The gate scanner is a work tool on a phone; the launcher would cover the scan result.
+  if (location.pathname === '/soat-ve') return null;
+
   return (
     <div data-mode={stage ? 'dark' : undefined}>
       <button
