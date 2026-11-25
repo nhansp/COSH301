@@ -96,6 +96,10 @@
     } else {
       el.innerHTML = kick + badge + body + chip(a.speaker) + foot;
     }
+    // LaTeX: <div class="tex"> for display formulas, <span class="texi"> inline.
+    if (window.katex) el.querySelectorAll(".tex, .texi").forEach(m => {
+      katex.render(m.textContent, m, { displayMode: m.classList.contains("tex"), throwOnError: false, strict: "ignore" });
+    });
     return el;
   }
 

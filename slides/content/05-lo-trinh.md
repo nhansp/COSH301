@@ -1,16 +1,17 @@
-=== id=pricing-model layout=default speaker=dung time=55 kicker="Định giá động"
+=== id=pricing-model layout=default cols="0.7fr 1.3fr" speaker=dung time=55 kicker="Định giá động"
 ## Định giá động: dữ liệu đầu vào và công thức
 |||
 ### Dữ liệu đầu vào (mỗi khu)
-- Tốc độ bán v: số ghế được giữ hoặc bán trong 15 phút gần nhất, so với tốc độ mục tiêu v*.
-- Số người trong phòng chờ Q.
-- Tỉ lệ ghế đang được giữ r.
+- Tốc độ bán <span class="texi">v</span>: số ghế được giữ hoặc bán trong 15 phút gần nhất; <span class="texi">v^{\ast}</span> là tốc độ mục tiêu.
+- <span class="texi">Q</span>: số người trong phòng chờ.
+- <span class="texi">r</span>: tỉ lệ ghế đang được giữ.
 |||
 ### Cách tính (5 phút một lần)
-<div class="callout"><code>α = 0,5·v/v* + 0,3·(1 + Q/500) + 0,2·(1 + r)</code><br><code>δ = 0,25·(α − 1)</code>, giới hạn ±20%</div>
+<div class="tex">\alpha = 0{,}5\,\frac{v}{v^{\ast}} + 0{,}3\left(1 + \frac{Q}{500}\right) + 0{,}2\,(1 + r)</div>
+<div class="tex">\delta = \operatorname{clamp}\bigl(0{,}25\,(\alpha - 1),\; -20\%,\; +20\%\bigr)</div>
+<div class="tex">P_{\text{đề xuất}} = \operatorname{round}_{10\,000}\bigl(P\,(1 + \delta)\bigr), \quad P_{\text{sàn}} \le P_{\text{đề xuất}} \le P_{\text{trần}}</div>
 
-- Giá đề xuất bằng giá hiện tại nhân (1 + δ), làm tròn đến 10.000 đồng, nằm trong khoảng giá sàn – giá trần.
-- Lệch dưới 5% thì bỏ qua.
+- Lệch dưới 5% so với giá hiện tại <span class="texi">P</span> thì bỏ qua.
 - **Chỉ là đề xuất, Ban Tổ chức duyệt mới áp dụng (W-01).**
 NOTES:
 α là chỉ số áp lực cầu. α lớn hơn 1 nghĩa là bán nhanh hơn kế hoạch, giá đề xuất tăng; nhỏ hơn 1 thì giảm. Ví dụ trong tài liệu: Fanzone giá 1.200.000 đồng, α = 1,73, δ = +18,25%, đề xuất 1.420.000 đồng.
